@@ -1,0 +1,20 @@
+/* AddContent.css — minimal, all heavy styles in Dashboard.css */
+
+/* The page now uses .add-content-page + .form-card from Dashboard.css */
+/* This file kept only for extra AddContent-specific tweaks */
+
+.add-content-page .form-card {
+  /* inherits from Dashboard.css */
+}
+
+.add-content-page .form-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 640px) {
+  .add-content-page .form-2col {
+    grid-template-columns: 1fr;
+  }
+}

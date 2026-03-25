@@ -1,0 +1,92 @@
+/* ======================================
+   ROCCO PLAY — GLOBAL DESIGN SYSTEM
+   No Tailwind. Pure Premium Vanilla CSS.
+====================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* --- CSS Reset --- */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+
+/* ---- Design tokens — DARK by default ---- */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+
+  --bg:          #0b0f1a;
+  --bg2:         #111827;
+  --bg3:         #1a2234;
+  --border:      rgba(255,255,255,0.07);
+  --border2:     rgba(255,255,255,0.14);
+  --text:        #e2e8f0;
+  --text-muted:  #64748b;
+  --text-soft:   #94a3b8;
+  --primary:     #e50914;
+  --primary-dim: rgba(229, 9, 20, 0.14);
+  --blue:        #3b82f6;
+  --blue-dim:    rgba(59, 130, 246, 0.14);
+  --green:       #10b981;
+  --green-dim:   rgba(16, 185, 129, 0.14);
+  --orange:      #f59e0b;
+  --orange-dim:  rgba(245, 158, 11, 0.14);
+  --purple:      #8b5cf6;
+  --purple-dim:  rgba(139, 92, 246, 0.14);
+  --glass:       rgba(15, 23, 42, 0.55);
+  --blur:        blur(18px);
+  --radius:      14px;
+  --radius-sm:   8px;
+  --shadow:      0 8px 32px rgba(0,0,0,0.35);
+  --shadow-sm:   0 2px 8px rgba(0,0,0,0.2);
+
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.5s ease, color 0.5s ease;
+}
+
+/* ---- LIGHT overrides ---- */
+body.light {
+  --bg:          #f1f5f9;
+  --bg2:         #ffffff;
+  --bg3:         #e2e8f0;
+  --border:      rgba(0,0,0,0.06);
+  --border2:     rgba(0,0,0,0.12);
+  --text:        #0f172a;
+  --text-muted:  #64748b;
+  --text-soft:   #475569;
+  --glass:       rgba(255,255,255,0.7);
+  --shadow:      0 8px 32px rgba(0,0,0,0.08);
+  --shadow-sm:   0 2px 8px rgba(0,0,0,0.05);
+}
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* ---- Selection ---- */
+::selection { background: var(--primary); color: white; }
+
+/* ---- Global inputs ---- */
+input, textarea, select {
+  font-family: inherit;
+  font-size: 0.92rem;
+  outline: none;
+  transition: border-color 0.25s, box-shadow 0.25s, background 0.3s;
+}
+
+/* ---- Global buttons ---- */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}

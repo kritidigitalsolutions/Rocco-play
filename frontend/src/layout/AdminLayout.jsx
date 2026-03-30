@@ -6,7 +6,10 @@ import UsersPage from "../pages/UsersPage";
 import LegalPage from "../pages/LegalPage";
 import HelpPage from "../pages/HelpPage";
 import AddContent from "../pages/AddContent";
+import Content from "../pages/Content";
+import Settings from "../pages/Settings";
 import "./AdminLayout.css";
+
 
 export default function AdminLayout() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -31,9 +34,9 @@ export default function AdminLayout() {
           {activeTab === "legal"       && <LegalPage />}
           {activeTab === "help"        && <HelpPage />}
           {activeTab === "add-content" && <AddContent />}
-          {activeTab === "content"     && <ComingSoon title="Content Library" />}
+          {activeTab === "content"     && <Content />}
           {activeTab === "pricing"     && <ComingSoon title="Pricing Plans" />}
-          {activeTab === "settings"    && <ComingSoon title="Settings" />}
+          {activeTab === "settings" && <Settings />}
         </main>
       </div>
     </div>

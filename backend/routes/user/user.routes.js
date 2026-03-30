@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const {isAuth} = require("../../middlewares/auth.middleware")
-const upload = require("../../middlewares/multer.middleware") // parses multipart/form-data (Firebase upload disabled)
-
+// const upload = require("../../middlewares/multer.middleware") // parses multipart/form-data (Firebase upload disabled)
+const upload = require("../../middlewares/videoUpload.middleware");
 //import models
 const User = require("../../models/user.model");
 const {getProfile, completeProfile, updateProfile} = require("../../controllers/user.controller")

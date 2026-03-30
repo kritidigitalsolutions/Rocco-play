@@ -1,14 +1,15 @@
 import "./Sidebar.css";
+import { BarChart3, Users, Plus, Film, FileText, HelpCircle, CreditCard, Settings, LogOut } from "lucide-react";
 
 const NAV = [
-  { id: "dashboard",   label: "Dashboard",       icon: "📊", color: "#e50914" },
-  { id: "users",       label: "Users",            icon: "👥", color: "#3b82f6" },
-  { id: "add-content", label: "Add Content",      icon: "➕", color: "#10b981" },
-  { id: "content",     label: "Content Library",  icon: "🎬", color: "#f59e0b" },
-  { id: "legal",       label: "Legal",            icon: "📜", color: "#8b5cf6" },
-  { id: "help",        label: "Help Center",      icon: "❓", color: "#06b6d4" },
-  { id: "pricing",     label: "Pricing",          icon: "💳", color: "#ec4899" },
-  { id: "settings",    label: "Settings",         icon: "⚙️", color: "#64748b" },
+  { id: "dashboard",   label: "Dashboard",       icon: BarChart3, color: "#e50914" },
+  { id: "users",       label: "Users",            icon: Users, color: "#3b82f6" },
+  { id: "add-content", label: "Add Content",      icon: Plus, color: "#10b981" },
+  { id: "content",     label: "Content Library",  icon: Film, color: "#f59e0b" },
+  { id: "legal",       label: "Legal",            icon: FileText, color: "#8b5cf6" },
+  { id: "help",        label: "Help Center",      icon: HelpCircle, color: "#06b6d4" },
+  { id: "pricing",     label: "Pricing",          icon: CreditCard, color: "#ec4899" },
+  { id: "settings",    label: "Settings",         icon: Settings, color: "#64748b" },
 ];
 
 export default function Sidebar({ activeTab, setActiveTab, theme }) {
@@ -42,7 +43,7 @@ export default function Sidebar({ activeTab, setActiveTab, theme }) {
               style={isActive ? { "--accent": item.color } : undefined}
             >
               <span className="nav-icon-wrap" style={isActive ? { background: item.color + "22", color: item.color } : undefined}>
-                {item.icon}
+                <item.icon size={20} />
               </span>
               <span className="nav-label">{item.label}</span>
               {isActive && <span className="nav-pill" style={{ background: item.color }} />}
@@ -55,7 +56,7 @@ export default function Sidebar({ activeTab, setActiveTab, theme }) {
       <div className="sidebar-footer">
         <div className="sidebar-divider" />
         <button className="logout-btn" onClick={handleLogout}>
-          🚪 <span>Logout</span>
+          <LogOut size={18} /> <span>Logout</span>
         </button>
         <p className="sidebar-version">v1.0 · {theme === "dark" ? "Dark Mode" : "Light Mode"}</p>
       </div>

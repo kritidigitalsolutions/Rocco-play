@@ -1,4 +1,9 @@
 const Movie = require("../../models/movie.model");
+const Series = require("../../models/series.model");
+// const uploadFileOnBunny = require("../../cdn/bunnyCDN");
+
+const uploadToBunny = require("../../utils/bunnyUpload");
+const fs = require("fs");
 
 // ➕ Add Movie (Admin)
 const addMovie = async (req, res) => {
@@ -8,36 +13,193 @@ const addMovie = async (req, res) => {
         message: "Title is required"
       });
     }
-    console.log(req.body);
 
-    //  Handle movie vs series
-    if (req.body.type === "series") {
-      req.body.videoUrl = undefined;
+    console.log("BODY:", req.body);
+    console.log("FILES:", req.files);
 
-      if (!req.body.seasons || req.body.seasons.length === 0) {
-        return res.status(400).json({
-          message: "Series must have at least one season"
+    // 📂 Get files from multer
+    const posterFile = req.files?.poster?.[0];
+    const bannerFile = req.files?.banner?.[0];
+    const videoFile = req.files?.video?.[0];
+    const trailerFile = req.files?.trailer?.[0];
+
+    let posterUrl = "";
+    let bannerUrl = "";
+    let videoUrl = "";
+    let trailerUrl = "";
+
+    // 🖼️ Upload Poster
+    if (posterFile) {
+      // ❌ OLD CODE
+      // posterUrl = await uploadToBunny(posterFile.path, posterFile.filename);
+      // fs.unlinkSync(posterFile.path);
+
+    // ❌ OLD
+// const uploadedPoster = await uploadToBunny(posterFile.path, posterFile.filename);
+
+// ✅ NEW
+const uploadedPoster = await uploadToBunny(
+  posterFile.path,
+  posterFile.filename,
+  "posters"
+);
+
+      if (!uploadedPoster) {
+        return res.status(500).json({
+          message: "Poster upload failed ❌"
         });
       }
-    } else {
-      req.body.seasons = [];
+
+      posterUrl = uploadedPoster;
+      fs.unlinkSync(posterFile.path);
     }
 
-    const movie = new Movie(req.body);
+    // 🖼️ Upload Banner
+    if (bannerFile) {
+      // ❌ OLD CODE
+      // bannerUrl = await uploadToBunny(bannerFile.path, bannerFile.filename);
+      // fs.unlinkSync(bannerFile.path);
+
+      // ❌ OLD
+// const uploadedBanner = await uploadToBunny(bannerFile.path, bannerFile.filename);
+
+// ✅ NEW
+const uploadedBanner = await uploadToBunny(
+  bannerFile.path,
+  bannerFile.filename,
+  "banners"
+);
+
+      if (!uploadedBanner) {
+        return res.status(500).json({
+          message: "Banner upload failed ❌"
+        });
+      }
+
+      bannerUrl = uploadedBanner;
+      fs.unlinkSync(bannerFile.path);
+    }
+
+    // � Upload Trailer
+    if (trailerFile) {
+      const uploadedTrailer = await uploadToBunny(
+        trailerFile.path,
+        trailerFile.filename,
+        "trailers"
+      );
+
+      if (!uploadedTrailer) {
+        return res.status(500).json({
+          message: "Trailer upload failed ❌"
+        });
+      }
+
+      trailerUrl = uploadedTrailer;
+      fs.unlinkSync(trailerFile.path);
+    }
+
+    // �🎥 Upload Video
+    if (videoFile) {
+      // ❌ OLD CODE
+      // videoUrl = await uploadToBunny(videoFile.path, videoFile.filename);
+      // fs.unlinkSync(videoFile.path);
+
+      // ❌ OLD
+// const uploadedVideo = await uploadToBunny(videoFile.path, videoFile.filename);
+
+// ✅ NEW
+const uploadedVideo = await uploadToBunny(
+  videoFile.path,
+  videoFile.filename,
+  "videos"
+);
+
+      if (!uploadedVideo) {
+        return res.status(500).json({
+          message: "Video upload failed ❌"
+        });
+      }
+
+      videoUrl = uploadedVideo;
+      fs.unlinkSync(videoFile.path);
+    }
+
+    if (!videoUrl) {
+      return res.status(400).json({
+        message: "Video is required"
+      });
+    }
+
+    // 🔄 Parse JSON fields
+    let genre = req.body.genre;
+    let category = req.body.category;
+    let cast = req.body.cast;
+
+    if (typeof genre === "string") {
+      try { genre = JSON.parse(genre); } catch(e) { genre = []; }
+    }
+    if (typeof category === "string") {
+      try { category = JSON.parse(category); } catch(e) { category = []; }
+    }
+    if (typeof cast === "string") {
+      try { cast = JSON.parse(cast); } catch(e) { cast = []; }
+    }
+// 🎭 Cast Image Upload
+const castFiles = Object.keys(req.files || {}).filter(key =>
+  key.startsWith("castImage_")
+);
+
+for (let key of castFiles) {
+  const index = key.split("_")[1];
+  const file = req.files[key][0];
+
+  const uploaded = await uploadToBunny(
+    file.path,
+    file.filename,
+    "cast" // for movie
+    // "series/cast" for series controller
+  );
+
+  if (uploaded && cast[index]) {
+    cast[index].image = uploaded;
+  }
+
+  fs.unlinkSync(file.path);
+}
+    // 💾 Save to DB
+    const movie = new Movie({
+      title: req.body.title,
+      description: req.body.description,
+      language: req.body.language,
+      releaseYear: Number(req.body.releaseYear),
+      duration: req.body.duration,
+      genre,
+      category,
+      rating: Number(req.body.rating),
+      isPremium: req.body.isPremium === "true",
+      poster: posterUrl || req.body.poster,
+      banner: bannerUrl || req.body.banner,
+      trailerUrl: trailerUrl || req.body.trailerUrl,
+      cast,
+      videoUrl
+    });
+
     const savedMovie = await movie.save();
 
     res.status(201).json({
-      message: "Content added successfully 🎬",
+      message: "Movie added successfully 🎬",
       data: savedMovie
     });
 
   } catch (error) {
+    console.error(error);
     res.status(500).json({
-      message: "Error adding content",
+      message: "Error adding movie",
       error: error.message
     });
   }
 };
+
 // 📄 Get all movies
 const getAllMovies = async (req, res) => {
   try {
@@ -79,7 +241,7 @@ const getMovieBySlug = async (req, res) => {
   }
 };
 
-// 🎯 Get movies by category (FIXED)
+// 🎯 Get movies by category
 const getMoviesByCategory = async (req, res) => {
   try {
     const { category } = req.query;
@@ -103,7 +265,6 @@ const getMoviesByCategory = async (req, res) => {
 // ✏️ Update movie by slug
 const updateMovieBySlug = async (req, res) => {
   try {
-    // update slug if title changes
     if (req.body.title) {
       req.body.slug = req.body.title
         .toLowerCase()
@@ -136,7 +297,7 @@ const updateMovieBySlug = async (req, res) => {
   }
 };
 
-// ❌ Delete movie by slug
+// ❌ Delete movie
 const deleteMovieBySlug = async (req, res) => {
   try {
     const deletedMovie = await Movie.findOneAndDelete({
@@ -191,21 +352,27 @@ const searchMovies = async (req, res) => {
     });
   }
 };
-// Play Content
+
+// 🎥 Play Content
 const playContent = async (req, res) => {
   try {
     const { slug, season, episode } = req.params;
 
-    const movie = await Movie.findOne({ slug });
+    let content = await Movie.findOne({ slug });
+    let contentType = "movie";
 
-    if (!movie) {
+    if (!content) {
+      content = await Series.findOne({ slug });
+      contentType = "series";
+    }
+
+    if (!content) {
       return res.status(404).json({
         message: "Content not found"
       });
     }
 
-    // 🔐 Premium check
-    if (movie.isPremium) {
+    if (content.isPremium) {
       if (!req.user || !req.user.isSubscribed) {
         return res.status(403).json({
           message: "Subscribe to watch this content 🔒"
@@ -213,34 +380,27 @@ const playContent = async (req, res) => {
       }
     }
 
-    // 🎥 MOVIE
-    if (movie.type === "movie") {
+    if (contentType === "movie") {
       return res.json({
         success: true,
-        videoUrl: movie.videoUrl
+        videoUrl: content.videoUrl
       });
     }
 
-    // 📺 SERIES
     if (!season || episode === undefined) {
       return res.status(400).json({
-        message: "Season and episode are required for series"
+        message: "Season and episode are required"
       });
     }
 
-    const seasonData = movie.seasons.find(
-      (s) => s.seasonNumber == season
-    );
+    const Episode = require("../../models/episode.model");
+    const ep = await Episode.findOne({
+      seriesId: content._id,
+      seasonNumber: Number(season),
+      episodeNumber: Number(episode)
+    });
 
-    if (!seasonData) {
-      return res.status(404).json({
-        message: "Season not found"
-      });
-    }
-
-    const episodeData = seasonData.episodes[episode];
-
-    if (!episodeData) {
+    if (!ep) {
       return res.status(404).json({
         message: "Episode not found"
       });
@@ -248,7 +408,7 @@ const playContent = async (req, res) => {
 
     res.json({
       success: true,
-      videoUrl: episodeData.videoUrl
+      videoUrl: ep.videoUrl
     });
 
   } catch (error) {
@@ -258,8 +418,6 @@ const playContent = async (req, res) => {
     });
   }
 };
-
-
 
 module.exports = {
   addMovie,

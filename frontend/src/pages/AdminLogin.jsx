@@ -77,6 +77,12 @@ const AdminLogin = () => {
         <button type="submit" className="login-btn" disabled={loading}>
           {loading ? "Signing in..." : "Sign In →"}
         </button>
+        <p
+  className="text-sm text-right text-blue-400 cursor-pointer"
+  onClick={() => navigate("/forgot-password")}
+>
+  Forgot Password?
+</p>
       </form>
     </div>
   );

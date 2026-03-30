@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import API from "../api/axios";
 import "./Dashboard.css";
+import { BarChart3, Users, Film, Radio, TrendingUp, RefreshCw } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
@@ -66,30 +67,30 @@ export default function Dashboard() {
       {/* Header */}
       <div className="pg-header">
         <div>
-          <h1 className="pg-title">📊 Platform Overview</h1>
+          <h1 className="pg-title"><BarChart3 style={{ display: "inline-block", marginRight: 8 }} size={32} /> Platform Overview</h1>
           <p className="pg-sub">Real-time stats and analytics for Rocco Play</p>
         </div>
         <button className="btn btn-ghost" onClick={fetchData}>
-          {loading ? "⏳ Loading..." : "🔄 Refresh"}
+          {loading ? <><TrendingUp size={18} style={{ marginRight: 6 }} /> Loading...</> : <><RefreshCw size={18} style={{ marginRight: 6 }} /> Refresh</>}
         </button>
       </div>
 
       {/* ─── Stat Cards ─── */}
       <div className="stat-grid">
         <div className="stat-card s-red">
-          <div className="stat-icon">👥</div>
+          <div className="stat-icon"><Users size={32} /></div>
           <div className="stat-label">Total Users</div>
           <div className="stat-value">{loading ? "..." : (Array.isArray(users) ? users.length : 0)}</div>
           <div className="stat-trend up">↑ +12% this week</div>
         </div>
         <div className="stat-card s-blue">
-          <div className="stat-icon">🎬</div>
+          <div className="stat-icon"><Film size={32} /></div>
           <div className="stat-label">Content Library</div>
           <div className="stat-value">{loading ? "..." : (Array.isArray(content) ? content.length : 0)}</div>
           <div className="stat-trend up">↑ +8% this week</div>
         </div>
         <div className="stat-card s-green">
-          <div className="stat-icon">📡</div>
+          <div className="stat-icon"><Radio size={32} /></div>
           <div className="stat-label">Active Users</div>
           <div className="stat-value">{loading ? "..." : activeUsers}</div>
           <div className="stat-trend up">↑ Live now</div>

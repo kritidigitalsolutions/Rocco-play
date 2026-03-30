@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import API from "../api/axios";
+import { Users, RefreshCw, User, CheckCircle, AlertCircle, Search, Loader, Eye, Trash2, X } from "lucide-react";
 import "./Dashboard.css";
 
 export default function UsersPage() {
@@ -24,7 +25,7 @@ export default function UsersPage() {
     try {
       await API.delete(`/user/${id}`);
       setUsers(p => p.filter(u => u._id !== id));
-    } catch { alert("Failed to delete ❌"); }
+    } catch { alert("Failed to delete"); }
   };
 
   const filtered = users.filter(u =>
@@ -37,26 +38,26 @@ export default function UsersPage() {
       {/* Header */}
       <div className="pg-header">
         <div>
-          <h1 className="pg-title">👥 User Management</h1>
+          <h1 className="pg-title"><Users size={28} style={{ display: "inline-block", marginRight: 8 }} /> User Management</h1>
           <p className="pg-sub">View, search, and manage all platform users</p>
         </div>
-        <button className="btn btn-primary" onClick={fetchUsers}>🔄 Refresh</button>
+        <button className="btn btn-primary" onClick={fetchUsers}><RefreshCw size={16} style={{ display: "inline-block", marginRight: 6 }} /> Refresh</button>
       </div>
 
       {/* Stats */}
       <div className="stat-grid">
         <div className="stat-card s-green">
-          <div className="stat-icon">👤</div>
+          <div className="stat-icon"><User size={24} /></div>
           <div className="stat-label">Total Users</div>
           <div className="stat-value">{users.length}</div>
         </div>
         <div className="stat-card s-blue">
-          <div className="stat-icon">✅</div>
+          <div className="stat-icon"><CheckCircle size={24} /></div>
           <div className="stat-label">Active</div>
           <div className="stat-value">{users.filter(u => !u.isBlocked).length}</div>
         </div>
         <div className="stat-card s-red">
-          <div className="stat-icon">🚫</div>
+          <div className="stat-icon"><AlertCircle size={24} /></div>
           <div className="stat-label">Blocked</div>
           <div className="stat-value">{users.filter(u => u.isBlocked).length}</div>
         </div>
@@ -66,14 +67,14 @@ export default function UsersPage() {
       <div className="content-box">
         <div className="search-row" style={{ marginBottom: 20 }}>
           <div className="search-field">
-            <span>🔍</span>
+            <Search size={18} />
             <input placeholder="Search by name or email..." value={search}
               onChange={e => setSearch(e.target.value)} />
           </div>
         </div>
 
         {loading ? (
-          <div className="empty-state"><p>Loading users... ⏳</p></div>
+          <div className="empty-state"><p><Loader size={20} style={{ display: "inline-block", marginRight: 8 }} /> Loading users...</p></div>
         ) : (
           <div className="tbl-wrap">
             <table className="tbl">
@@ -110,8 +111,8 @@ export default function UsersPage() {
                     </td>
                     <td>
                       <div className="tbl-actions">
-                        <button className="icon-btn view" onClick={() => setSelected(u)} title="View">👁</button>
-                        <button className="icon-btn del"  onClick={() => handleDelete(u._id)} title="Delete">🗑</button>
+                        <button className="icon-btn view" onClick={() => setSelected(u)} title="View"><Eye size={16} /></button>
+                        <button className="icon-btn del"  onClick={() => handleDelete(u._id)} title="Delete"><Trash2 size={16} /></button>
                       </div>
                     </td>
                   </tr>
@@ -127,8 +128,8 @@ export default function UsersPage() {
         <div className="modal-overlay">
           <div className="modal-box">
             <div className="modal-head">
-              <h3>👤 User Profile</h3>
-              <button className="modal-close" onClick={() => setSelected(null)}>✕</button>
+              <h3><User size={20} style={{ display: "inline-block", marginRight: 6 }} /> User Profile</h3>
+              <button className="modal-close" onClick={() => setSelected(null)}><X size={24} /></button>
             </div>
             <div className="modal-body">
               <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 8 }}>

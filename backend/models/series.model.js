@@ -6,8 +6,7 @@ const castSchema = new mongoose.Schema({
   image: String
 });
 
-//  Main Schema
-const movieSchema = new mongoose.Schema(
+const seriesSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
 
@@ -27,9 +26,6 @@ const movieSchema = new mongoose.Schema(
     poster: String,
     banner: String,
 
-    // Only for movies
-    videoUrl: { type: String, required: true },
-
     trailerUrl: String,
 
     isPremium: { type: Boolean, default: false },
@@ -43,20 +39,20 @@ const movieSchema = new mongoose.Schema(
         type: String,
         enum: ["trending", "top10", "recommended"]
       }
-    ]
+    ],
+
+    totalSeasons: Number
   },
   { timestamps: true }
 );
 
-//  Auto-generate slug
-movieSchema.pre("save", function () {
+// slug generator
+seriesSchema.pre("save", function () {
   if (this.title) {
-    this.slug = this.title
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, "-")
-      .replace(/[^\w-]+/g, "");
+    this.slug = this.title.toLowerCase().replace(/\s+/g, "-");
   }
 });
 
-module.exports = mongoose.model("Movie", movieSchema);
+
+
+module.exports = mongoose.model("Series", seriesSchema);

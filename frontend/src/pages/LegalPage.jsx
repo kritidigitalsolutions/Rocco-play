@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import API from "../api/axios";
+import { FileText, Eye, Edit2, X, Save } from "lucide-react";
 import "./Dashboard.css";
 
 export default function LegalPage() {
@@ -23,7 +24,7 @@ export default function LegalPage() {
       });
       setSelected(null);
       fetchLegal();
-    } catch { alert("Update failed ❌"); }
+    } catch { alert("Update failed"); }
   };
 
   const open = (doc, m) => { setSelected(doc); setMode(m); };
@@ -32,7 +33,7 @@ export default function LegalPage() {
     <div className="page-section">
       <div className="pg-header">
         <div>
-          <h1 className="pg-title">📜 Legal & Compliance</h1>
+          <h1 className="pg-title"><FileText size={28} style={{ display: "inline-block", marginRight: 8 }} /> Legal & Compliance</h1>
           <p className="pg-sub">Manage your platform's legal documents</p>
         </div>
       </div>
@@ -48,8 +49,8 @@ export default function LegalPage() {
               <div className="doc-card-head">
                 <h3>{doc.title}</h3>
                 <div className="doc-card-actions">
-                  <button className="icon-btn view" onClick={() => open(doc, "view")} title="View">👁</button>
-                  <button className="icon-btn edit" onClick={() => open(doc, "edit")} title="Edit">✏️</button>
+                  <button className="icon-btn view" onClick={() => open(doc, "view")} title="View"><Eye size={16} /></button>
+                  <button className="icon-btn edit" onClick={() => open(doc, "edit")} title="Edit"><Edit2 size={16} /></button>
                 </div>
               </div>
               <span className={`badge ${doc.isPublished ? "badge-pub" : "badge-draft"}`}>
@@ -65,8 +66,8 @@ export default function LegalPage() {
         <div className="modal-overlay">
           <div className="modal-box" style={{ maxWidth: 600 }}>
             <div className="modal-head">
-              <h3>{mode === "view" ? "📄 View Document" : "✏️ Edit Document"}</h3>
-              <button className="modal-close" onClick={() => setSelected(null)}>✕</button>
+              <h3>{mode === "view" ? <><FileText size={20} style={{ display: "inline-block", marginRight: 6 }} /> View Document</> : <><Edit2 size={20} style={{ display: "inline-block", marginRight: 6 }} /> Edit Document</>}</h3>
+              <button className="modal-close" onClick={() => setSelected(null)}><X size={24} /></button>
             </div>
             <div className="modal-body">
               <div className="form-row">
@@ -84,7 +85,7 @@ export default function LegalPage() {
             {mode === "edit" && (
               <div className="modal-foot">
                 <button className="btn btn-ghost" onClick={() => setSelected(null)}>Cancel</button>
-                <button className="btn btn-primary" onClick={handleSave}>💾 Save Changes</button>
+                <button className="btn btn-primary" onClick={handleSave}><Save size={16} style={{ display: "inline-block", marginRight: 6 }} /> Save Changes</button>
               </div>
             )}
           </div>

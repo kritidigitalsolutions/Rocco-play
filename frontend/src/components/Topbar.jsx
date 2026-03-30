@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Search, Bell, Moon, Sun } from "lucide-react";
 import "./Topbar.css";
 
 export default function Topbar({ theme, toggleTheme }) {
@@ -23,7 +24,7 @@ export default function Topbar({ theme, toggleTheme }) {
 
         {/* Search */}
         <div className="topbar-search">
-          <span className="search-ico">🔍</span>
+          <Search size={18} className="search-ico" />
           <input
             type="text"
             placeholder="Search anything..."
@@ -34,7 +35,7 @@ export default function Topbar({ theme, toggleTheme }) {
 
         {/* Notifications */}
         <button className="action-btn notif-btn" title="Notifications" onClick={() => setNotif(0)}>
-          🔔
+          <Bell size={20} />
           {notif > 0 && <span className="notif-badge">{notif}</span>}
         </button>
 
@@ -45,7 +46,7 @@ export default function Topbar({ theme, toggleTheme }) {
           title={`Switch to ${theme === "dark" ? "Light" : "Dark"} mode`}
         >
           <span className="toggle-track">
-            <span className="toggle-thumb">{theme === "dark" ? "🌙" : "☀️"}</span>
+            <span className="toggle-thumb">{theme === "dark" ? <Moon size={16} /> : <Sun size={16} />}</span>
           </span>
           <span className="toggle-label">{theme === "dark" ? "Dark" : "Light"}</span>
         </button>

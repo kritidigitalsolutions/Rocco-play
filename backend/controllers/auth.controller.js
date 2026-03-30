@@ -1,107 +1,108 @@
 const OTP = require("../models/otp.model");
 const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
+const axios = require("axios");
 
+// ================= SEND OTP =================
 exports.sendOTP = async (req, res) => {
-  console.log("🔥 sendOTP API HIT");
   try {
-    const { phone } = req.body;
+    const { identifier, type } = req.body;
 
-    if (!phone || phone.trim() === "") {
-      return res.status(400).json({ message: "Phone number required" });
+    if (!identifier || !type) {
+      return res.status(400).json({ message: "Identifier and type required" });
     }
 
-    let formattedPhone = phone.startsWith("+") ? phone : "+91" + phone;
+    // ================= FORMAT PHONE =================
+    const rawPhone = identifier.replace("+", "");
+    const formattedPhone = identifier.startsWith("+")
+      ? identifier
+      : "+" + identifier;
 
+    // ================= GENERATE OTP =================
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    const apiKey = process.env.TWO_FACTOR_API_KEY;
+    const templateName = "Rocco OTP Login";
 
-    // ✅ FIXED: replace old OTP
-    await OTP.findOneAndUpdate(
-      { phone: formattedPhone },
-      {
-        otp,
-        expiresAt: otpExpiry
-      },
-      { upsert: true, new: true }
+    // ================= SEND SMS =================
+    const response = await axios.get(
+      `https://2factor.in/API/V1/${apiKey}/SMS/${rawPhone}/${otp}/${templateName}`
     );
 
-    console.log(`📲 OTP for ${formattedPhone} : ${otp}`);
+    console.log("2Factor Response:", response.data);
+
+    // ================= STORE OTP =================
+    await OTP.create({
+      identifier: formattedPhone,
+      type: "phone",
+      otp,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    });
 
     res.status(200).json({
-      message: "OTP sent successfully for " + formattedPhone + " and OTP : " + otp
+      message: "OTP sent via SMS",
+      sessionId: response.data.Details,
+      otp, // ⚠️ remove in production
     });
 
   } catch (error) {
-    console.error("Error in sending OTP:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("OTP Error:", error.response?.data || error.message);
+    res.status(500).json({ message: "Failed to send OTP" });
   }
 };
 
 
-// OTP verification controller
-
+// ================= VERIFY OTP =================
 exports.verifyOtp = async (req, res) => {
-  console.log("Verify OTP Request Body:", req.body);
-
   try {
-    const { phone, otp } = req.body;
+    const { identifier, otp, type } = req.body;
 
-    if (!phone || !otp) {
-      return res.status(400).json({ message: "Phone and OTP required" });
+    if (!identifier || !otp || !type) {
+      return res.status(400).json({ message: "All fields required" });
     }
 
-    // ✅ FORMAT PHONE
-    let formattedPhone = phone.startsWith("+") ? phone : "+91" + phone;
+    const formattedPhone = identifier.startsWith("+")
+      ? identifier
+      : "+" + identifier;
 
-    // ✅ Better query (includes expiry check)
     const otpRecord = await OTP.findOne({
-      phone: formattedPhone,
+      identifier: formattedPhone,
+      type: "phone",
       otp,
-      expiresAt: { $gt: new Date() }
+      expiresAt: { $gt: new Date() },
     });
 
     if (!otpRecord) {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
-    // ✅ Better delete
     await OTP.deleteOne({ _id: otpRecord._id });
 
-    // Check if user exists
     let user = await User.findOne({ phone: formattedPhone });
 
     if (!user) {
-      // New user - tell frontend to show profile completion form
       return res.status(200).json({
         success: true,
         isNewUser: true,
-        message: "New user. Please complete your profile.",
-        phone: formattedPhone
+        phone: formattedPhone,
       });
     }
 
-    // Existing user - generate token
     const token = jwt.sign(
-      {
-        id: user._id,
-        phone: user.phone,
-        role: "USER"
-      },
+      { id: user._id, phone: user.phone, role: "USER" },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       isNewUser: false,
-      message: "Login successful",
       token,
-      user: user
+      user,
     });
+
   } catch (error) {
-    console.error("Error in verifying OTP:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Verify OTP Error:", error);
+    res.status(500).json({ message: "Verification failed" });
   }
 };

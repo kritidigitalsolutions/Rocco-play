@@ -1,11 +1,15 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
+require("dotenv").config();
 
 //middlewares
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 app.use(cors());
+
+// Serve uploaded files
+app.use("/uploads", express.static("uploads"));
 
 //import routes
 const adminAuthRoutes=require('./routes/admin/auth.routes');
@@ -17,10 +21,16 @@ const bcrypt = require("bcryptjs");
 const Admin = require("./models/admin.model");
 const createAdmin = async () => {
   
+//  const hashedPassword = await bcrypt.hash("admin12345", 10);
+//   await Admin.create({
+//     name: "Super Admin",
+//     email: "admin@12345.com",
+//     password: hashedPassword
+//   });
  const hashedPassword = await bcrypt.hash("admin12345", 10);
   await Admin.create({
-    name: "Super Admin",
-    email: "admin@12345.com",
+    name: "Admin",
+    email: "agrawalgarima53@gmail.com",
     password: hashedPassword
   });
  
@@ -54,10 +64,21 @@ const userHelpRoutes = require('./routes/user/help.routes');
 app.use('/api/help', userHelpRoutes);
 
 //content routes
-const movieRoutes = require("./routes/admin/movie.routes.js");
+// const movieRoutes = require("./routes/admin/movie.routes.js");
+
+// app.use("/api/movies", movieRoutes);
+const movieRoutes = require("./routes/admin/movie.routes");
+const seriesRoutes = require("./routes/admin/series.routes");
+const episodeRoutes = require("./routes/admin/episode.routes");
 
 app.use("/api/movies", movieRoutes);
+app.use("/api/series", seriesRoutes);
+app.use("/api/episodes", episodeRoutes);
 
+//user content routes
+const userContentRoutes = require("./routes/user/content.routes");
+
+app.use("/api/content", userContentRoutes);
 //watchlist routes
 const watchlistRoutes = require("./routes/user/watchlist.routes");
 

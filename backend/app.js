@@ -3,110 +3,105 @@ const app = express();
 const cors = require('cors');
 require("dotenv").config();
 
-//middlewares
+// ================= MIDDLEWARE =================
 app.use(express.json());
-app.use(express.urlencoded({extended:true}));
+app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
 // Serve uploaded files
 app.use("/uploads", express.static("uploads"));
 
-//import routes
-const adminAuthRoutes=require('./routes/admin/auth.routes');
-//use routes
-app.use('/api/admin/auth',adminAuthRoutes);
+// ================= ROOT ROUTE =================
+app.get("/", (req, res) => {
+  res.send("API is running 🚀");
+});
 
+// ================= ADMIN AUTH =================
+const adminAuthRoutes = require('./routes/admin/auth.routes');
+app.use('/admin/auth', adminAuthRoutes);
 
+// ================= ADMIN CREATION =================
 const bcrypt = require("bcryptjs");
 const Admin = require("./models/admin.model");
+
 const createAdmin = async () => {
-  
-//  const hashedPassword = await bcrypt.hash("admin12345", 10);
-//   await Admin.create({
-//     name: "Super Admin",
-//     email: "admin@12345.com",
-//     password: hashedPassword
-//   });
- const hashedPassword = await bcrypt.hash("123456", 10);
+  const hashedPassword = await bcrypt.hash("123456", 10);
   await Admin.create({
     name: "Garima",
     email: "agrawalgarima53@gmail.com",
     password: hashedPassword
   });
- 
-
   console.log("Admin created");
 };
-createAdmin().catch(err => console.log("Admin already exists or error:", err.message));
+
+// Only run locally (NOT on Vercel)
+if (process.env.NODE_ENV !== "production") {
+  createAdmin().catch(err =>
+    console.log("Admin exists or error:", err.message)
+  );
+}
+
+// ================= USER ROUTES =================
 const userAuthRoutes = require('./routes/user/auth.routes');
 const userProfileRoutes = require('./routes/user/user.routes');
 
-//use user profile routes
-app.use('/api/user', userProfileRoutes);
+app.use('/user', userProfileRoutes);
+app.use('/user/auth', userAuthRoutes);
 
-//use user auth routes
-app.use('/api/user/auth', userAuthRoutes);
-
-//legal document routes
+// ================= LEGAL =================
 const legalRoutes = require('./routes/admin/legal.routes');
-app.use('/api/admin/legal', legalRoutes);
-
-//user legal routes
 const userLegalRoutes = require('./routes/user/legal.routes');
-app.use('/api/user/legal', userLegalRoutes);
 
-//help routes
+app.use('/admin/legal', legalRoutes);
+app.use('/user/legal', userLegalRoutes);
+
+// ================= HELP =================
 const helpRoutes = require('./routes/admin/help.routes');
-app.use('/api/admin/help', helpRoutes);
-
-//user help routes
 const userHelpRoutes = require('./routes/user/help.routes');
-app.use('/api/help', userHelpRoutes);
 
-//content routes
-// const movieRoutes = require("./routes/admin/movie.routes.js");
+app.use('/admin/help', helpRoutes);
+app.use('/help', userHelpRoutes);
 
-// app.use("/api/movies", movieRoutes);
+// ================= CONTENT =================
 const movieRoutes = require("./routes/admin/movie.routes");
 const seriesRoutes = require("./routes/admin/series.routes");
 const episodeRoutes = require("./routes/admin/episode.routes");
 
-app.use("/api/movies", movieRoutes);
-app.use("/api/series", seriesRoutes);
-app.use("/api/episodes", episodeRoutes);
+app.use("/movies", movieRoutes);
+app.use("/series", seriesRoutes);
+app.use("/episodes", episodeRoutes);
 
-//user content routes
+// ================= USER CONTENT =================
 const userContentRoutes = require("./routes/user/content.routes");
+app.use("/content", userContentRoutes);
 
-app.use("/api/content", userContentRoutes);
-//watchlist routes
+// ================= WATCHLIST =================
 const watchlistRoutes = require("./routes/user/watchlist.routes");
+app.use("/user/watchlist", watchlistRoutes);
 
-app.use("/api/user/watchlist", watchlistRoutes);
-
+// ================= SUBSCRIPTION =================
 const subscriptionRoutes = require("./routes/user/subscription.routes");
+app.use("/subscription", subscriptionRoutes);
 
-app.use("/api/subscription", subscriptionRoutes);
-
+// ================= INTERACTION =================
 const interactionRoutes = require("./routes/user/interaction.routes");
+app.use("/interaction", interactionRoutes);
 
-app.use("/api/interaction", interactionRoutes);
+// ================= RATING =================
+app.use("/rating", require("./routes/user/rating.routes"));
 
-app.use("/api/rating", require("./routes/user/rating.routes"));
+// ================= PLANS =================
+app.use("/admin/plans", require("./routes/admin/plan.routes"));
+app.use("/plans", require("./routes/user/plan.routes"));
 
-// ADMIN ROUTES
-app.use("/api/admin/plans", require("./routes/admin/plan.routes"));
+// ================= ADMIN SUBSCRIPTION =================
+app.use("/admin/subscription", require("./routes/admin/subscription.routes"));
 
-// USER ROUTES
-app.use("/api/plans", require("./routes/user/plan.routes"));
+// ================= USER GROWTH =================
+app.use("/admin/user", require("./routes/user/user.routes"));
 
-//get total revenue
-app.use("/api/admin/subscription", require("./routes/admin/subscription.routes"));
+// ================= CONTENT COUNT =================
+app.use("/admin/content", require("./routes/admin/content.routes"));
 
-
-//user growth chart
-app.use("/api/admin/user", require("./routes/user/user.routes"));
-
-//content split=count content 
-app.use("/api/admin/content", require("./routes/admin/content.routes"));
+// ================= EXPORT =================
 module.exports = app;

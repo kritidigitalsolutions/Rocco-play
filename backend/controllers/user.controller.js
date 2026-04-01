@@ -1,5 +1,7 @@
 const User = require("../models/user.model");
 const jwt = require("jsonwebtoken");
+const uploadToBunny = require("../utils/bunnyUpload");
+const fs = require("fs");
 
 // GET USER PROFILE
 exports.getProfile = async (req, res) => {
@@ -19,8 +21,7 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-
-// COMPLETE PROFILE (FIRST TIME)
+// COMPLETE PROFILE
 exports.completeProfile = async (req, res) => {
   try {
     const { name, email, phone } = req.body;
@@ -29,23 +30,33 @@ exports.completeProfile = async (req, res) => {
       return res.status(400).json({ message: "Phone is required" });
     }
 
-    // ✅ format phone
     let formattedPhone = phone.startsWith("+") ? phone : "+91" + phone;
 
-    // ✅ find user
     let user = await User.findOne({ phone: formattedPhone });
 
-    // ✅ handle image (multer)
+    // ✅ IMAGE UPLOAD TO BUNNY
     let profileImage = "";
+
     if (req.files && req.files.length > 0) {
       const file = req.files.find(f => f.fieldname === "profileImage");
+
       if (file) {
-        profileImage = file.originalname;
+        const filePath = file.path;
+        const fileName = `user_${Date.now()}_${file.originalname}`;
+
+        const uploadedUrl = await uploadToBunny(
+          filePath,
+          fileName,
+          "user-profile"
+        );
+
+        fs.unlinkSync(filePath);
+
+        profileImage = uploadedUrl;
       }
     }
 
     if (!user) {
-      // ✅ create new user
       user = await User.create({
         phone: formattedPhone,
         name,
@@ -54,19 +65,16 @@ exports.completeProfile = async (req, res) => {
         profileComplete: true
       });
     } else {
-      // Existing user - generate token
-          const token = jwt.sign(
-            {
-              id: user._id,
-              phone: user.phone,
-              role: "USER"
-            },
-            process.env.JWT_SECRET,
-            { expiresIn: "7d" }
-          );
-      
-      
-      // ✅ check BEFORE update
+      const token = jwt.sign(
+        {
+          id: user._id,
+          phone: user.phone,
+          role: "USER"
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
       if (user.profileComplete) {
         return res.status(400).json({
           message: "Profile already completed",
@@ -74,7 +82,6 @@ exports.completeProfile = async (req, res) => {
         });
       }
 
-      // ✅ update
       if (name) user.name = name;
       if (email) user.email = email;
       if (profileImage) user.profileImage = profileImage;
@@ -95,11 +102,8 @@ exports.completeProfile = async (req, res) => {
   }
 };
 
-
 // UPDATE PROFILE
 exports.updateProfile = async (req, res) => {
-    console.log("BODY:", req.body);
-console.log("FILES:", req.files);
   try {
     const { name, email } = req.body;
 
@@ -108,19 +112,29 @@ console.log("FILES:", req.files);
       return res.status(404).json({ message: "User not found" });
     }
 
-    // ✅ update fields
     if (name) user.name = name;
     if (email) user.email = email;
 
-    // ✅ multer handling
+    // ✅ IMAGE UPDATE WITH BUNNY
     if (req.files && req.files.length > 0) {
       const file = req.files.find(f => f.fieldname === "profileImage");
+
       if (file) {
-        user.profileImage = file.originalname;
+        const filePath = file.path;
+        const fileName = `user_${Date.now()}_${file.originalname}`;
+
+        const uploadedUrl = await uploadToBunny(
+          filePath,
+          fileName,
+          "user-profile"
+        );
+
+        fs.unlinkSync(filePath);
+
+        user.profileImage = uploadedUrl;
       }
     }
 
-    // ✅ optional but good
     user.profileComplete = true;
 
     await user.save();
@@ -136,7 +150,7 @@ console.log("FILES:", req.files);
   }
 };
 
-// GET ALL USERS (ADMIN PURPOSE)
+// GET ALL USERS
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select("-__v");

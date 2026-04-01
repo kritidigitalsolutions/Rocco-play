@@ -25,10 +25,21 @@ export default function Content() {
     fetchData();
   }, [contentType]);
 
+  const isLocked = (item) => {
+  if (!item.isComingSoon) return false;
+
+  if (!item.releaseDate) return false;
+
+  return new Date(item.releaseDate) > new Date();
+};
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const endpoint = contentType === "movies" ? "/movies" : "/series";
+      const endpoint =
+  contentType === "movies"
+    ? "/movies?admin=true"
+    : "/series?admin=true";
       const res = await API.get(endpoint);
       setData(res.data.data || []);
       setSelectedSeries(null);
@@ -134,15 +145,15 @@ export default function Content() {
         if (uploadData.banner) formData.append("banner", uploadData.banner);
         if (uploadData.video) formData.append("video", uploadData.video);
 
-        if (contentType === "movies") {
-          await API.post(`/movies`, formData, {
-            headers: { "Content-Type": "multipart/form-data" }
-          });
-        } else {
-          await API.post(`/series`, formData, {
-            headers: { "Content-Type": "multipart/form-data" }
-          });
-        }
+      if (contentType === "movies") {
+  await API.put(`/movies/slug/${selectedItem.slug}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  });
+} else {
+  await API.put(`/series/${selectedItem.slug}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  });
+}
 
         alert("Upload successful");
         closeModal();
@@ -312,12 +323,29 @@ export default function Content() {
                             {movie.isPremium ? "Premium" : "Free"}
                           </span>
                         </td>
-                        <td>
+                        {/* <td>
                           <span className="badge badge-pub">Published</span>
-                        </td>
+                        </td> */}
+                        <td>
+  <span className={`badge ${isLocked(movie) ? "badge-draft" : "badge-pub"}`}>
+    {isLocked(movie) ? "Coming Soon" : "Published"}
+  </span>
+</td>
                         <td>
                           <div className="tbl-actions">
-                            <button className="icon-btn view" onClick={() => openView(movie)} title="View"><Eye size={18} /></button>
+                            {/* <button className="icon-btn view" onClick={() => openView(movie)} title="View"><Eye size={18} /></button> */}
+                            
+                            <button
+  className="icon-btn view"
+  onClick={() => !isLocked(movie) && openView(movie)}
+  title={isLocked(movie) ? "Locked until release" : "View"}
+  style={{
+    opacity: isLocked(movie) ? 0.5 : 1,
+    cursor: isLocked(movie) ? "not-allowed" : "pointer"
+  }}
+>
+  <Eye size={18} />
+</button>
                             <button className="icon-btn edit" onClick={() => openEdit(movie)} title="Edit"><Edit2 size={18} /></button>
                             <button className="icon-btn upload" onClick={() => openUpload(movie)} title="Upload"><Upload size={18} /></button>
                             <button className="icon-btn del" onClick={() => handleDelete(movie)} title="Delete"><Trash2 size={18} /></button>
@@ -370,14 +398,30 @@ export default function Content() {
                         <td>{series.releaseYear}</td>
                         <td>{series.rating}</td>
                         <td>{series.totalSeasons}</td>
-                        <td>
+                        {/* <td>
                           <span className={`badge ${series.isPremium ? "badge-active" : "badge-draft"}`}>
                             {series.isPremium ? "Premium" : "Free"}
                           </span>
-                        </td>
+                          
+                        </td> */}
+                        <td>
+  <span className={`badge ${isLocked(series) ? "badge-draft" : "badge-pub"}`}>
+    {isLocked(series) ? "Coming Soon" : "Published"}
+  </span>
+</td>
                         <td>
                           <div className="tbl-actions">
-                            <button className="icon-btn view" onClick={() => openView(series)} title="View"><Eye size={18} /></button>
+                            <button
+  className="icon-btn view"
+  onClick={() => !isLocked(series) && openView(series)}
+  title={isLocked(series) ? "Locked until release" : "View"}
+  style={{
+    opacity: isLocked(series) ? 0.5 : 1,
+    cursor: isLocked(series) ? "not-allowed" : "pointer"
+  }}
+>
+  <Eye size={18} />
+</button>
                             <button className="icon-btn edit" onClick={() => openEdit(series)} title="Edit"><Edit2 size={18} /></button>
                             <button className="icon-btn upload" onClick={() => openUpload(series)} title="Upload"><Upload size={18} /></button>
                             <button className="icon-btn del" onClick={() => handleDelete(series)} title="Delete"><Trash2 size={18} /></button>
@@ -631,7 +675,7 @@ export default function Content() {
                         <span>{selectedItem.duration}</span>
                       </div>
                       <div className="detail-item">
-                        <strong>Premium:</strong>
+                        <strong>Status:</strong>
                         <span>{selectedItem.isPremium ? "✓ Yes" : "✗ No"}</span>
                       </div>
                       {contentType === "series" && (
@@ -784,9 +828,13 @@ export default function Content() {
                 )}
 
                 {modalMode === "upload" ? (
+                  // <button className="btn btn-primary" onClick={handleUpload}>
+                  //         <label className="form-label"><Upload size={18} style={{ display: "inline-block", marginRight: 6 }} /> Upload Files</label>
+                  // </button>
                   <button className="btn btn-primary" onClick={handleUpload}>
-                          <label className="form-label"><Upload size={18} style={{ display: "inline-block", marginRight: 6 }} /> Upload Files</label>
-                  </button>
+  <Upload size={18} style={{ marginRight: 6 }} />
+  Upload Files
+</button>
                 ) : modalMode === "edit" ? (
                   <button className="btn btn-primary" onClick={handleSave}>
                     Save Changes

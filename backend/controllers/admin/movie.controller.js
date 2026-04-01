@@ -22,6 +22,7 @@ const addMovie = async (req, res) => {
     const bannerFile = req.files?.banner?.[0];
     const videoFile = req.files?.video?.[0];
     const trailerFile = req.files?.trailer?.[0];
+    const isComingSoon = req.body.isComingSoon === "true";
 
     let posterUrl = "";
     let bannerUrl = "";
@@ -123,12 +124,17 @@ const uploadedVideo = await uploadToBunny(
       videoUrl = uploadedVideo;
       fs.unlinkSync(videoFile.path);
     }
-
-    if (!videoUrl) {
-      return res.status(400).json({
-        message: "Video is required"
-      });
-    }
+      
+    // if (!videoUrl) {
+    //   return res.status(400).json({
+    //     message: "Video is required"
+    //   });
+    // }
+    if (!isComingSoon && !videoUrl) {
+  return res.status(400).json({
+    message: "Video is required for released content"
+  });
+}
 
     // 🔄 Parse JSON fields
     let genre = req.body.genre;
@@ -177,6 +183,9 @@ for (let key of castFiles) {
       category,
       rating: Number(req.body.rating),
       isPremium: req.body.isPremium === "true",
+        // ✅ NEW
+      isComingSoon,
+      releaseDate: req.body.releaseDate ? new Date(req.body.releaseDate) : null,
       poster: posterUrl || req.body.poster,
       banner: bannerUrl || req.body.banner,
       trailerUrl: trailerUrl || req.body.trailerUrl,
@@ -263,32 +272,99 @@ const getMoviesByCategory = async (req, res) => {
 };
 
 // ✏️ Update movie by slug
+// const updateMovieBySlug = async (req, res) => {
+//   try {
+//     if (req.body.title) {
+//       req.body.slug = req.body.title
+//         .toLowerCase()
+//         .trim()
+//         .replace(/\s+/g, "-")
+//         .replace(/[^\w-]+/g, "");
+//     }
+
+//     const updatedMovie = await Movie.findOneAndUpdate(
+//       { slug: req.params.slug },
+//       req.body,
+//       { new: true }
+//     );
+
+//     if (!updatedMovie) {
+//       return res.status(404).json({
+//         message: "Movie not found"
+//       });
+//     }
+
+//     res.json({
+//       message: "Movie updated successfully ✨",
+//       data: updatedMovie
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       message: "Error updating movie",
+//       error: error.message
+//     });
+//   }
+// };
 const updateMovieBySlug = async (req, res) => {
   try {
-    if (req.body.title) {
-      req.body.slug = req.body.title
-        .toLowerCase()
-        .trim()
-        .replace(/\s+/g, "-")
-        .replace(/[^\w-]+/g, "");
-    }
+    const movie = await Movie.findOne({ slug: req.params.slug });
 
-    const updatedMovie = await Movie.findOneAndUpdate(
-      { slug: req.params.slug },
-      req.body,
-      { new: true }
-    );
-
-    if (!updatedMovie) {
+    if (!movie) {
       return res.status(404).json({
         message: "Movie not found"
       });
     }
 
-    res.json({
-      message: "Movie updated successfully ✨",
-      data: updatedMovie
+    // 📂 FILES
+    const posterFile = req.files?.poster?.[0];
+    const bannerFile = req.files?.banner?.[0];
+    const videoFile = req.files?.video?.[0];
+
+    // 🖼️ Poster Update
+    if (posterFile) {
+      const uploadedPoster = await uploadToBunny(
+        posterFile.path,
+        posterFile.filename,
+        "posters"
+      );
+      movie.poster = uploadedPoster;
+      fs.unlinkSync(posterFile.path);
+    }
+
+    // 🖼️ Banner Update
+    if (bannerFile) {
+      const uploadedBanner = await uploadToBunny(
+        bannerFile.path,
+        bannerFile.filename,
+        "banners"
+      );
+      movie.banner = uploadedBanner;
+      fs.unlinkSync(bannerFile.path);
+    }
+
+    // 🎥 Video Update
+    if (videoFile) {
+      const uploadedVideo = await uploadToBunny(
+        videoFile.path,
+        videoFile.filename,
+        "videos"
+      );
+      movie.videoUrl = uploadedVideo;
+      fs.unlinkSync(videoFile.path);
+    }
+
+    // 🔄 Update normal fields
+    Object.keys(req.body).forEach((key) => {
+      movie[key] = req.body[key];
     });
+
+    await movie.save();
+
+    res.json({
+      message: "Movie updated successfully 🔄",
+      data: movie
+    });
+
   } catch (error) {
     res.status(500).json({
       message: "Error updating movie",
@@ -296,7 +372,6 @@ const updateMovieBySlug = async (req, res) => {
     });
   }
 };
-
 // ❌ Delete movie
 const deleteMovieBySlug = async (req, res) => {
   try {
@@ -372,6 +447,22 @@ const playContent = async (req, res) => {
       });
     }
 
+    const now = new Date();
+
+const isComingSoon =
+  content.isComingSoon === true || content.isComingSoon === "true";
+
+const releaseDate = content.releaseDate
+  ? new Date(content.releaseDate)
+  : null;
+
+if (isComingSoon && releaseDate && releaseDate > now) {
+  return res.status(403).json({
+    message: "Content not released yet"
+  });
+}
+
+    // 🔐 Premium check
     if (content.isPremium) {
       if (!req.user || !req.user.isSubscribed) {
         return res.status(403).json({
@@ -380,6 +471,7 @@ const playContent = async (req, res) => {
       }
     }
 
+    // 🎬 Movie
     if (contentType === "movie") {
       return res.json({
         success: true,
@@ -387,6 +479,7 @@ const playContent = async (req, res) => {
       });
     }
 
+    // 📺 Series
     if (!season || episode === undefined) {
       return res.status(400).json({
         message: "Season and episode are required"
@@ -394,6 +487,7 @@ const playContent = async (req, res) => {
     }
 
     const Episode = require("../../models/episode.model");
+
     const ep = await Episode.findOne({
       seriesId: content._id,
       seasonNumber: Number(season),

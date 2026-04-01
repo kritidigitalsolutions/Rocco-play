@@ -96,15 +96,13 @@ const playEpisode = async (req, res) => {
 };
 
 // ✏️ Update Episode
+
+
 const updateEpisode = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const episode = await Episode.findByIdAndUpdate(
-      id,
-      req.body,
-      { new: true }
-    );
+    const episode = await Episode.findById(id);
 
     if (!episode) {
       return res.status(404).json({
@@ -112,8 +110,29 @@ const updateEpisode = async (req, res) => {
       });
     }
 
+    // 🎥 Video File
+    const videoFile = req.files?.video?.[0];
+
+    if (videoFile) {
+      const uploadedVideo = await uploadToBunny(
+        videoFile.path,
+        videoFile.filename,
+        "series/videos"
+      );
+
+      episode.videoUrl = uploadedVideo;
+      fs.unlinkSync(videoFile.path);
+    }
+
+    // 🔄 Update other fields
+    Object.keys(req.body).forEach((key) => {
+      episode[key] = req.body[key];
+    });
+
+    await episode.save();
+
     res.json({
-      message: "Episode updated 🎞️",
+      message: "Episode updated successfully 🎞️",
       data: episode
     });
 

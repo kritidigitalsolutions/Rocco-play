@@ -8,7 +8,10 @@ import HelpPage from "../pages/HelpPage";
 import AddContent from "../pages/AddContent";
 import Content from "../pages/Content";
 import Settings from "../pages/Settings";
+import SubscriptionPage from "../pages/Subscriptions";
 import "./AdminLayout.css";
+import RatingsPage from "../pages/Ratings";
+import PlansPage from "../pages/Plans";
 
 
 export default function AdminLayout() {
@@ -35,7 +38,9 @@ export default function AdminLayout() {
           {activeTab === "help"        && <HelpPage />}
           {activeTab === "add-content" && <AddContent />}
           {activeTab === "content"     && <Content />}
-          {activeTab === "pricing"     && <ComingSoon title="Pricing Plans" />}
+          {activeTab === "ratings" && <RatingsPage />}
+          {activeTab === "plans" && <PlansPage />}
+          {activeTab === "pricing" && <SubscriptionPage />}
           {activeTab === "settings" && <Settings />}
         </main>
       </div>

@@ -29,7 +29,16 @@ router.get("/", getEpisodes);
 // 🎥 Play episode
 router.get("/play/:seriesId/:season/:episode", auth, playEpisode);
 // ✏️ Update episode
-router.put("/:id", auth, admin, updateEpisode);
+// router.put("/:id", auth, admin, updateEpisode);
+router.put(
+  "/:id",
+  auth,
+  admin,
+  videoUpload.fields([
+    { name: "video", maxCount: 1 }
+  ]),
+  updateEpisode
+);
 
 // ❌ Delete episode
 router.delete("/:id", auth, admin, deleteEpisode);

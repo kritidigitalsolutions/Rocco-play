@@ -8,12 +8,7 @@ import {
   BarChart, Bar
 } from "recharts";
 
-const GROWTH = [
-  { day: "Mon", users: 12 }, { day: "Tue", users: 28 },
-  { day: "Wed", users: 41 }, { day: "Thu", users: 35 },
-  { day: "Fri", users: 67 }, { day: "Sat", users: 91 },
-  { day: "Sun", users: 78 },
-];
+// const GROWTH = growthData;
 
 const COLORS = ["#e50914", "#3b82f6", "#10b981", "#f59e0b"];
 
@@ -29,8 +24,15 @@ function ChartTip({ active, payload, label }) {
 
 export default function Dashboard() {
   const [users,   setUsers]   = useState([]);
-  const [content, setContent] = useState([]);
+ 
   const [loading, setLoading] = useState(true);
+  const [revenue, setRevenue] = useState(0);
+  const [growthData, setGrowthData] = useState([]);
+
+  const GROWTH = growthData.length ? growthData : [];
+
+    const [contentStats, setContentStats] = useState([]);
+  const PIE = contentStats.length ? contentStats : [];
 
   useEffect(() => { fetchData(); }, []);
 
@@ -38,27 +40,51 @@ export default function Dashboard() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [uRes, cRes] = await Promise.all([
-        API.get("/user"),       // ✅ correct: /api/user
-        API.get("/movies"),     // ✅ correct: /api/movies
-      ]);
+      // const [uRes, cRes] = await Promise.all([
+      //   API.get("/user"),       // ✅ correct: /api/user
+      //   API.get("/movies"),     // ✅ correct: /api/movies
+      // ]);
+//     const [uRes, cRes, rRes, gRes, sRes] = await Promise.all([
+//   API.get("/user"),
+//   // API.get("/movies"),
+//   API.get("/admin/content/stats"),
+//   API.get("/admin/subscription/revenue"),
+//   API.get("/admin/user/growth"),
+//   API.get("/admin/content/stats"),
+// ]);
+const [uRes, sRes, rRes, gRes] = await Promise.all([
+  API.get("/user"),
+  API.get("/admin/content/stats"),
+  API.get("/admin/subscription/revenue"),
+  API.get("/admin/user/growth"),
+]);
+
+setContentStats(sRes.data.data || []);
+
+
+
+setGrowthData(gRes.data.data || []);
+
+setRevenue(rRes.data.revenue || 0);
       setUsers(uRes.data?.data || uRes.data || []);
-      setContent(cRes.data?.data || cRes.data || []);
+      // setContent(cRes.data?.data || cRes.data || []);
     } catch (err) {
       console.log("Dashboard fetch error:", err);
     }
     setLoading(false);
   };
 
-  // Dynamic content pie data from backend
-  const movies = Array.isArray(content) ? content.filter(c => c.type === "movie").length : 0;
-  const series = Array.isArray(content) ? content.filter(c => c.type === "series").length : 0;
-  const other  = Array.isArray(content) ? content.length - movies - series : 0;
-  const PIE = [
-    { name: "Movies", value: movies || 1 },
-    { name: "Series", value: series || 1 },
-    { name: "Other",  value: other  || 1 },
-  ];
+  const moviesCount = contentStats.find(c => c.name === "Movies")?.value || 0;
+const seriesCount = contentStats.find(c => c.name === "Series")?.value || 0;
+
+const totalContent = moviesCount + seriesCount;
+
+
+  // const PIE = [
+  //   { name: "Movies", value: movies || 1 },
+  //   { name: "Series", value: series || 1 },
+  //   { name: "Other",  value: other  || 1 },
+  // ];
 
   const activeUsers = Array.isArray(users) ? users.filter(u => !u.isBlocked).length : 0;
 
@@ -86,7 +112,10 @@ export default function Dashboard() {
         <div className="stat-card s-blue">
           <div className="stat-icon"><Film size={32} /></div>
           <div className="stat-label">Content Library</div>
-          <div className="stat-value">{loading ? "..." : (Array.isArray(content) ? content.length : 0)}</div>
+          {/* <div className="stat-value">{loading ? "..." : (Array.isArray(content) ? content.length : 0)}</div> */}
+          <div className="stat-value">
+  {loading ? "..." : totalContent}
+</div>
           <div className="stat-trend up">↑ +8% this week</div>
         </div>
         <div className="stat-card s-green">
@@ -98,8 +127,11 @@ export default function Dashboard() {
         <div className="stat-card s-orange">
           <div className="stat-icon">💰</div>
           <div className="stat-label">Monthly Revenue</div>
-          <div className="stat-value">₹1.24L</div>
-          <div className="stat-trend down">↓ -2% vs last</div>
+          {/* <div className="stat-value">₹1.24L</div> */}
+          <div className="stat-value">
+  ₹{loading ? "..." : (revenue / 100000).toFixed(2)}L
+</div>
+          {/* <div className="stat-trend down">↓ -2% vs last</div> */}
         </div>
       </div>
 

@@ -6,7 +6,7 @@ const {
   changeAdminPassword,
   sendOtp,
   verifyOtp,
-  resetPassword,sendEmailOtp,changeAdminEmail
+  resetPassword,sendEmailOtp,changeAdminEmail,getAdminProfile
 } = require("../../controllers/admin auth/admin.auth.controller");
 
 const isAuth = require("../../middlewares/auth.middleware");
@@ -30,6 +30,7 @@ router.post("/reset-password", resetPassword);
 // 🔥 ADD ONLY
 router.post("/send-email-otp", isAuth, isAdmin, sendEmailOtp);
 router.put("/change-email", isAuth, isAdmin, changeAdminEmail);
+router.get("/profile", isAuth, isAdmin, getAdminProfile);
 
 
 module.exports = router;

@@ -8,17 +8,18 @@ const {
 } = require("../../controllers/content.controller");
 
 const auth = require("../../middlewares/auth.middleware");
+const protectSubscription = require("../../middlewares/protectedSubscription.middleware");
 
-// 📄 All content
+// 📄 All content (public)
 router.get("/", getAllContent);
 
-// 🔍 Detail
+// 🔍 Detail (public)
 router.get("/:slug", getContentBySlug);
 
-// 🎥 Play (protected)
-router.get("/play/:slug", auth, playContent);
+// 🎥 Play (protected: login + subscription)
+router.get("/play/:slug", auth, protectSubscription, playContent);
 
-// 🎞️ Play episode
-router.get("/play/:slug/:season/:episode", auth, playContent);
+// 🎞️ Play episode (protected: login + subscription)
+router.get("/play/:slug/:season/:episode", auth, protectSubscription, playContent);
 
 module.exports = router;

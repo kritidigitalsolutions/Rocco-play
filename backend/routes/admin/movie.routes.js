@@ -60,9 +60,33 @@ router.post(
 );
 
 // ✏️ Update movie
-router.put("/slug/:slug", authMiddleware, adminMiddleware, updateMovieBySlug);
+// router.put("/slug/:slug", authMiddleware, adminMiddleware, updateMovieBySlug);
+router.put(
+  "/slug/:slug",
+  authMiddleware,
+  adminMiddleware,
+  videoUpload.fields([
+    { name: "poster", maxCount: 1 },
+    { name: "banner", maxCount: 1 },
+    { name: "video", maxCount: 1 }
+  ]),
+  updateMovieBySlug
+);
 
 // ❌ Delete movie
 router.delete("/slug/:slug", authMiddleware, adminMiddleware, deleteMovieBySlug);
+
+router.get("/coming-soon", async (req, res) => {
+  try {
+    const movies = await Movie.find({ isComingSoon: true }).sort({ releaseDate: 1 });
+
+    res.json({
+      success: true,
+      data: movies
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 module.exports = router;

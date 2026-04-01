@@ -1,61 +1,187 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Bell, Moon, Sun } from "lucide-react";
 import "./Topbar.css";
+import axios from "axios";
 
 export default function Topbar({ theme, toggleTheme }) {
-  const adminName = localStorage.getItem("adminName") || "Admin";
+  const [adminName, setAdminName] = useState("Admin");
+  const [adminData, setAdminData] = useState(null);
   const [search, setSearch] = useState("");
-  const [notif, setNotif] = useState(3); // fake notification count
+  const [notif, setNotif] = useState(3);
+
+  // Dropdown + Modal states
+  const [showMenu, setShowMenu] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+
+  // ================= FETCH ADMIN =================
+  useEffect(() => {
+    fetchAdmin();
+  }, []);
+
+  const fetchAdmin = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await axios.get(
+        "http://localhost:5000/api/admin/auth/profile",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setAdminName(res.data.admin.name);
+      setAdminData(res.data.admin);
+    } catch (err) {
+      console.error("Failed to fetch admin:", err);
+    }
+  };
+
+  // ================= LOGOUT =================
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.href = "/";
+  };
+
+  // ================= CLOSE DROPDOWN =================
+  useEffect(() => {
+    const handleClickOutside = () => setShowMenu(false);
+    window.addEventListener("click", handleClickOutside);
+
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, []);
 
   return (
-    <header className="topbar">
-      {/* LEFT — Page greeting */}
-      <div className="topbar-left">
-        <h2 className="topbar-greeting">
-          Welcome back, <span className="topbar-name">{adminName}</span> 👋
-        </h2>
-        <p className="topbar-date">
-          {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-        </p>
-      </div>
-
-      {/* RIGHT — Actions */}
-      <div className="topbar-actions">
-
-        {/* Search */}
-        <div className="topbar-search">
-          <Search size={18} className="search-ico" />
-          <input
-            type="text"
-            placeholder="Search anything..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+    <>
+      <header className="topbar">
+        {/* LEFT — Greeting */}
+        <div className="topbar-left">
+          <h2 className="topbar-greeting">
+            Welcome back,{" "}
+            <span className="topbar-name">{adminName}</span> 👋
+          </h2>
+          <p className="topbar-date">
+            {new Date().toLocaleDateString("en-IN", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
+          </p>
         </div>
 
-        {/* Notifications */}
-        <button className="action-btn notif-btn" title="Notifications" onClick={() => setNotif(0)}>
-          <Bell size={20} />
-          {notif > 0 && <span className="notif-badge">{notif}</span>}
-        </button>
+        {/* RIGHT — Actions */}
+        <div className="topbar-actions">
+          {/* Search */}
+          <div className="topbar-search">
+            <Search size={18} className="search-ico" />
+            <input
+              type="text"
+              placeholder="Search anything..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
 
-        {/* Theme Toggle */}
-        <button
-          className={`theme-toggle ${theme}`}
-          onClick={toggleTheme}
-          title={`Switch to ${theme === "dark" ? "Light" : "Dark"} mode`}
+          {/* Notifications */}
+          <button
+            className="action-btn notif-btn"
+            title="Notifications"
+            onClick={() => setNotif(0)}
+          >
+            <Bell size={20} />
+            {notif > 0 && <span className="notif-badge">{notif}</span>}
+          </button>
+
+          {/* Theme Toggle */}
+          <button
+            className={`theme-toggle ${theme}`}
+            onClick={toggleTheme}
+            title={`Switch to ${theme === "dark" ? "Light" : "Dark"} mode`}
+          >
+            <span className="toggle-track">
+              <span className="toggle-thumb">
+                {theme === "dark" ? <Moon size={16} /> : <Sun size={16} />}
+              </span>
+            </span>
+            <span className="toggle-label">
+              {theme === "dark" ? "Dark" : "Light"}
+            </span>
+          </button>
+
+          {/* Avatar + Dropdown */}
+          <div className="admin-menu">
+            <div
+              className="admin-avatar"
+              title={adminName}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMenu(!showMenu);
+              }}
+            >
+              {adminName.charAt(0).toUpperCase()}
+            </div>
+
+            {showMenu && (
+              <div className="dropdown-menu">
+                <div
+                  className="dropdown-item"
+                  onClick={() => {
+                    setShowProfile(true);
+                    setShowMenu(false);
+                  }}
+                >
+                  👤 View Profile
+                </div>
+
+                <div
+                  className="dropdown-item logout"
+                  onClick={handleLogout}
+                >
+                  🚪 Logout
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* ================= PROFILE MODAL ================= */}
+      {showProfile && (
+        <div
+          className="profile-overlay"
+          onClick={() => setShowProfile(false)}
         >
-          <span className="toggle-track">
-            <span className="toggle-thumb">{theme === "dark" ? <Moon size={16} /> : <Sun size={16} />}</span>
-          </span>
-          <span className="toggle-label">{theme === "dark" ? "Dark" : "Light"}</span>
-        </button>
+          <div
+            className="profile-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="profile-header">
+              <h2>Admin Profile</h2>
+              <button
+                className="close-btn"
+                onClick={() => setShowProfile(false)}
+              >
+                ✖
+              </button>
+            </div>
 
-        {/* Admin avatar */}
-        <div className="admin-avatar" title={adminName}>
-          {adminName.charAt(0).toUpperCase()}
+            <div className="profile-body">
+              <div className="profile-avatar">
+                {adminName.charAt(0).toUpperCase()}
+              </div>
+
+              <h3>{adminData?.name}</h3>
+              <p>{adminData?.email}</p>
+
+              <div className="profile-role">
+                Role: {adminData?.role || "ADMIN"}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </header>
+      )}
+    </>
   );
 }

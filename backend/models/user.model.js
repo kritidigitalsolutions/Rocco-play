@@ -29,7 +29,13 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       default: "USER"
-    }
+    },
+    subscriptions: [
+  {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Subscription",
+  }
+]
   },
   { timestamps: true }
 );

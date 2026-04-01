@@ -8,6 +8,8 @@ const EMPTY_FORM = {
   releaseYear: "", duration: "", genre: "", category: "",
   rating: "", videoUrl: "", trailerUrl: "", poster: "", banner: "",
   isPremium: false,
+  isComingSoon: false,
+releaseDate: "",
   cast: [{ name: "", image: "" }],
   seasons: [],
 };
@@ -114,7 +116,8 @@ export default function AddContent() {
           formData.append("category", JSON.stringify(form.category.split(",").map(s => s.trim()).filter(Boolean)));
           formData.append("rating", Number(form.rating));
           formData.append("isPremium", form.isPremium);
-          
+          formData.append("isComingSoon", form.isComingSoon);
+formData.append("releaseDate", form.releaseDate);
           // Add poster - file takes precedence over URL
           if (posterFile) {
             formData.append("poster", posterFile);
@@ -154,6 +157,8 @@ export default function AddContent() {
             ...form,
             releaseYear: Number(form.releaseYear),
             rating: Number(form.rating),
+            isComingSoon: form.isComingSoon,
+releaseDate: form.releaseDate,
             genre: form.genre.split(",").map(s => s.trim()).filter(Boolean),
             category: form.category.split(",").map(s => s.trim()).filter(Boolean),
             videoUrl: form.videoUrl,
@@ -176,7 +181,8 @@ export default function AddContent() {
           formData.append("category", JSON.stringify(form.category.split(",").map(s => s.trim()).filter(Boolean)));
           formData.append("rating", Number(form.rating));
           formData.append("isPremium", form.isPremium);
-          
+          formData.append("isComingSoon", form.isComingSoon);
+formData.append("releaseDate", form.releaseDate);
           // Add poster - file takes precedence over URL
           if (posterFile) {
             formData.append("poster", posterFile);
@@ -215,6 +221,8 @@ export default function AddContent() {
             category: form.category.split(",").map(s => s.trim()).filter(Boolean),
             rating: Number(form.rating),
             isPremium: form.isPremium,
+            isComingSoon: form.isComingSoon,
+releaseDate: form.releaseDate,
             poster: form.poster,
             banner: form.banner,
             trailerUrl: form.trailerUrl,
@@ -304,10 +312,62 @@ export default function AddContent() {
             <input className="form-input-styled" name="rating"      placeholder="Rating (e.g. 8.5)" type="number" step="0.1" onChange={ch} value={form.rating} />
           </div>
 
-          <label className="checkbox-row" style={{ marginTop: 16 }}>
-            <input type="checkbox" name="isPremium" onChange={ch} checked={form.isPremium} />
-            <span><Lock size={16} style={{ display: "inline-block", marginRight: 6 }} /> Premium-only Content</span>
-          </label>
+{/* ✅ FIXED Coming Soon + Premium */}
+
+<div style={{ display: "flex", alignItems: "center", gap: 20, marginTop: 16 }}>
+
+  {/* 🚀 Coming Soon */}
+  <label className="checkbox-row">
+    <input
+      type="checkbox"
+      name="isComingSoon"
+      onChange={ch}
+      checked={form.isComingSoon}
+    />
+    <span>🚀 Coming Soon</span>
+  </label>
+
+  {/* 🔒 Premium */}
+  <label className="checkbox-row">
+    <input
+      type="checkbox"
+      name="isPremium"
+      onChange={ch}
+      checked={form.isPremium}
+    />
+    <span>
+      <Lock size={16} style={{ marginRight: 6 }} />
+      Premium-only Content
+    </span>
+  </label>
+
+</div>
+
+{/* 📅 DATE INPUT */}
+{form.isComingSoon && (
+  <div style={{ marginTop: 10 }}>
+
+    <input
+      className="form-input-styled"
+      type="date"
+      name="releaseDate"
+      onChange={ch}
+      value={form.releaseDate}
+      required
+    />
+
+    {form.releaseDate && (
+      <p style={{ marginTop: 5, color: "#aaa" }}>
+        📅 Selected: {new Date(form.releaseDate).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "long",
+          year: "numeric"
+        })}
+      </p>
+    )}
+
+  </div>
+)}
         </div>
 
         {/* Media URLs */}
@@ -366,7 +426,7 @@ export default function AddContent() {
           </div>
 
           {/* Movie Video Section */}
-          {form.type === "movie" && (
+          {form.type === "movie" && !form.isComingSoon && (
             <div className="form-2col" style={{ marginTop: 16 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}><Play size={16} style={{ display: "inline-block", marginRight: 6 }} /> Movie Video</label>
@@ -397,7 +457,7 @@ export default function AddContent() {
         </div>
 
         {/* Series */}
-        {form.type === "series" && (
+        {form.type === "series" && !form.isComingSoon && (
           <div className="form-card">
             <h3><Tv size={18} style={{ display: "inline-block", marginRight: 6 }} /> Seasons & Episodes</h3>
             {form.seasons.map((s, si) => (

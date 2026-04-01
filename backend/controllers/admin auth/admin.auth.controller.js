@@ -448,3 +448,26 @@ exports.changeAdminEmail = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+
+
+//get profile
+// ================= GET ADMIN PROFILE =================
+exports.getAdminProfile = async (req, res) => {
+  try {
+    const admin = await Admin.findById(req.user.id).select("-password");
+
+    if (!admin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
+    res.json({
+      success: true,
+      admin,
+    });
+
+  } catch (error) {
+    console.error("Get Profile Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};

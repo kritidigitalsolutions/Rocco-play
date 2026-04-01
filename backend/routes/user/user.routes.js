@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const {isAuth} = require("../../middlewares/auth.middleware")
+const {isAdmin}=require("../../middlewares/admin.middleware")
 // const upload = require("../../middlewares/multer.middleware") // parses multipart/form-data (Firebase upload disabled)
 const upload = require("../../middlewares/videoUpload.middleware");
 //import models
@@ -29,4 +30,7 @@ router.delete("/:id", isAuth, async (req, res) => {
     }
 });
 
+const { getUserGrowth } = require("../../controllers/admin/user.controller");
+
+router.get("/growth", isAuth, isAdmin, getUserGrowth);
 module.exports = router;

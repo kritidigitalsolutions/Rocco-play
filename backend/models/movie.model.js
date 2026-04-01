@@ -26,9 +26,13 @@ const movieSchema = new mongoose.Schema(
 
     poster: String,
     banner: String,
+    isComingSoon: { type: Boolean, default: false },
+    releaseDate: { type: Date },
+
+
 
     // Only for movies
-    videoUrl: { type: String, required: true },
+    videoUrl:String,
 
     trailerUrl: String,
 

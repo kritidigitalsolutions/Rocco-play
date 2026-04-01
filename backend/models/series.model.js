@@ -25,6 +25,8 @@ const seriesSchema = new mongoose.Schema(
 
     poster: String,
     banner: String,
+    isComingSoon: { type: Boolean, default: false },
+    releaseDate: { type: Date },
 
     trailerUrl: String,
 

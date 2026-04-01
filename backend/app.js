@@ -27,9 +27,9 @@ const createAdmin = async () => {
 //     email: "admin@12345.com",
 //     password: hashedPassword
 //   });
- const hashedPassword = await bcrypt.hash("admin12345", 10);
+ const hashedPassword = await bcrypt.hash("123456", 10);
   await Admin.create({
-    name: "Admin",
+    name: "Garima",
     email: "agrawalgarima53@gmail.com",
     password: hashedPassword
   });
@@ -84,4 +84,29 @@ const watchlistRoutes = require("./routes/user/watchlist.routes");
 
 app.use("/api/user/watchlist", watchlistRoutes);
 
+const subscriptionRoutes = require("./routes/user/subscription.routes");
+
+app.use("/api/subscription", subscriptionRoutes);
+
+const interactionRoutes = require("./routes/user/interaction.routes");
+
+app.use("/api/interaction", interactionRoutes);
+
+app.use("/api/rating", require("./routes/user/rating.routes"));
+
+// ADMIN ROUTES
+app.use("/api/admin/plans", require("./routes/admin/plan.routes"));
+
+// USER ROUTES
+app.use("/api/plans", require("./routes/user/plan.routes"));
+
+//get total revenue
+app.use("/api/admin/subscription", require("./routes/admin/subscription.routes"));
+
+
+//user growth chart
+app.use("/api/admin/user", require("./routes/user/user.routes"));
+
+//content split=count content 
+app.use("/api/admin/content", require("./routes/admin/content.routes"));
 module.exports = app;

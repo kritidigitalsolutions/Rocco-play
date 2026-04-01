@@ -671,3 +671,32 @@ textarea.form-input-styled { min-height: 100px; resize: vertical; }
   box-shadow: 0 6px 20px rgba(229,9,20,0.3);
 }
 .btn-lg:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(229,9,20,0.4); }
+/* 🔥 Icon Buttons (Same as Content page) */
+.icon-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  color: var(--text-muted);
+}
+
+.icon-btn:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
+}
+
+.icon-btn.edit:hover {
+  color: #facc15; /* yellow */
+}
+
+.icon-btn.delete:hover {
+  color: #ef4444; /* red */
+}
+
+/* Align actions nicely */
+.actions {
+  display: flex;
+  gap: 8px;
+}

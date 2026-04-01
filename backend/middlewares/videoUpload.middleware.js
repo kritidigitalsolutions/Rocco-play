@@ -139,6 +139,14 @@ const fileFilter = (req, file, cb) => {
       );
     }
   }
+  // ✅ Profile Image Upload
+else if (file.fieldname === "profileImage") {
+  if (imageTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only image allowed for profileImage"), false);
+  }
+}
 
   // ❌ Unknown field
   else {
@@ -153,6 +161,9 @@ const videoUpload = multer({
   limits: {
     fileSize: 500 * 1024 * 1024
   }
+
 });
+
+
 
 module.exports = videoUpload;

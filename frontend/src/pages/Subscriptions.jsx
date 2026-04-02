@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import API from "../api/axios";
 import "./Subscription.css";
 
 export default function SubscriptionPage() {
@@ -10,16 +10,7 @@ export default function SubscriptionPage() {
   }, []);
 
   const fetchSubs = async () => {
-    const token = localStorage.getItem("token");
-
-    const res = await axios.get(
-      "http://localhost:5000/api/subscription/all",
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const res = await API.get("/subscription/all");
 
     setSubs(res.data.subscriptions);
   };

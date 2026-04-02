@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Search, Bell, Moon, Sun } from "lucide-react";
 import "./Topbar.css";
-import axios from "axios";
+import API from "../api/axios";
 
 export default function Topbar({ theme, toggleTheme }) {
   const [adminName, setAdminName] = useState("Admin");
@@ -20,16 +20,7 @@ export default function Topbar({ theme, toggleTheme }) {
 
   const fetchAdmin = async () => {
     try {
-      const token = localStorage.getItem("token");
-
-      const res = await axios.get(
-        "http://localhost:5000/api/admin/auth/profile",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const res = await API.get("/admin/auth/profile");
 
       setAdminName(res.data.admin.name);
       setAdminData(res.data.admin);

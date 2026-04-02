@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import API from "../api/axios";
 import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
 
@@ -10,7 +10,7 @@ const ResetPassword = () => {
   const email = localStorage.getItem("resetIdentifier");
 
   const handleReset = async () => {
-    await axios.post("http://localhost:5000/api/admin/auth/reset-password", {
+    await API.post("/admin/auth/reset-password", {
        identifier: email,
   password,
   type: "email",

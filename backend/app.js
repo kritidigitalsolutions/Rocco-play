@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-
 // ✅ NOTE: dotenv.config() is called in api/index.js BEFORE this module is required
 // Do NOT call it here — it would run before env vars are loaded in serverless context
 
@@ -20,10 +19,16 @@ app.use(cors({
     // Allow requests with no origin (curl, Postman, mobile apps)
     if (!origin) return callback(null, true);
 
+    const extraOrigins = (process.env.CORS_ORIGIN || "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+
     const allowedOrigins = [
       "http://localhost:5173",
       "http://localhost:3000",
       process.env.FRONTEND_URL, // ✅ Read at request time, not module load time
+      ...extraOrigins,
     ].filter(Boolean);
 
     if (allowedOrigins.includes(origin)) {

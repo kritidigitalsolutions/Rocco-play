@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import API from "../api/axios";
 import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
 
@@ -14,7 +14,7 @@ const ForgotPassword = () => {
   // ================= SEND OTP =================
   const handleSendOtp = async () => {
     try {
-      await axios.post("http://localhost:5000/api/admin/auth/send-otp", {
+      await API.post("/admin/auth/send-otp", {
         identifier: email,
         type: "email",
       });
@@ -30,7 +30,7 @@ const ForgotPassword = () => {
   // ================= VERIFY OTP =================
   const handleVerifyOtp = async () => {
     try {
-      await axios.post("http://localhost:5000/api/admin/auth/verify-otp", {
+      await API.post("/admin/auth/verify-otp", {
         identifier: email,
         otp,
         type: "email",

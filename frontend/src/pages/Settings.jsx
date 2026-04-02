@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import API from "../api/axios";
 import { Settings as SettingsIcon, Lock, CheckCircle, AlertCircle } from "lucide-react";
 import "./Settings.css";
 
@@ -49,16 +49,10 @@ const Settings = () => {
 
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-
-      const res = await axios.put(
-        "http://localhost:5000/api/admin/auth/change-password",
-        {
-          oldPassword: form.oldPassword,
-          newPassword: form.newPassword,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await API.put("/admin/auth/change-password", {
+        oldPassword: form.oldPassword,
+        newPassword: form.newPassword,
+      });
 
       setMessage(res.data.message);
       setForm({ oldPassword: "", newPassword: "", confirmPassword: "" });
@@ -78,13 +72,9 @@ const Settings = () => {
   const handleSendOtp = async () => {
     try {
       setEmailLoading(true);
-      const token = localStorage.getItem("token");
-
-      await axios.post(
-        "http://localhost:5000/api/admin/auth/send-email-otp",
-        { newEmail: emailForm.newEmail },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await API.post("/admin/auth/send-email-otp", {
+        newEmail: emailForm.newEmail,
+      });
 
       setOtpSent(true);
       setMessage("OTP sent 📩");
@@ -104,13 +94,7 @@ const Settings = () => {
 
     try {
       setEmailLoading(true);
-      const token = localStorage.getItem("token");
-
-      const res = await axios.put(
-        "http://localhost:5000/api/admin/auth/change-email",
-        emailForm,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await API.put("/admin/auth/change-email", emailForm);
 
       setMessage(res.data.message);
       setEmailForm({ oldEmail: "", newEmail: "", otp: "" });

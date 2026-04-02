@@ -7,7 +7,7 @@ const {
   sendOtp,
   verifyOtp,
   resetPassword,sendEmailOtp,changeAdminEmail,getAdminProfile
-} = require("../../controllers/admin auth/admin.auth.controller");
+} = require("../../controllers/auth/adminAuth.controller");
 
 const isAuth = require("../../middlewares/auth.middleware");
 const isAdmin = require("../../middlewares/admin.middleware");

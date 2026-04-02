@@ -1,5 +1,10 @@
 const mongoose = require("mongoose");
 
+let connectionPromise = null;
+
+mongoose.set("bufferCommands", false);
+mongoose.set("bufferTimeoutMS", 0);
+
 const connectDB = async () => {
   const uri = process.env.MONGO_URI;
 
@@ -15,19 +20,28 @@ const connectDB = async () => {
     return;
   }
 
-  await mongoose.connect(uri, {
-    // ✅ Critical for serverless: don't buffer operations if not connected
-    bufferCommands: false,
+  // If a connection attempt is already running, await it instead of starting another.
+  if (connectionPromise) {
+    await connectionPromise;
+    return;
+  }
 
-    // ✅ Fail fast — don't hang for minutes trying to find a server
-    serverSelectionTimeoutMS: 5000,   // Give up finding a server after 5s
-    connectTimeoutMS: 8000,           // TCP connection timeout 8s
-    socketTimeoutMS: 30000,           // Socket idle timeout 30s
+  connectionPromise = mongoose
+    .connect(uri, {
+      // ✅ Fail fast — don't hang for minutes trying to find a server
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 8000,
+      socketTimeoutMS: 30000,
 
-    // ✅ Recommended for serverless connection pooling
-    maxPoolSize: 10,
-    minPoolSize: 0,
-  });
+      // ✅ Recommended for serverless connection pooling
+      maxPoolSize: 10,
+      minPoolSize: 0,
+    })
+    .finally(() => {
+      connectionPromise = null;
+    });
+
+  await connectionPromise;
 
   console.log("✅ MongoDB Connected");
 };

@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require("nodemailer");
 const Otp = require('../../models/otp.model'); // 🔥 NEW
+const connectDB = require('../../config/db');
 
 // ✅ Lazy transporter factory — created per-call so env vars are always available
 // Do NOT initialize at module load time (env vars not ready on Vercel cold start)
@@ -36,6 +37,8 @@ const generateToken = (admin) => {
 // ================= LOGIN =================
 exports.adminLogin = async (req, res) => {
   try {
+    await connectDB();
+
     // ✅ INPUT VALIDATION ADDED
     if (!req.body.email || !req.body.password) {
       return res.status(400).json({ message: "Email and password required" });

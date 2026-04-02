@@ -50,10 +50,32 @@ exports.adminLogin = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    const isMatch = await bcrypt.compare(password, admin.password);
+    const storedPassword = typeof admin.password === "string" ? admin.password : "";
+    if (!storedPassword) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    let isMatch = false;
+    const isBcryptHash = /^\$2[aby]\$\d{2}\$/.test(storedPassword);
+
+    if (isBcryptHash) {
+      isMatch = await bcrypt.compare(password, storedPassword);
+    } else {
+      // Legacy fallback: support plain-text stored passwords once, then upgrade to bcrypt.
+      isMatch = password === storedPassword;
+      if (isMatch) {
+        admin.password = await bcrypt.hash(password, 10);
+        await admin.save();
+      }
+    }
 
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    if (!process.env.JWT_SECRET) {
+      console.error("Admin Login Error: JWT_SECRET is missing");
+      return res.status(500).json({ message: "Server configuration error" });
     }
 
     const token = generateToken(admin);

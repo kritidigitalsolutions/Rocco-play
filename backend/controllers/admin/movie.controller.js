@@ -5,6 +5,35 @@ const path = require("path");
 const uploadToBunny = require("../../utils/bunnyUpload");
 // ✅ No fs required - using memoryStorage (files are Buffer, not disk files)
 
+const isDataUrl = (value = "") => typeof value === "string" && value.trim().startsWith("data:");
+
+const sanitizeMediaUrl = (value = "") => {
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (!trimmed || isDataUrl(trimmed)) return "";
+  return trimmed;
+};
+
+const projectMovieListFields = {
+  title: 1,
+  slug: 1,
+  description: 1,
+  genre: 1,
+  releaseYear: 1,
+  duration: 1,
+  language: 1,
+  poster: 1,
+  banner: 1,
+  isComingSoon: 1,
+  releaseDate: 1,
+  trailerUrl: 1,
+  isPremium: 1,
+  rating: 1,
+  category: 1,
+  createdAt: 1,
+  updatedAt: 1,
+};
+
 // ➕ Add Movie (Admin)
 const addMovie = async (req, res) => {
   try {
@@ -89,8 +118,8 @@ const addMovie = async (req, res) => {
 
 // ✅ NEW
 const uploadedVideo = await uploadToBunny(
-  videoFile.path,
-  videoFile.filename,
+  videoFile.buffer,
+  `${Date.now()}-video${path.extname(videoFile.originalname)}`,
   "videos"
 );
 
@@ -164,11 +193,11 @@ for (let key of castFiles) {
         // ✅ NEW
       isComingSoon,
       releaseDate: req.body.releaseDate ? new Date(req.body.releaseDate) : null,
-      poster: posterUrl || req.body.poster,
-      banner: bannerUrl || req.body.banner,
-      trailerUrl: trailerUrl || req.body.trailerUrl,
+      poster: posterUrl || sanitizeMediaUrl(req.body.poster),
+      banner: bannerUrl || sanitizeMediaUrl(req.body.banner),
+      trailerUrl: trailerUrl || sanitizeMediaUrl(req.body.trailerUrl),
       cast,
-      videoUrl
+      videoUrl: videoUrl || sanitizeMediaUrl(req.body.videoUrl)
     });
 
     const savedMovie = await movie.save();
@@ -190,7 +219,9 @@ for (let key of castFiles) {
 // 📄 Get all movies
 const getAllMovies = async (req, res) => {
   try {
-    const movies = await Movie.find().sort({ createdAt: -1 });
+    const movies = await Movie.find({}, projectMovieListFields)
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.json({
       success: true,
@@ -208,7 +239,7 @@ const getAllMovies = async (req, res) => {
 // 🔍 Get movie by slug
 const getMovieBySlug = async (req, res) => {
   try {
-    const movie = await Movie.findOne({ slug: req.params.slug });
+    const movie = await Movie.findOne({ slug: req.params.slug }, projectMovieListFields).lean();
 
     if (!movie) {
       return res.status(404).json({
@@ -235,7 +266,7 @@ const getMoviesByCategory = async (req, res) => {
 
     const movies = await Movie.find({
       category: { $in: [category] }
-    });
+    }, projectMovieListFields).lean();
 
     res.json({
       success: true,
@@ -379,7 +410,7 @@ const searchMovies = async (req, res) => {
         { description: { $regex: query, $options: "i" } },
         { genre: { $regex: query, $options: "i" } }
       ]
-    });
+    }, projectMovieListFields).lean();
 
     res.json({
       success: true,

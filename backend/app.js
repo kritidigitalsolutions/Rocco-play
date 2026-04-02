@@ -12,6 +12,23 @@ const mountRoute = (path, router) => {
   app.use(`/api${path}`, router);
 };
 
+const isAllowedOrigin = (origin = "") => {
+  const extraOrigins = (process.env.CORS_ORIGIN || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const allowedOrigins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    process.env.FRONTEND_URL,
+    ...extraOrigins,
+  ].filter(Boolean);
+
+  const isVercelOrigin = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
+  return allowedOrigins.includes(origin) || isVercelOrigin;
+};
+
 // ================= SECURITY MIDDLEWARE =================
 
 // ✅ Helmet for security headers
@@ -24,31 +41,31 @@ app.use(cors({
     // Allow requests with no origin (curl, Postman, mobile apps)
     if (!origin) return callback(null, true);
 
-    const extraOrigins = (process.env.CORS_ORIGIN || "")
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
-
-    const allowedOrigins = [
-      "http://localhost:5173",
-      "http://localhost:3000",
-      process.env.FRONTEND_URL, // ✅ Read at request time, not module load time
-      ...extraOrigins,
-    ].filter(Boolean);
-
-    // Allow Vercel preview and production domains to reduce deployment friction.
-    const isVercelOrigin = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
-
-    if (allowedOrigins.includes(origin) || isVercelOrigin) {
+    if (isAllowedOrigin(origin)) {
       return callback(null, true);
     }
-    console.warn("⚠️ CORS blocked origin:", origin, "| Allowed:", allowedOrigins);
+    console.warn("⚠️ CORS blocked origin:", origin);
     return callback(new Error("Not allowed by CORS"), false);
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
+  optionsSuccessStatus: 204,
 }));
+
+// Explicit preflight handling helps avoid route-level 404 on OPTIONS in some deployments.
+app.options(/.*/, (req, res) => {
+  const origin = req.headers.origin;
+
+  if (origin && isAllowedOrigin(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type,Authorization");
+  }
+
+  return res.status(204).end();
+});
 
 // ================= GENERAL MIDDLEWARE =================
 

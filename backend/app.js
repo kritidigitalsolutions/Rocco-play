@@ -3,8 +3,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 
-// ✅ Load env FIRST before anything else uses process.env
-require("dotenv").config();
+// ✅ NOTE: dotenv.config() is called in api/index.js BEFORE this module is required
+// Do NOT call it here — it would run before env vars are loaded in serverless context
 
 const app = express();
 
@@ -13,20 +13,23 @@ const app = express();
 // ✅ Helmet for security headers
 app.use(helmet());
 
-// ✅ CORS - locked down to allowed origins
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:3000",
-  process.env.FRONTEND_URL, // Set this in Vercel env vars
-].filter(Boolean);
-
+// ✅ CORS - origins evaluated LAZILY per-request so env vars are always available
+// Do NOT pre-build the allowedOrigins array at module load time (env not ready yet)
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (Postman, mobile apps, server-to-server)
+    // Allow requests with no origin (curl, Postman, mobile apps)
     if (!origin) return callback(null, true);
+
+    const allowedOrigins = [
+      "http://localhost:5173",
+      "http://localhost:3000",
+      process.env.FRONTEND_URL, // ✅ Read at request time, not module load time
+    ].filter(Boolean);
+
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
+    console.warn("⚠️ CORS blocked origin:", origin, "| Allowed:", allowedOrigins);
     return callback(new Error("Not allowed by CORS"), false);
   },
   credentials: true,

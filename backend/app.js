@@ -7,6 +7,11 @@ const morgan = require('morgan');
 
 const app = express();
 
+const mountRoute = (path, router) => {
+  app.use(path, router);
+  app.use(`/api${path}`, router);
+};
+
 // ================= SECURITY MIDDLEWARE =================
 
 // ✅ Helmet for security headers
@@ -69,78 +74,78 @@ app.get("/", (req, res) => {
 // ================= ADMIN AUTH =================
 
 const adminAuthRoutes = require('./routes/admin/auth.routes');
-app.use('/admin/auth', adminAuthRoutes);
+mountRoute('/admin/auth', adminAuthRoutes);
 
 // ================= USER ROUTES =================
 
 const userAuthRoutes = require('./routes/user/auth.routes');
 const userProfileRoutes = require('./routes/user/user.routes');
-app.use('/user', userProfileRoutes);
-app.use('/user/auth', userAuthRoutes);
+mountRoute('/user', userProfileRoutes);
+mountRoute('/user/auth', userAuthRoutes);
 
 // ================= LEGAL =================
 
 const legalRoutes = require('./routes/admin/legal.routes');
 const userLegalRoutes = require('./routes/user/legal.routes');
-app.use('/admin/legal', legalRoutes);
-app.use('/user/legal', userLegalRoutes);
+mountRoute('/admin/legal', legalRoutes);
+mountRoute('/user/legal', userLegalRoutes);
 
 // ================= HELP =================
 
 const helpRoutes = require('./routes/admin/help.routes');
 const userHelpRoutes = require('./routes/user/help.routes');
-app.use('/admin/help', helpRoutes);
-app.use('/help', userHelpRoutes);
+mountRoute('/admin/help', helpRoutes);
+mountRoute('/help', userHelpRoutes);
 
 // ================= CONTENT =================
 
 const movieRoutes = require("./routes/admin/movie.routes");
 const seriesRoutes = require("./routes/admin/series.routes");
 const episodeRoutes = require("./routes/admin/episode.routes");
-app.use("/movies", movieRoutes);
-app.use("/series", seriesRoutes);
-app.use("/episodes", episodeRoutes);
+mountRoute("/movies", movieRoutes);
+mountRoute("/series", seriesRoutes);
+mountRoute("/episodes", episodeRoutes);
 
 // ================= USER CONTENT =================
 
 const userContentRoutes = require("./routes/user/content.routes");
-app.use("/content", userContentRoutes);
+mountRoute("/content", userContentRoutes);
 
 // ================= WATCHLIST =================
 
 const watchlistRoutes = require("./routes/user/watchlist.routes");
-app.use("/user/watchlist", watchlistRoutes);
+mountRoute("/user/watchlist", watchlistRoutes);
 
 // ================= SUBSCRIPTION =================
 
 const subscriptionRoutes = require("./routes/user/subscription.routes");
-app.use("/subscription", subscriptionRoutes);
+mountRoute("/subscription", subscriptionRoutes);
 
 // ================= INTERACTION =================
 
 const interactionRoutes = require("./routes/user/interaction.routes");
-app.use("/interaction", interactionRoutes);
+mountRoute("/interaction", interactionRoutes);
 
 // ================= RATING =================
 
-app.use("/rating", require("./routes/user/rating.routes"));
+mountRoute("/rating", require("./routes/user/rating.routes"));
 
 // ================= PLANS =================
 
-app.use("/admin/plans", require("./routes/admin/plan.routes"));
-app.use("/plans", require("./routes/user/plan.routes"));
+mountRoute("/admin/plans", require("./routes/admin/plan.routes"));
+mountRoute("/plans", require("./routes/user/plan.routes"));
 
 // ================= ADMIN SUBSCRIPTION =================
 
-app.use("/admin/subscription", require("./routes/admin/subscription.routes"));
+mountRoute("/admin/subscription", require("./routes/admin/subscription.routes"));
 
 // ================= USER GROWTH =================
 
-app.use("/admin/user", require("./routes/user/user.routes"));
+mountRoute("/admin/user", require("./routes/user/user.routes"));
 
 // ================= CONTENT COUNT =================
 
-app.use("/admin/content", require("./routes/admin/content.routes"));
+mountRoute("/admin/content", require("./routes/admin/content.routes"));
 
 // ================= GLOBAL ERROR HANDLER =================
 

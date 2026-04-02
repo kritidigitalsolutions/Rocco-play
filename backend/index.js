@@ -5,6 +5,7 @@ const serverless = require("serverless-http");
 const mongoose = require("mongoose");
 const app = require("./app");
 const connectDB = require("./config/db");
+const ensureDefaultAdmin = require("./utils/ensureDefaultAdmin");
 
 const connectDatabase = async () => {
   if (mongoose.connection.readyState === 1) {
@@ -17,6 +18,8 @@ const connectDatabase = async () => {
       setTimeout(() => reject(new Error("DB connection timeout after 8s")), 8000)
     ),
   ]);
+
+  await ensureDefaultAdmin();
 };
 
 const toPathname = (url = "") => url.split("?")[0] || "/";

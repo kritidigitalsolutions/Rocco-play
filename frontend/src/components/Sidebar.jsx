@@ -24,7 +24,7 @@ const NAV = [
 
   // 💳 NEW
   { id: "plans",       label: "Subscription Plans", icon: CreditCard, color: "#ec4899" },
-  { id: "pricing",     label: "Pricing",          icon: CreditCard, color: "#ec4899" },
+  { id: "pricing",     label: "User Plan",          icon: CreditCard, color: "#ec4899" },
 
   { id: "legal",       label: "Legal",            icon: FileText, color: "#8b5cf6" },
   { id: "help",        label: "Help Center",      icon: HelpCircle, color: "#06b6d4" },

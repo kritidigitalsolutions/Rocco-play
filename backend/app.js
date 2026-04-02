@@ -36,7 +36,10 @@ app.use(cors({
       ...extraOrigins,
     ].filter(Boolean);
 
-    if (allowedOrigins.includes(origin)) {
+    // Allow Vercel preview and production domains to reduce deployment friction.
+    const isVercelOrigin = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
+
+    if (allowedOrigins.includes(origin) || isVercelOrigin) {
       return callback(null, true);
     }
     console.warn("⚠️ CORS blocked origin:", origin, "| Allowed:", allowedOrigins);

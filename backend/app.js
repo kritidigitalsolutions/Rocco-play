@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-// ✅ NOTE: dotenv.config() is called in api/index.js BEFORE this module is required
+// ✅ NOTE: dotenv.config() is called in index.js BEFORE this module is required
 // Do NOT call it here — it would run before env vars are loaded in serverless context
 
 const app = express();

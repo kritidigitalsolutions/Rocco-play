@@ -1,9 +1,9 @@
 const Movie = require("../../models/movie.model");
 const Series = require("../../models/series.model");
-// const uploadFileOnBunny = require("../../cdn/bunnyCDN");
+const path = require("path");
 
 const uploadToBunny = require("../../utils/bunnyUpload");
-const fs = require("fs");
+// ✅ No fs required - using memoryStorage (files are Buffer, not disk files)
 
 // ➕ Add Movie (Admin)
 const addMovie = async (req, res) => {
@@ -31,72 +31,51 @@ const addMovie = async (req, res) => {
 
     // 🖼️ Upload Poster
     if (posterFile) {
-      // ❌ OLD CODE
-      // posterUrl = await uploadToBunny(posterFile.path, posterFile.filename);
-      // fs.unlinkSync(posterFile.path);
-
-    // ❌ OLD
-// const uploadedPoster = await uploadToBunny(posterFile.path, posterFile.filename);
-
-// ✅ NEW
-const uploadedPoster = await uploadToBunny(
-  posterFile.path,
-  posterFile.filename,
-  "posters"
-);
+      const posterFileName = `${Date.now()}-poster${path.extname(posterFile.originalname)}`;
+      const uploadedPoster = await uploadToBunny(
+        posterFile.buffer,  // ✅ memoryStorage uses .buffer
+        posterFileName,
+        "posters"
+      );
 
       if (!uploadedPoster) {
-        return res.status(500).json({
-          message: "Poster upload failed ❌"
-        });
+        return res.status(500).json({ message: "Poster upload failed ❌" });
       }
 
       posterUrl = uploadedPoster;
-      fs.unlinkSync(posterFile.path);
+      // ✅ No fs.unlinkSync needed - no disk file created
     }
 
     // 🖼️ Upload Banner
     if (bannerFile) {
-      // ❌ OLD CODE
-      // bannerUrl = await uploadToBunny(bannerFile.path, bannerFile.filename);
-      // fs.unlinkSync(bannerFile.path);
-
-      // ❌ OLD
-// const uploadedBanner = await uploadToBunny(bannerFile.path, bannerFile.filename);
-
-// ✅ NEW
-const uploadedBanner = await uploadToBunny(
-  bannerFile.path,
-  bannerFile.filename,
-  "banners"
-);
+      const bannerFileName = `${Date.now()}-banner${path.extname(bannerFile.originalname)}`;
+      const uploadedBanner = await uploadToBunny(
+        bannerFile.buffer,  // ✅ memoryStorage uses .buffer
+        bannerFileName,
+        "banners"
+      );
 
       if (!uploadedBanner) {
-        return res.status(500).json({
-          message: "Banner upload failed ❌"
-        });
+        return res.status(500).json({ message: "Banner upload failed ❌" });
       }
 
       bannerUrl = uploadedBanner;
-      fs.unlinkSync(bannerFile.path);
     }
 
-    // � Upload Trailer
+    // 🎬 Upload Trailer
     if (trailerFile) {
+      const trailerFileName = `${Date.now()}-trailer${path.extname(trailerFile.originalname)}`;
       const uploadedTrailer = await uploadToBunny(
-        trailerFile.path,
-        trailerFile.filename,
+        trailerFile.buffer,  // ✅ memoryStorage uses .buffer
+        trailerFileName,
         "trailers"
       );
 
       if (!uploadedTrailer) {
-        return res.status(500).json({
-          message: "Trailer upload failed ❌"
-        });
+        return res.status(500).json({ message: "Trailer upload failed ❌" });
       }
 
       trailerUrl = uploadedTrailer;
-      fs.unlinkSync(trailerFile.path);
     }
 
     // �🎥 Upload Video
@@ -158,19 +137,18 @@ const castFiles = Object.keys(req.files || {}).filter(key =>
 for (let key of castFiles) {
   const index = key.split("_")[1];
   const file = req.files[key][0];
+  const castFileName = `${Date.now()}-cast-${index}${path.extname(file.originalname)}`;
 
   const uploaded = await uploadToBunny(
-    file.path,
-    file.filename,
-    "cast" // for movie
-    // "series/cast" for series controller
+    file.buffer,  // ✅ memoryStorage uses .buffer
+    castFileName,
+    "cast"
   );
 
   if (uploaded && cast[index]) {
     cast[index].image = uploaded;
   }
-
-  fs.unlinkSync(file.path);
+  // ✅ No fs.unlinkSync needed
 }
     // 💾 Save to DB
     const movie = new Movie({
@@ -315,42 +293,30 @@ const updateMovieBySlug = async (req, res) => {
       });
     }
 
-    // 📂 FILES
+    // 📂 FILES (from memoryStorage - files are Buffer)
     const posterFile = req.files?.poster?.[0];
     const bannerFile = req.files?.banner?.[0];
     const videoFile = req.files?.video?.[0];
 
     // 🖼️ Poster Update
     if (posterFile) {
-      const uploadedPoster = await uploadToBunny(
-        posterFile.path,
-        posterFile.filename,
-        "posters"
-      );
-      movie.poster = uploadedPoster;
-      fs.unlinkSync(posterFile.path);
+      const posterFileName = `${Date.now()}-poster${path.extname(posterFile.originalname)}`;
+      const uploadedPoster = await uploadToBunny(posterFile.buffer, posterFileName, "posters");
+      if (uploadedPoster) movie.poster = uploadedPoster;
     }
 
     // 🖼️ Banner Update
     if (bannerFile) {
-      const uploadedBanner = await uploadToBunny(
-        bannerFile.path,
-        bannerFile.filename,
-        "banners"
-      );
-      movie.banner = uploadedBanner;
-      fs.unlinkSync(bannerFile.path);
+      const bannerFileName = `${Date.now()}-banner${path.extname(bannerFile.originalname)}`;
+      const uploadedBanner = await uploadToBunny(bannerFile.buffer, bannerFileName, "banners");
+      if (uploadedBanner) movie.banner = uploadedBanner;
     }
 
     // 🎥 Video Update
     if (videoFile) {
-      const uploadedVideo = await uploadToBunny(
-        videoFile.path,
-        videoFile.filename,
-        "videos"
-      );
-      movie.videoUrl = uploadedVideo;
-      fs.unlinkSync(videoFile.path);
+      const videoFileName = `${Date.now()}-video${path.extname(videoFile.originalname)}`;
+      const uploadedVideo = await uploadToBunny(videoFile.buffer, videoFileName, "videos");
+      if (uploadedVideo) movie.videoUrl = uploadedVideo;
     }
 
     // 🔄 Update normal fields

@@ -1,3 +1,6 @@
+// ✅ Load env vars first in serverless context
+require("dotenv").config();
+
 const serverless = require("serverless-http");
 const app = require("../app");
 const connectDB = require("../config/db");
@@ -8,7 +11,7 @@ const connectDatabase = async () => {
   if (!isConnected) {
     await connectDB();
     isConnected = true;
-    console.log("✅ DB Connected");
+    console.log("✅ DB Connected (serverless)");
   }
 };
 

@@ -1,86 +1,8 @@
-// const multer = require("multer");
-// const path = require("path");
-
-// // ✅ Storage (disk)
-// const storage = multer.diskStorage({
-//   destination: (req, file, cb) => {
-//     cb(null, "uploads/"); // make sure this folder exists
-//   },
-//   filename: (req, file, cb) => {
-//     cb(null, Date.now() + path.extname(file.originalname));
-//   }
-// });
-
-// // ✅ Smart File Filter (Images + Videos)
-// const fileFilter = (req, file, cb) => {
-//   const imageTypes = [
-//     "image/jpeg",
-//     "image/png",
-//     "image/jpg",
-//     "image/webp"
-//   ];
-
-//   const videoTypes = [
-//     "video/mp4",
-//     "video/mkv",
-//     "video/webm",
-//     "video/mpeg",
-//     "video/quicktime",
-//     "video/x-msvideo",
-//     "video/x-matroska",
-//     "video/x-flv",
-//     "video/x-ms-wmv", "application/octet-stream" 
-//   ];
-
-//   // 🎯 Field-based validation
-//   if (file.fieldname === "poster" || file.fieldname === "banner") {
-//     if (imageTypes.includes(file.mimetype)) {
-//       cb(null, true);
-//     } else {
-//       cb(
-//         new Error(`Only image files allowed for poster/banner. Got: ${file.mimetype}`),
-//         false
-//       );
-//     }
-//   } 
-//   else if (file.fieldname === "video" || file.fieldname === "trailer")  {
-//     if (videoTypes.includes(file.mimetype)) {
-//       cb(null, true);
-//     } else {
-//       cb(
-//         new Error(`Only video files allowed for video. Got: ${file.mimetype}`),
-//         false
-//       );
-//     }
-//   } 
-//   else {
-//     cb(new Error(`Unknown field: ${file.fieldname}`), false);
-//   }
-// };
-
-// // ✅ Multer instance
-// const videoUpload = multer({
-//   storage,
-//   fileFilter,
-//   limits: {
-//     fileSize: 500 * 1024 * 1024 // 500MB
-//   }
-// });
-
-// module.exports = videoUpload;
-
 const multer = require("multer");
-const path = require("path");
 
-// ✅ Storage (disk)
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/");
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
-});
+// ✅ Use memoryStorage for Vercel (no persistent disk in serverless)
+// Files are buffered in memory and then uploaded to BunnyCDN
+const storage = multer.memoryStorage();
 
 // ✅ Smart File Filter (Images + Videos)
 const fileFilter = (req, file, cb) => {
@@ -88,7 +10,7 @@ const fileFilter = (req, file, cb) => {
     "image/jpeg",
     "image/png",
     "image/jpg",
-    "image/webp"
+    "image/webp",
   ];
 
   const videoTypes = [
@@ -101,18 +23,15 @@ const fileFilter = (req, file, cb) => {
     "video/x-matroska",
     "video/x-flv",
     "video/x-ms-wmv",
-    "application/octet-stream"
+    "application/octet-stream",
   ];
 
-  // 🎯 Poster / Banner
+  // 🎭 Poster / Banner
   if (file.fieldname === "poster" || file.fieldname === "banner") {
     if (imageTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(
-        new Error(`Only image files allowed for poster/banner. Got: ${file.mimetype}`),
-        false
-      );
+      cb(new Error(`Only image files allowed for poster/banner. Got: ${file.mimetype}`), false);
     }
   }
 
@@ -121,32 +40,27 @@ const fileFilter = (req, file, cb) => {
     if (videoTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(
-        new Error(`Only video files allowed. Got: ${file.mimetype}`),
-        false
-      );
+      cb(new Error(`Only video files allowed. Got: ${file.mimetype}`), false);
     }
   }
 
-  // 🆕 🎭 Cast Images (THIS IS WHAT YOU WERE MISSING 🔥)
+  // 🎭 Cast Images
   else if (file.fieldname.startsWith("castImage_")) {
     if (imageTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(
-        new Error(`Only image files allowed for cast. Got: ${file.mimetype}`),
-        false
-      );
+      cb(new Error(`Only image files allowed for cast. Got: ${file.mimetype}`), false);
     }
   }
+
   // ✅ Profile Image Upload
-else if (file.fieldname === "profileImage") {
-  if (imageTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error("Only image allowed for profileImage"), false);
+  else if (file.fieldname === "profileImage") {
+    if (imageTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only image allowed for profileImage"), false);
+    }
   }
-}
 
   // ❌ Unknown field
   else {
@@ -154,16 +68,13 @@ else if (file.fieldname === "profileImage") {
   }
 };
 
-// ✅ Multer instance
+// ✅ Multer instance with memory storage
 const videoUpload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 500 * 1024 * 1024
-  }
-
+    fileSize: 500 * 1024 * 1024, // 500MB
+  },
 });
-
-
 
 module.exports = videoUpload;

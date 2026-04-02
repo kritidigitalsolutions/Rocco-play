@@ -101,7 +101,7 @@ const uploadedVideo = await uploadToBunny(
       }
 
       videoUrl = uploadedVideo;
-      fs.unlinkSync(videoFile.path);
+      // ✅ No fs.unlinkSync needed - no disk file created
     }
       
     // if (!videoUrl) {

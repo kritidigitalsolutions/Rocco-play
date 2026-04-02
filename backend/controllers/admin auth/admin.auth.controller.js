@@ -4,14 +4,20 @@ const jwt = require('jsonwebtoken');
 const nodemailer = require("nodemailer");
 const Otp = require('../../models/otp.model'); // 🔥 NEW
 
-// ✅ Transporter (simplified)
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+// ✅ Lazy transporter factory — created per-call so env vars are always available
+// Do NOT initialize at module load time (env vars not ready on Vercel cold start)
+const getTransporter = () => {
+  if (!process.env.EMAIL || !process.env.EMAIL_PASS) {
+    throw new Error("EMAIL and EMAIL_PASS environment variables are not set");
+  }
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+};
 
 // ✅ Generate JWT Token
 const generateToken = (admin) => {
@@ -201,7 +207,7 @@ exports.sendOtp = async (req, res) => {
 
     // 🔥 SEND LOGIC
     if (type === "email") {
-      await transporter.sendMail({
+      await getTransporter().sendMail({
         from: `"RoccoPlay" <${process.env.EMAIL}>`,
         to: normalizedIdentifier,
         subject: "Password Reset OTP",
@@ -410,7 +416,7 @@ exports.sendEmailOtp = async (req, res) => {
       { upsert: true }
     );
 
-    await transporter.sendMail({
+    await getTransporter().sendMail({
       to: newEmail,
       subject: "OTP",
       html: `<h1>${otp}</h1>`

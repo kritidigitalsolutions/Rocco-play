@@ -1,17 +1,14 @@
 const User = require("../models/user.model");
 const jwt = require("jsonwebtoken");
 const uploadToBunny = require("../utils/bunnyUpload");
-const fs = require("fs");
+// ✅ No fs needed — using memoryStorage (files are Buffer, not disk files)
 
 // GET USER PROFILE
 exports.getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id)
-      .select("-__v -createdAt -updatedAt");
+    const user = await User.findById(req.user.id).select("-__v -createdAt -updatedAt");
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     res.status(200).json({ user });
 
@@ -26,33 +23,22 @@ exports.completeProfile = async (req, res) => {
   try {
     const { name, email, phone } = req.body;
 
-    if (!phone) {
-      return res.status(400).json({ message: "Phone is required" });
-    }
+    if (!phone) return res.status(400).json({ message: "Phone is required" });
 
     let formattedPhone = phone.startsWith("+") ? phone : "+91" + phone;
-
     let user = await User.findOne({ phone: formattedPhone });
 
-    // ✅ IMAGE UPLOAD TO BUNNY
+    // ✅ IMAGE UPLOAD TO BUNNY (memoryStorage)
     let profileImage = "";
 
     if (req.files && req.files.length > 0) {
       const file = req.files.find(f => f.fieldname === "profileImage");
 
       if (file) {
-        const filePath = file.path;
         const fileName = `user_${Date.now()}_${file.originalname}`;
-
-        const uploadedUrl = await uploadToBunny(
-          filePath,
-          fileName,
-          "user-profile"
-        );
-
-        fs.unlinkSync(filePath);
-
-        profileImage = uploadedUrl;
+        const uploadedUrl = await uploadToBunny(file.buffer, fileName, "user-profile");
+        // ✅ No fs.unlinkSync needed
+        if (uploadedUrl) profileImage = uploadedUrl;
       }
     }
 
@@ -62,24 +48,17 @@ exports.completeProfile = async (req, res) => {
         name,
         email,
         profileImage,
-        profileComplete: true
+        profileComplete: true,
       });
     } else {
       const token = jwt.sign(
-        {
-          id: user._id,
-          phone: user.phone,
-          role: "USER"
-        },
+        { id: user._id, phone: user.phone, role: "USER" },
         process.env.JWT_SECRET,
         { expiresIn: "7d" }
       );
 
       if (user.profileComplete) {
-        return res.status(400).json({
-          message: "Profile already completed",
-          token
-        });
+        return res.status(400).json({ message: "Profile already completed", token });
       }
 
       if (name) user.name = name;
@@ -87,14 +66,10 @@ exports.completeProfile = async (req, res) => {
       if (profileImage) user.profileImage = profileImage;
 
       user.profileComplete = true;
-
       await user.save();
     }
 
-    res.status(200).json({
-      message: "Profile completed successfully",
-      user
-    });
+    res.status(200).json({ message: "Profile completed successfully", user });
 
   } catch (error) {
     console.error("Error in completing user profile:", error);
@@ -108,41 +83,27 @@ exports.updateProfile = async (req, res) => {
     const { name, email } = req.body;
 
     const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     if (name) user.name = name;
     if (email) user.email = email;
 
-    // ✅ IMAGE UPDATE WITH BUNNY
+    // ✅ IMAGE UPDATE WITH BUNNY (memoryStorage)
     if (req.files && req.files.length > 0) {
       const file = req.files.find(f => f.fieldname === "profileImage");
 
       if (file) {
-        const filePath = file.path;
         const fileName = `user_${Date.now()}_${file.originalname}`;
-
-        const uploadedUrl = await uploadToBunny(
-          filePath,
-          fileName,
-          "user-profile"
-        );
-
-        fs.unlinkSync(filePath);
-
-        user.profileImage = uploadedUrl;
+        const uploadedUrl = await uploadToBunny(file.buffer, fileName, "user-profile");
+        // ✅ No fs.unlinkSync needed
+        if (uploadedUrl) user.profileImage = uploadedUrl;
       }
     }
 
     user.profileComplete = true;
-
     await user.save();
 
-    res.status(200).json({
-      message: "Profile updated successfully",
-      user
-    });
+    res.status(200).json({ message: "Profile updated successfully", user });
 
   } catch (error) {
     console.error("Error in updating user profile:", error);
@@ -155,10 +116,7 @@ exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select("-__v");
 
-    res.status(200).json({
-      success: true,
-      data: users
-    });
+    res.status(200).json({ success: true, data: users });
 
   } catch (error) {
     console.error("Error in getting users:", error);

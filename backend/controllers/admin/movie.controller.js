@@ -14,6 +14,22 @@ const sanitizeMediaUrl = (value = "") => {
   return trimmed;
 };
 
+const MAX_MEDIA_FIELD_LENGTH = 2000;
+
+const normalizeMediaField = (value = "") => {
+  const sanitized = sanitizeMediaUrl(value);
+  if (!sanitized) return "";
+  return sanitized.length > MAX_MEDIA_FIELD_LENGTH ? "" : sanitized;
+};
+
+const toSafeMoviePayload = (movie = {}) => ({
+  ...movie,
+  poster: normalizeMediaField(movie.poster),
+  banner: normalizeMediaField(movie.banner),
+  trailerUrl: normalizeMediaField(movie.trailerUrl),
+  videoUrl: normalizeMediaField(movie.videoUrl),
+});
+
 const projectMovieListFields = {
   title: 1,
   slug: 1,
@@ -226,7 +242,7 @@ const getAllMovies = async (req, res) => {
     res.json({
       success: true,
       count: movies.length,
-      data: movies
+      data: movies.map(toSafeMoviePayload)
     });
   } catch (error) {
     res.status(500).json({
@@ -249,7 +265,7 @@ const getMovieBySlug = async (req, res) => {
 
     res.json({
       success: true,
-      data: movie
+      data: toSafeMoviePayload(movie)
     });
   } catch (error) {
     res.status(500).json({
@@ -270,7 +286,7 @@ const getMoviesByCategory = async (req, res) => {
 
     res.json({
       success: true,
-      data: movies
+      data: movies.map(toSafeMoviePayload)
     });
   } catch (error) {
     res.status(500).json({
@@ -352,7 +368,14 @@ const updateMovieBySlug = async (req, res) => {
 
     // 🔄 Update normal fields
     Object.keys(req.body).forEach((key) => {
-      movie[key] = req.body[key];
+      const value = req.body[key];
+
+      if (["poster", "banner", "trailerUrl", "videoUrl"].includes(key)) {
+        movie[key] = normalizeMediaField(value);
+        return;
+      }
+
+      movie[key] = value;
     });
 
     await movie.save();
@@ -415,7 +438,7 @@ const searchMovies = async (req, res) => {
     res.json({
       success: true,
       count: movies.length,
-      data: movies
+      data: movies.map(toSafeMoviePayload)
     });
   } catch (error) {
     res.status(500).json({

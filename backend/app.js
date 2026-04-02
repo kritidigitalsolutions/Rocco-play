@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const connectDB = require('./config/db');
 // ✅ NOTE: dotenv.config() is called in index.js BEFORE this module is required
 // Do NOT call it here — it would run before env vars are loaded in serverless context
 
@@ -77,6 +78,30 @@ if (process.env.NODE_ENV !== "test") {
   app.use(morgan("combined"));
 }
 
+// Ensure DB is ready before executing API handlers.
+// This prevents intermittent serverless race conditions under concurrent requests.
+app.use(async (req, res, next) => {
+  if (req.method === "OPTIONS") {
+    return next();
+  }
+
+  if (req.path === "/" || req.path === "/favicon.ico" || req.path === "/favicon.png") {
+    return next();
+  }
+
+  try {
+    await connectDB();
+    return next();
+  } catch (error) {
+    console.error("DB middleware error:", error.message);
+    return res.status(503).json({
+      success: false,
+      message: "Database unavailable",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+});
+
 // ✅ NOTE: /uploads static serving is disabled on Vercel (serverless has no persistent disk).
 // Files are uploaded to BunnyCDN and served via CDN URL instead.
 // app.use("/uploads", express.static("uploads")); // ← not needed on Vercel
@@ -89,6 +114,10 @@ app.get("/", (req, res) => {
     version: "1.0.0",
     environment: process.env.NODE_ENV || "development",
   });
+});
+
+app.get(["/favicon.ico", "/favicon.png"], (req, res) => {
+  res.status(204).end();
 });
 
 // ================= ADMIN AUTH =================

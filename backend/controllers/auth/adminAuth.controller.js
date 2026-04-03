@@ -429,27 +429,67 @@ exports.resetPassword = async (req, res) => {
 };
 
 // ================= EMAIL OTP =================
+// exports.sendEmailOtp = async (req, res) => {
+//   try {
+//     const { newEmail } = req.body;
+
+//     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+//     await Otp.findOneAndUpdate(
+//       { identifier: newEmail, type: "email-change" },
+//       { otp, expiresAt: Date.now() + 5 * 60 * 1000 },
+//       { upsert: true }
+//     );
+
+//     await getTransporter().sendMail({
+//       to: newEmail,
+//       subject: "OTP",
+//       html: `<h1>${otp}</h1>`
+//     });
+
+//     res.json({ message: "OTP sent" });
+
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
 exports.sendEmailOtp = async (req, res) => {
   try {
+    const admin = await Admin.findById(req.user.id);
+
+    if (!admin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
     const { newEmail } = req.body;
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
+    // 🔥 Save OTP against NEW EMAIL (for later verification)
     await Otp.findOneAndUpdate(
       { identifier: newEmail, type: "email-change" },
       { otp, expiresAt: Date.now() + 5 * 60 * 1000 },
       { upsert: true }
     );
 
+    // ✅ SEND OTP TO OLD EMAIL (CURRENT EMAIL)
     await getTransporter().sendMail({
-      to: newEmail,
-      subject: "OTP",
-      html: `<h1>${otp}</h1>`
+      to: admin.email, // 🔥 IMPORTANT CHANGE
+      subject: "Confirm Email Change",
+      html: `
+        <h2>RoccoPlay Email Change Request</h2>
+        <p>You requested to change your email to:</p>
+        <b>${newEmail}</b>
+        <p>Your OTP is:</p>
+        <h1 style="color:#e50914;">${otp}</h1>
+        <p>If this was not you, ignore this email.</p>
+      `
     });
 
-    res.json({ message: "OTP sent" });
+    res.json({ message: "OTP sent to your current email 📩" });
 
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: err.message });
   }
 };

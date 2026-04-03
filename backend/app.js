@@ -196,6 +196,11 @@ mountRoute("/admin/user", require("./routes/user/user.routes"));
 
 mountRoute("/admin/content", require("./routes/admin/content.routes"));
 
+const searchRoutes = require("./routes/admin/search.routes");
+
+// app.use("/api/admin", searchRoutes); 
+mountRoute("/admin", searchRoutes);
+
 // ================= GLOBAL ERROR HANDLER =================
 
 app.use((err, req, res, next) => {
@@ -215,6 +220,8 @@ app.use((req, res) => {
     message: `Route ${req.method} ${req.path} not found`,
   });
 });
+
+
 
 // ================= EXPORT =================
 

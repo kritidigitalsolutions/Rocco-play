@@ -6,7 +6,7 @@ const videoUpload = require("../../middlewares/videoUpload.middleware");
 const {
   addEpisode,
   getEpisodes,
-  playEpisode,updateEpisode,deleteEpisode
+  playEpisode, updateEpisode, deleteEpisode
 } = require("../../controllers/admin/episode.controller");
 
 const auth = require("../../middlewares/auth.middleware");
@@ -42,5 +42,31 @@ router.put(
 
 // ❌ Delete episode
 router.delete("/:id", auth, admin, deleteEpisode);
+
+// ❌ Delete all episodes in a season
+router.delete("/season/:seriesId/:seasonNumber", auth, admin, async (req, res) => {
+  try {
+    const Episode = require("../../models/episode.model");
+    const { seriesId, seasonNumber } = req.params;
+    const result = await Episode.deleteMany({ seriesId, seasonNumber: Number(seasonNumber) });
+
+    // Recalculate max season
+    try {
+      const Series = require("../../models/series.model");
+      const maxSeasonAgg = await Episode.aggregate([
+        { $match: { seriesId: new require("mongoose").Types.ObjectId(seriesId) } },
+        { $group: { _id: null, maxSeason: { $max: "$seasonNumber" } } }
+      ]);
+      const maxSeason = maxSeasonAgg.length > 0 ? maxSeasonAgg[0].maxSeason : 0;
+      await Series.findByIdAndUpdate(seriesId, { totalSeasons: maxSeason });
+    } catch (ignoreErr) {
+      // ignore
+    }
+
+    res.json({ message: `Season ${seasonNumber} deleted — ${result.deletedCount} episodes removed` });
+  } catch (err) {
+    res.status(500).json({ message: "Error deleting season", error: err.message });
+  }
+});
 
 module.exports = router;

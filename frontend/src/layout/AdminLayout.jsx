@@ -29,7 +29,7 @@ export default function AdminLayout() {
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} theme={theme} />
 
       <div className="page-shell">
-        <Topbar theme={theme} toggleTheme={toggleTheme} />
+        <Topbar theme={theme} toggleTheme={toggleTheme} setActiveTab={setActiveTab}/>
 
         <main className="page-body">
           {activeTab === "dashboard"   && <DashboardHome />}

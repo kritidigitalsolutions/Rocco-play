@@ -9,19 +9,20 @@ const EMPTY_FORM = {
   rating: "", videoUrl: "", trailerUrl: "", poster: "", banner: "",
   isPremium: false,
   isComingSoon: false,
-releaseDate: "",
+  releaseDate: "",
   cast: [{ name: "", image: "" }],
   seasons: [],
 };
 
 export default function AddContent() {
-  const [form, setForm]     = useState(EMPTY_FORM);
+  const [form, setForm] = useState(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
   const [videoFile, setVideoFile] = useState(null);
   const [posterFile, setPosterFile] = useState(null);
   const [bannerFile, setBannerFile] = useState(null);
   const [trailerFile, setTrailerFile] = useState(null);
   const [episodeVideoFiles, setEpisodeVideoFiles] = useState({});
+  const [castFiles, setCastFiles] = useState({});     
 
   const ch = (e) => {
     const { name, value, type, checked } = e.target;
@@ -43,6 +44,7 @@ export default function AddContent() {
       setPosterFile(file);
     }
   };
+
 
   const handleBannerFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -72,7 +74,18 @@ export default function AddContent() {
     }
   };
 
-  const addCast    = () => setForm(f => ({ ...f, cast: [...f.cast, { name: "", image: "" }] }));
+  const handleCastFileChange = (index, e) => {
+  const file = e.target.files?.[0];
+  if (file) {
+    console.log(`Cast image selected for ${index}:`, file.name);
+
+    setCastFiles(prev => ({
+      ...prev,
+      [index]: file
+    }));
+  }
+};
+  const addCast = () => setForm(f => ({ ...f, cast: [...f.cast, { name: "", image: "" }] }));
   const removeCast = (i) => setForm(f => ({ ...f, cast: f.cast.filter((_, j) => j !== i) }));
 
   const chCast = (i, field, val) => {
@@ -113,41 +126,57 @@ export default function AddContent() {
           formData.append("releaseYear", Number(form.releaseYear));
           formData.append("duration", form.duration);
           formData.append("genre", JSON.stringify(form.genre.split(",").map(s => s.trim()).filter(Boolean)));
-          formData.append("category", JSON.stringify(form.category.split(",").map(s => s.trim()).filter(Boolean)));
+          // formData.append("category", JSON.stringify(form.category.split(",").map(s => s.trim()).filter(Boolean)));
+          formData.append("category", JSON.stringify([form.category]));
           formData.append("rating", Number(form.rating));
           formData.append("isPremium", form.isPremium);
           formData.append("isComingSoon", form.isComingSoon);
-formData.append("releaseDate", form.releaseDate);
+          formData.append("releaseDate", form.releaseDate);
           // Add poster - file takes precedence over URL
           if (posterFile) {
             formData.append("poster", posterFile);
           } else if (form.poster) {
             formData.append("poster", form.poster);
           }
-          
+
           // Add banner - file takes precedence over URL
           if (bannerFile) {
             formData.append("banner", bannerFile);
           } else if (form.banner) {
             formData.append("banner", form.banner);
           }
-          
+
           // Add trailer - file takes precedence over URL
           if (trailerFile) {
             formData.append("trailer", trailerFile);
           } else if (form.trailerUrl) {
             formData.append("trailerUrl", form.trailerUrl);
           }
-          
-          formData.append("cast", JSON.stringify(form.cast));
-          
+
+          // formData.append("cast", JSON.stringify(form.cast));
+          // Prepare cast with placeholders
+const updatedCast = form.cast.map((c, i) => {
+  if (castFiles[i]) {
+    return { ...c, image: `cast_${i}` }; // placeholder
+  }
+  return c;
+});
+
+// Append cast JSON
+formData.append("cast", JSON.stringify(updatedCast));
+
+// Append cast files
+Object.keys(castFiles).forEach((key) => {
+  formData.append(`castImage_${key}`, castFiles[key]);
+});
+
           // Add video if file is selected
           if (videoFile) {
             formData.append("video", videoFile);
           } else if (form.videoUrl) {
             formData.append("videoUrl", form.videoUrl);
           }
-          
+
           await API.post("/movies/add", formData, {
             headers: { "Content-Type": "multipart/form-data" }
           });
@@ -158,7 +187,7 @@ formData.append("releaseDate", form.releaseDate);
             releaseYear: Number(form.releaseYear),
             rating: Number(form.rating),
             isComingSoon: form.isComingSoon,
-releaseDate: form.releaseDate,
+            releaseDate: form.releaseDate,
             genre: form.genre.split(",").map(s => s.trim()).filter(Boolean),
             category: form.category.split(",").map(s => s.trim()).filter(Boolean),
             videoUrl: form.videoUrl,
@@ -178,34 +207,35 @@ releaseDate: form.releaseDate,
           formData.append("releaseYear", Number(form.releaseYear));
           formData.append("duration", form.duration);
           formData.append("genre", JSON.stringify(form.genre.split(",").map(s => s.trim()).filter(Boolean)));
-          formData.append("category", JSON.stringify(form.category.split(",").map(s => s.trim()).filter(Boolean)));
+          // formData.append("category", JSON.stringify(form.category.split(",").map(s => s.trim()).filter(Boolean)));
+          formData.append("category", JSON.stringify([form.category]));
           formData.append("rating", Number(form.rating));
           formData.append("isPremium", form.isPremium);
           formData.append("isComingSoon", form.isComingSoon);
-formData.append("releaseDate", form.releaseDate);
+          formData.append("releaseDate", form.releaseDate);
           // Add poster - file takes precedence over URL
           if (posterFile) {
             formData.append("poster", posterFile);
           } else if (form.poster) {
             formData.append("poster", form.poster);
           }
-          
+
           // Add banner - file takes precedence over URL
           if (bannerFile) {
             formData.append("banner", bannerFile);
           } else if (form.banner) {
             formData.append("banner", form.banner);
           }
-          
+
           // Add trailer - file takes precedence over URL
           if (trailerFile) {
             formData.append("trailer", trailerFile);
           } else if (form.trailerUrl) {
             formData.append("trailerUrl", form.trailerUrl);
           }
-          
+
           formData.append("cast", JSON.stringify(form.cast));
-          
+
           const seriesResponse = await API.post("/series", formData, {
             headers: { "Content-Type": "multipart/form-data" }
           });
@@ -222,7 +252,7 @@ formData.append("releaseDate", form.releaseDate);
             rating: Number(form.rating),
             isPremium: form.isPremium,
             isComingSoon: form.isComingSoon,
-releaseDate: form.releaseDate,
+            releaseDate: form.releaseDate,
             poster: form.poster,
             banner: form.banner,
             trailerUrl: form.trailerUrl,
@@ -306,84 +336,95 @@ releaseDate: form.releaseDate,
             </select>
             <input className="form-input-styled" name="language" placeholder="Language (e.g. English)" onChange={ch} value={form.language} />
             <input className="form-input-styled" name="releaseYear" placeholder="Release Year" type="number" onChange={ch} value={form.releaseYear} />
-            <input className="form-input-styled" name="duration"    placeholder="Duration (e.g. 2h 15m)" onChange={ch} value={form.duration} />
-            <input className="form-input-styled" name="genre"       placeholder="Genres: Action, Drama" onChange={ch} value={form.genre} />
-            <input className="form-input-styled" name="category"    placeholder="Category: trending, top10" onChange={ch} value={form.category} />
-            <input className="form-input-styled" name="rating"      placeholder="Rating (e.g. 8.5)" type="number" step="0.1" onChange={ch} value={form.rating} />
+            <input className="form-input-styled" name="duration" placeholder="Duration (e.g. 2h 15m)" onChange={ch} value={form.duration} />
+            <input className="form-input-styled" name="genre" placeholder="Genres: Action, Drama" onChange={ch} value={form.genre} />
+            {/* <input className="form-input-styled" name="category" placeholder="Category: trending, top10" onChange={ch} value={form.category} /> */}
+            <select
+  className="form-input-styled"
+  name="category"
+  onChange={ch}
+  value={form.category}
+>
+  <option value="">Select Category</option>
+  <option value="trending">Trending</option>
+  <option value="top10">Top 10</option>
+  <option value="recommended">Recommended</option>
+</select>
+            <input className="form-input-styled" name="rating" placeholder="Rating (e.g. 8.5)" type="number" step="0.1" onChange={ch} value={form.rating} />
           </div>
 
-{/* ✅ FIXED Coming Soon + Premium */}
+          {/* ✅ FIXED Coming Soon + Premium */}
 
-<div style={{ display: "flex", alignItems: "center", gap: 20, marginTop: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 20, marginTop: 16 }}>
 
-  {/* 🚀 Coming Soon */}
-  <label className="checkbox-row">
-    <input
-      type="checkbox"
-      name="isComingSoon"
-      onChange={ch}
-      checked={form.isComingSoon}
-    />
-    <span>🚀 Coming Soon</span>
-  </label>
+            {/* 🚀 Coming Soon */}
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                name="isComingSoon"
+                onChange={ch}
+                checked={form.isComingSoon}
+              />
+              <span>🚀 Coming Soon</span>
+            </label>
 
-  {/* 🔒 Premium */}
-  <label className="checkbox-row">
-    <input
-      type="checkbox"
-      name="isPremium"
-      onChange={ch}
-      checked={form.isPremium}
-    />
-    <span>
-      <Lock size={16} style={{ marginRight: 6 }} />
-      Premium-only Content
-    </span>
-  </label>
+            {/* 🔒 Premium */}
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                name="isPremium"
+                onChange={ch}
+                checked={form.isPremium}
+              />
+              <span>
+                <Lock size={16} style={{ marginRight: 6 }} />
+                Premium-only Content
+              </span>
+            </label>
 
-</div>
+          </div>
 
-{/* 📅 DATE INPUT */}
-{form.isComingSoon && (
-  <div style={{ marginTop: 10 }}>
+          {/* 📅 DATE INPUT */}
+          {form.isComingSoon && (
+            <div style={{ marginTop: 10 }}>
 
-    <input
-      className="form-input-styled"
-      type="date"
-      name="releaseDate"
-      onChange={ch}
-      value={form.releaseDate}
-      required
-    />
+              <input
+                className="form-input-styled"
+                type="date"
+                name="releaseDate"
+                onChange={ch}
+                value={form.releaseDate}
+                required
+              />
 
-    {form.releaseDate && (
-      <p style={{ marginTop: 5, color: "#aaa" }}>
-        📅 Selected: {new Date(form.releaseDate).toLocaleDateString("en-IN", {
-          day: "numeric",
-          month: "long",
-          year: "numeric"
-        })}
-      </p>
-    )}
+              {form.releaseDate && (
+                <p style={{ marginTop: 5, color: "#aaa" }}>
+                  📅 Selected: {new Date(form.releaseDate).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric"
+                  })}
+                </p>
+              )}
 
-  </div>
-)}
+            </div>
+          )}
         </div>
 
         {/* Media URLs */}
         <div className="form-card">
           <h3><Image size={18} style={{ display: "inline-block", marginRight: 6 }} /> Media Assets</h3>
-          
+
           {/* Poster Section */}
           <div className="form-2col">
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}><Upload size={16} style={{ display: "inline-block", marginRight: 6 }} /> Poster Image</label>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input 
-                  type="file" 
-                  accept="image/*" 
+                <input
+                  type="file"
+                  accept="image/*"
                   onChange={handlePosterFileChange}
-                  style={{ padding: "8px", borderRadius: "8px", border: "1px solid var(--border)", flex: 1 }} 
+                  style={{ padding: "8px", borderRadius: "8px", border: "1px solid var(--border)", flex: 1 }}
                 />
                 {posterFile && <small style={{ color: "var(--green)", whiteSpace: "nowrap" }}>✓ {posterFile.name}</small>}
               </div>
@@ -396,11 +437,11 @@ releaseDate: form.releaseDate,
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}><Palette size={16} style={{ display: "inline-block", marginRight: 6 }} /> Banner Image</label>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input 
-                  type="file" 
-                  accept="image/*" 
+                <input
+                  type="file"
+                  accept="image/*"
                   onChange={handleBannerFileChange}
-                  style={{ padding: "8px", borderRadius: "8px", border: "1px solid var(--border)", flex: 1 }} 
+                  style={{ padding: "8px", borderRadius: "8px", border: "1px solid var(--border)", flex: 1 }}
                 />
                 {bannerFile && <small style={{ color: "var(--green)", whiteSpace: "nowrap" }}>✓ {bannerFile.name}</small>}
               </div>
@@ -413,11 +454,11 @@ releaseDate: form.releaseDate,
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}><Film size={16} style={{ display: "inline-block", marginRight: 6 }} /> Trailer Video</label>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input 
-                  type="file" 
-                  accept="video/*" 
+                <input
+                  type="file"
+                  accept="video/*"
                   onChange={handleTrailerFileChange}
-                  style={{ padding: "8px", borderRadius: "8px", border: "1px solid var(--border)", flex: 1 }} 
+                  style={{ padding: "8px", borderRadius: "8px", border: "1px solid var(--border)", flex: 1 }}
                 />
                 {trailerFile && <small style={{ color: "var(--green)", whiteSpace: "nowrap" }}>✓ {trailerFile.name}</small>}
               </div>
@@ -430,11 +471,11 @@ releaseDate: form.releaseDate,
             <div className="form-2col" style={{ marginTop: 16 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}><Play size={16} style={{ display: "inline-block", marginRight: 6 }} /> Movie Video</label>
-                <input 
-                  type="file" 
-                  accept="video/*" 
+                <input
+                  type="file"
+                  accept="video/*"
                   onChange={handleVideoFileChange}
-                  style={{ padding: "8px", borderRadius: "8px", border: "1px solid var(--border)" }} 
+                  style={{ padding: "8px", borderRadius: "8px", border: "1px solid var(--border)" }}
                 />
                 {videoFile && <small style={{ color: "var(--green)", marginTop: 4 }}>✓ {videoFile.name}</small>}
               </div>
@@ -444,17 +485,90 @@ releaseDate: form.releaseDate,
         </div>
 
         {/* Cast */}
-        <div className="form-card">
-          <h3><Users size={18} style={{ display: "inline-block", marginRight: 6 }} /> Cast Members</h3>
-          {form.cast.map((c, i) => (
-            <div key={i} className="cast-row-grid">
-              <input className="form-input-styled" placeholder="Actor name" value={c.name}  onChange={e => chCast(i, "name",  e.target.value)} />
-              <input className="form-input-styled" placeholder="Photo URL"  value={c.image} onChange={e => chCast(i, "image", e.target.value)} />
-              <button type="button" className="btn-sq" onClick={() => removeCast(i)}><X size={18} /></button>
-            </div>
-          ))}
-          <button type="button" className="btn btn-ghost" style={{ marginTop: 8 }} onClick={addCast}>+ Add Actor</button>
+        {/* Cast */}
+<div className="form-card">
+  <h3><Users size={18} style={{ display: "inline-block", marginRight: 6 }} /> Cast Members</h3>
+
+  {form.cast.map((c, i) => (
+    <div key={i} className="cast-row-grid">
+
+      {/* 👤 Name */}
+      <input
+        className="form-input-styled"
+        placeholder="Actor name"
+        value={c.name}
+        onChange={e => chCast(i, "name", e.target.value)}
+      />
+
+      {/* ❌ OLD WRONG INPUT (commented, not removed) */}
+      {/* <input className="form-input-styled" placeholder="Photo URL" value={c.image} onChange={e => chCast(i, "image", e.target.value)} /> */}
+
+      {/* ❌ OLD WRONG NESTED MAP (commented, not removed) */}
+      {/*
+      {form.cast.map((c, i) => (
+        <div key={i} className="cast-row-grid">
+      */}
+      
+      {/* ================== NEW CORRECT UI ================== */}
+
+      {/* 📁 Upload Image */}
+      <input
+        type="file"
+        accept="image/*"
+        onChange={(e) => handleCastFileChange(i, e)}
+        style={{ padding: "8px", borderRadius: "8px", border: "1px solid var(--border)" }}
+      />
+
+      {/* ✅ Show file name */}
+      {castFiles[i] && (
+        <div style={{ fontSize: "12px", color: "#22c55e" }}>
+          ✓ {castFiles[i].name}
         </div>
+      )}
+
+      {/* 🔗 URL (disabled if file selected) */}
+      <input
+        className="form-input-styled"
+        placeholder="OR Photo URL"
+        value={c.image}
+        onChange={e => chCast(i, "image", e.target.value)}
+        disabled={castFiles[i] ? true : false}
+      />
+
+      {/* ❌ OLD INNER BLOCK CLOSE (commented) */}
+      {/*
+        </div>
+      ))}
+      */}
+
+      {/* ❌ OLD REMOVE BUTTON (commented, duplicate) */}
+      {/*
+      <button type="button" className="btn-sq" onClick={() => removeCast(i)}>
+        <X size={18} />
+      </button>
+      */}
+
+      {/* ✅ FINAL REMOVE BUTTON */}
+      <button
+        type="button"
+        className="btn-sq"
+        onClick={() => removeCast(i)}
+      >
+        <X size={18} />
+      </button>
+
+    </div>
+  ))}
+
+  <button
+    type="button"
+    className="btn btn-ghost"
+    style={{ marginTop: 8 }}
+    onClick={addCast}
+  >
+    + Add Actor
+  </button>
+</div>
 
         {/* Series */}
         {form.type === "series" && !form.isComingSoon && (
@@ -472,9 +586,9 @@ releaseDate: form.releaseDate,
                 />
                 {s.episodes.map((ep, ei) => (
                   <div key={ei} className="ep-row">
-                    <input className="form-input-styled" placeholder="Ep title" value={ep.title}    onChange={e => chEp(si, ei, "title",    e.target.value)} />
+                    <input className="form-input-styled" placeholder="Ep title" value={ep.title} onChange={e => chEp(si, ei, "title", e.target.value)} />
                     <div style={{ display: "flex", gap: 8, alignItems: "center", flex: 1 }}>
-                      <input 
+                      <input
                         type="file"
                         accept="video/*"
                         onChange={(e) => handleEpisodeVideoChange(si, ei, e)}
@@ -483,7 +597,7 @@ releaseDate: form.releaseDate,
                       {episodeVideoFiles[`${si}_${ei}`] && <small style={{ color: "var(--green)", whiteSpace: "nowrap" }}>✓ {episodeVideoFiles[`${si}_${ei}`].name}</small>}
                     </div>
                     <input className="form-input-styled" placeholder="OR Video URL" value={ep.videoUrl} onChange={e => chEp(si, ei, "videoUrl", e.target.value)} disabled={episodeVideoFiles[`${si}_${ei}`] ? true : false} />
-                    <input className="form-input-styled" placeholder="Duration"  value={ep.duration} onChange={e => chEp(si, ei, "duration", e.target.value)} />
+                    <input className="form-input-styled" placeholder="Duration" value={ep.duration} onChange={e => chEp(si, ei, "duration", e.target.value)} />
                   </div>
                 ))}
                 <button type="button" className="btn btn-ghost" style={{ marginTop: 8 }} onClick={() => addEp(si)}>+ Episode</button>

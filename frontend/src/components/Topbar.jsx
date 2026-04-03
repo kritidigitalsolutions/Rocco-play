@@ -3,11 +3,12 @@ import { Search, Bell, Moon, Sun } from "lucide-react";
 import "./Topbar.css";
 import API from "../api/axios";
 
-export default function Topbar({ theme, toggleTheme }) {
+export default function Topbar({ theme, toggleTheme ,setActiveTab}) {
   const [adminName, setAdminName] = useState("Admin");
   const [adminData, setAdminData] = useState(null);
   const [search, setSearch] = useState("");
   const [notif, setNotif] = useState(3);
+  const [results, setResults] = useState([]);
 
   // Dropdown + Modal states
   const [showMenu, setShowMenu] = useState(false);
@@ -28,6 +29,36 @@ export default function Topbar({ theme, toggleTheme }) {
       console.error("Failed to fetch admin:", err);
     }
   };
+
+  const handleSearch = async (value) => {
+  setSearch(value);
+
+  if (!value) {
+    setResults([]);
+    return;
+  }
+
+  try {
+    const res = await API.get(`/admin/search?q=${value}`);
+    setResults(res.data.data);
+  } catch (err) {
+    console.error("Search error:", err);
+  }
+};
+const handleSelect = (item) => {
+  if (item.type === "User") {
+    setActiveTab("users");
+  } 
+  else if (item.type === "Movie") {
+    setActiveTab("content");
+  } 
+  else if (item.type === "Help") {
+    setActiveTab("help");
+  }
+
+  setSearch("");
+  setResults([]);
+};
 
   // ================= LOGOUT =================
   const handleLogout = () => {
@@ -65,15 +96,40 @@ export default function Topbar({ theme, toggleTheme }) {
         {/* RIGHT — Actions */}
         <div className="topbar-actions">
           {/* Search */}
-          <div className="topbar-search">
+          {/* <div className="topbar-search">
             <Search size={18} className="search-ico" />
             <input
               type="text"
               placeholder="Search anything..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              // onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
             />
-          </div>
+          </div> */}
+          <div className="topbar-search" style={{ position: "relative" }}>
+  <Search size={18} className="search-ico" />
+
+  <input
+    type="text"
+    placeholder="Search anything..."
+    value={search}
+    onChange={(e) => handleSearch(e.target.value)}
+  />
+
+  {/* 🔥 SEARCH RESULTS */}
+  {results.length > 0 && (
+    <div className="search-dropdown">
+      {results.map((item, i) => (
+        <div key={i} className="search-item" onClick={() => handleSelect(item)}>
+          <strong>{item.title || item.name}</strong>
+          <p style={{ fontSize: "12px", opacity: 0.7 }}>
+            {item.type}
+          </p>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
 
           {/* Notifications */}
           <button

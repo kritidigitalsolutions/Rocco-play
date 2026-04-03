@@ -43,6 +43,7 @@ const projectMovieListFields = {
   isComingSoon: 1,
   releaseDate: 1,
   trailerUrl: 1,
+  videoUrl: 1,
   isPremium: 1,
   rating: 1,
   category: 1,
@@ -130,14 +131,14 @@ const addMovie = async (req, res) => {
       // fs.unlinkSync(videoFile.path);
 
       // ❌ OLD
-// const uploadedVideo = await uploadToBunny(videoFile.path, videoFile.filename);
+      // const uploadedVideo = await uploadToBunny(videoFile.path, videoFile.filename);
 
-// ✅ NEW
-const uploadedVideo = await uploadToBunny(
-  videoFile.buffer,
-  `${Date.now()}-video${path.extname(videoFile.originalname)}`,
-  "videos"
-);
+      // ✅ NEW
+      const uploadedVideo = await uploadToBunny(
+        videoFile.buffer,
+        `${Date.now()}-video${path.extname(videoFile.originalname)}`,
+        "videos"
+      );
 
       if (!uploadedVideo) {
         return res.status(500).json({
@@ -148,17 +149,17 @@ const uploadedVideo = await uploadToBunny(
       videoUrl = uploadedVideo;
       // ✅ No fs.unlinkSync needed - no disk file created
     }
-      
+
     // if (!videoUrl) {
     //   return res.status(400).json({
     //     message: "Video is required"
     //   });
     // }
     if (!isComingSoon && !videoUrl) {
-  return res.status(400).json({
-    message: "Video is required for released content"
-  });
-}
+      return res.status(400).json({
+        message: "Video is required for released content"
+      });
+    }
 
     // 🔄 Parse JSON fields
     let genre = req.body.genre;
@@ -166,35 +167,35 @@ const uploadedVideo = await uploadToBunny(
     let cast = req.body.cast;
 
     if (typeof genre === "string") {
-      try { genre = JSON.parse(genre); } catch(e) { genre = []; }
+      try { genre = JSON.parse(genre); } catch (e) { genre = []; }
     }
     if (typeof category === "string") {
-      try { category = JSON.parse(category); } catch(e) { category = []; }
+      try { category = JSON.parse(category); } catch (e) { category = []; }
     }
     if (typeof cast === "string") {
-      try { cast = JSON.parse(cast); } catch(e) { cast = []; }
+      try { cast = JSON.parse(cast); } catch (e) { cast = []; }
     }
-// 🎭 Cast Image Upload
-const castFiles = Object.keys(req.files || {}).filter(key =>
-  key.startsWith("castImage_")
-);
+    // 🎭 Cast Image Upload
+    const castFiles = Object.keys(req.files || {}).filter(key =>
+      key.startsWith("castImage_")
+    );
 
-for (let key of castFiles) {
-  const index = key.split("_")[1];
-  const file = req.files[key][0];
-  const castFileName = `${Date.now()}-cast-${index}${path.extname(file.originalname)}`;
+    for (let key of castFiles) {
+      const index = key.split("_")[1];
+      const file = req.files[key][0];
+      const castFileName = `${Date.now()}-cast-${index}${path.extname(file.originalname)}`;
 
-  const uploaded = await uploadToBunny(
-    file.buffer,  // ✅ memoryStorage uses .buffer
-    castFileName,
-    "cast"
-  );
+      const uploaded = await uploadToBunny(
+        file.buffer,  // ✅ memoryStorage uses .buffer
+        castFileName,
+        "cast"
+      );
 
-  if (uploaded && cast[index]) {
-    cast[index].image = uploaded;
-  }
-  // ✅ No fs.unlinkSync needed
-}
+      if (uploaded && cast[index]) {
+        cast[index].image = uploaded;
+      }
+      // ✅ No fs.unlinkSync needed
+    }
     // 💾 Save to DB
     const movie = new Movie({
       title: req.body.title,
@@ -206,7 +207,7 @@ for (let key of castFiles) {
       category,
       rating: Number(req.body.rating),
       isPremium: req.body.isPremium === "true",
-        // ✅ NEW
+      // ✅ NEW
       isComingSoon,
       releaseDate: req.body.releaseDate ? new Date(req.body.releaseDate) : null,
       poster: posterUrl || sanitizeMediaUrl(req.body.poster),
@@ -335,63 +336,91 @@ const updateMovieBySlug = async (req, res) => {
     const movie = await Movie.findOne({ slug: req.params.slug });
 
     if (!movie) {
-      return res.status(404).json({
-        message: "Movie not found"
-      });
+      return res.status(404).json({ message: "Movie not found" });
     }
 
     // 📂 FILES (from memoryStorage - files are Buffer)
     const posterFile = req.files?.poster?.[0];
     const bannerFile = req.files?.banner?.[0];
     const videoFile = req.files?.video?.[0];
+    const trailerFile = req.files?.trailer?.[0];
 
-    // 🖼️ Poster Update
     if (posterFile) {
-      const posterFileName = `${Date.now()}-poster${path.extname(posterFile.originalname)}`;
-      const uploadedPoster = await uploadToBunny(posterFile.buffer, posterFileName, "posters");
-      if (uploadedPoster) movie.poster = uploadedPoster;
+      const fn = `${Date.now()}-poster${path.extname(posterFile.originalname)}`;
+      const url = await uploadToBunny(posterFile.buffer, fn, "posters");
+      if (url) movie.poster = url;
     }
-
-    // 🖼️ Banner Update
     if (bannerFile) {
-      const bannerFileName = `${Date.now()}-banner${path.extname(bannerFile.originalname)}`;
-      const uploadedBanner = await uploadToBunny(bannerFile.buffer, bannerFileName, "banners");
-      if (uploadedBanner) movie.banner = uploadedBanner;
+      const fn = `${Date.now()}-banner${path.extname(bannerFile.originalname)}`;
+      const url = await uploadToBunny(bannerFile.buffer, fn, "banners");
+      if (url) movie.banner = url;
     }
-
-    // 🎥 Video Update
+    if (trailerFile) {
+      const fn = `${Date.now()}-trailer${path.extname(trailerFile.originalname)}`;
+      const url = await uploadToBunny(trailerFile.buffer, fn, "trailers");
+      if (url) movie.trailerUrl = url;
+    }
     if (videoFile) {
-      const videoFileName = `${Date.now()}-video${path.extname(videoFile.originalname)}`;
-      const uploadedVideo = await uploadToBunny(videoFile.buffer, videoFileName, "videos");
-      if (uploadedVideo) movie.videoUrl = uploadedVideo;
+      const fn = `${Date.now()}-video${path.extname(videoFile.originalname)}`;
+      const url = await uploadToBunny(videoFile.buffer, fn, "videos");
+      if (url) movie.videoUrl = url;
     }
 
-    // 🔄 Update normal fields
-    Object.keys(req.body).forEach((key) => {
-      const value = req.body[key];
-
-      if (["poster", "banner", "trailerUrl", "videoUrl"].includes(key)) {
-        movie[key] = normalizeMediaField(value);
-        return;
+    // 🎭 Cast & Cast Images
+    let cast = req.body.cast;
+    if (cast !== undefined) {
+      if (typeof cast === "string") { try { cast = JSON.parse(cast); } catch { cast = movie.cast; } }
+      const castFileKeys = Object.keys(req.files || {}).filter(k => k.startsWith("castImage_"));
+      for (let key of castFileKeys) {
+        const index = parseInt(key.split("_")[1]);
+        const file = req.files[key][0];
+        const fn = `${Date.now()}-cast-${index}${path.extname(file.originalname)}`;
+        const url = await uploadToBunny(file.buffer, fn, "cast");
+        if (url && cast[index]) cast[index].image = url;
       }
+      movie.cast = cast;
+    }
 
-      movie[key] = value;
+    // 🔄 Update normal text fields — parse types correctly from FormData strings
+    // 🔄 Update normal text fields — parse types correctly from FormData strings
+    const { body } = req;
+    const skipKeys = new Set(["poster", "banner", "trailerUrl", "videoUrl", "cast", "genre", "category"]);
+
+    Object.keys(body).forEach((key) => {
+      if (skipKeys.has(key)) return;
+      let val = body[key];
+      if (val === "null" || val === "undefined") val = null;
+
+      if (key === "isPremium" || key === "isComingSoon") {
+        movie[key] = val === "true" || val === true;
+      } else if (key === "releaseYear" || key === "rating") {
+        movie[key] = val ? Number(val) : null;
+      } else if (key === "releaseDate") {
+        movie[key] = val ? new Date(val) : null;
+      } else {
+        movie[key] = val !== null ? val : "";
+      }
     });
+
+    // Parse genre & category arrays
+    if (body.genre !== undefined && body.genre !== "null") {
+      try { movie.genre = typeof body.genre === "string" ? JSON.parse(body.genre) : body.genre; } catch { /* keep existing */ }
+    }
+    if (body.category !== undefined && body.category !== "null") {
+      try {
+        const cat = typeof body.category === "string" ? JSON.parse(body.category) : body.category;
+        movie.category = Array.isArray(cat) ? cat : [];
+      } catch { movie.category = []; }
+    }
 
     await movie.save();
 
-    res.json({
-      message: "Movie updated successfully 🔄",
-      data: movie
-    });
-
+    res.json({ message: "Movie updated successfully 🔄", data: movie });
   } catch (error) {
-    res.status(500).json({
-      message: "Error updating movie",
-      error: error.message
-    });
+    res.status(500).json({ message: "Error updating movie", error: error.message });
   }
 };
+
 // ❌ Delete movie
 const deleteMovieBySlug = async (req, res) => {
   try {
@@ -469,18 +498,18 @@ const playContent = async (req, res) => {
 
     const now = new Date();
 
-const isComingSoon =
-  content.isComingSoon === true || content.isComingSoon === "true";
+    const isComingSoon =
+      content.isComingSoon === true || content.isComingSoon === "true";
 
-const releaseDate = content.releaseDate
-  ? new Date(content.releaseDate)
-  : null;
+    const releaseDate = content.releaseDate
+      ? new Date(content.releaseDate)
+      : null;
 
-if (isComingSoon && releaseDate && releaseDate > now) {
-  return res.status(403).json({
-    message: "Content not released yet"
-  });
-}
+    if (isComingSoon && releaseDate && releaseDate > now) {
+      return res.status(403).json({
+        message: "Content not released yet"
+      });
+    }
 
     // 🔐 Premium check
     if (content.isPremium) {

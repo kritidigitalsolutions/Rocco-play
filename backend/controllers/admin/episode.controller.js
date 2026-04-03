@@ -20,6 +20,18 @@ const addEpisode = async (req, res) => {
     const episode = new Episode({ ...req.body, videoUrl });
     const saved = await episode.save();
 
+    // Auto-update totalSeasons on Series if this episode is in a new season
+    try {
+      const Series = require("../../models/series.model");
+      const series = await Series.findById(req.body.seriesId);
+      if (series && Number(req.body.seasonNumber) > (series.totalSeasons || 0)) {
+        series.totalSeasons = Number(req.body.seasonNumber);
+        await series.save();
+      }
+    } catch (ignoreErr) {
+      // ignore
+    }
+
     res.status(201).json({ message: "Episode added 🎞️", data: saved });
 
   } catch (err) {

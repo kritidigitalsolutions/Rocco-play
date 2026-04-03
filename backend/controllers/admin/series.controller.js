@@ -149,8 +149,51 @@ const updateSeries = async (req, res) => {
       if (uploadedTrailer) series.trailerUrl = uploadedTrailer;
     }
 
-    // 🔄 Update normal fields
-    Object.keys(req.body).forEach((key) => { series[key] = req.body[key]; });
+    // 🎭 Cast & Cast Images
+    let cast = req.body.cast;
+    if (cast) {
+      if (typeof cast === "string") { try { cast = JSON.parse(cast); } catch { cast = series.cast; } }
+      const castFiles = Object.keys(req.files || {}).filter(k => k.startsWith("castImage_"));
+      for (let key of castFiles) {
+        const index = parseInt(key.split("_")[1]);
+        const file = req.files[key][0];
+        const castFileName = `${Date.now()}-cast-${index}${path.extname(file.originalname)}`;
+        const uploaded = await uploadToBunny(file.buffer, castFileName, "series/cast");
+        if (uploaded && cast[index]) cast[index].image = uploaded;
+      }
+      series.cast = cast;
+    }
+
+    // 🔄 Update normal text fields — parse types correctly from FormData strings
+    const { body } = req;
+    const skipKeys = new Set(["poster", "banner", "trailerUrl", "cast", "genre", "category"]);
+
+    Object.keys(body).forEach((key) => {
+      if (skipKeys.has(key)) return;
+      let val = body[key];
+      if (val === "null" || val === "undefined") val = null;
+
+      if (key === "isPremium" || key === "isComingSoon") {
+        series[key] = val === "true" || val === true;
+      } else if (key === "releaseYear" || key === "rating" || key === "totalSeasons") {
+        series[key] = val ? Number(val) : null;
+      } else if (key === "releaseDate") {
+        series[key] = val ? new Date(val) : null;
+      } else {
+        series[key] = val !== null ? val : "";
+      }
+    });
+
+    // Parse genre & category arrays
+    if (body.genre !== undefined && body.genre !== "null") {
+      try { series.genre = typeof body.genre === "string" ? JSON.parse(body.genre) : body.genre; } catch { /* keep existing */ }
+    }
+    if (body.category !== undefined && body.category !== "null") {
+      try {
+        const cat = typeof body.category === "string" ? JSON.parse(body.category) : body.category;
+        series.category = Array.isArray(cat) ? cat : [];
+      } catch { series.category = []; }
+    }
 
     await series.save();
 

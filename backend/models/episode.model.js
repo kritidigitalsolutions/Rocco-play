@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const episodeSchema = new mongoose.Schema(
   {
     title: String,
+    description: String,
 
     seriesId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -19,4 +20,4 @@ const episodeSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Episode", episodeSchema);
+module.exports = mongoose.model("Episode", episodeSchema);

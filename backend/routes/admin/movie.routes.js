@@ -68,7 +68,14 @@ router.put(
   videoUpload.fields([
     { name: "poster", maxCount: 1 },
     { name: "banner", maxCount: 1 },
-    { name: "video", maxCount: 1 }
+    { name: "trailer", maxCount: 1 },
+    { name: "video", maxCount: 1 },
+    { name: "castImage_0", maxCount: 1 },
+    { name: "castImage_1", maxCount: 1 },
+    { name: "castImage_2", maxCount: 1 },
+    { name: "castImage_3", maxCount: 1 },
+    { name: "castImage_4", maxCount: 1 },
+    { name: "castImage_5", maxCount: 1 }
   ]),
   updateMovieBySlug
 );

@@ -323,3 +323,25 @@ body.light .toggle-track { background: white; }
     opacity: 1;
   }
 }
+.search-dropdown {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  width: 260px;
+  background: #0f172a;
+  border-radius: 10px;
+  padding: 10px;
+  z-index: 1000;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+.search-item {
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.search-item:hover {
+  background: rgba(255,255,255,0.05);
+}
+

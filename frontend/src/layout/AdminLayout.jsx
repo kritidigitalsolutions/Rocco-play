@@ -12,6 +12,7 @@ import SubscriptionPage from "../pages/Subscriptions";
 import "./AdminLayout.css";
 import RatingsPage from "../pages/Ratings";
 import PlansPage from "../pages/Plans";
+import PromoVoucher from "../pages/PromoVoucher";
 
 
 export default function AdminLayout() {
@@ -40,6 +41,8 @@ export default function AdminLayout() {
           {activeTab === "content"     && <Content />}
           {activeTab === "ratings" && <RatingsPage />}
           {activeTab === "plans" && <PlansPage />}
+          {activeTab === "promo" && <PromoVoucher />}
+          
           {activeTab === "pricing" && <SubscriptionPage />}
           {activeTab === "settings" && <Settings />}
         </main>

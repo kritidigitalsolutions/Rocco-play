@@ -1,6 +1,7 @@
 const User = require("../models/user.model");
 const Subscription = require("../models/subscription.model");
 const Plan = require("../models/plan.model"); // ✅ ADD THIS
+const Promo = require("../models/promocode.model");
 
 // =====================================================
 // 🔐 CREATE SUBSCRIPTION (CORRECT FLOW)
@@ -8,7 +9,7 @@ const Plan = require("../models/plan.model"); // ✅ ADD THIS
 exports.verifySubscription = async (req, res) => {
   try {
     const userId = req.user.id; // ✅ from token
-    const { planId } = req.body;
+    const { planId, promoCode } = req.body;
 
     if (!planId) {
       return res.status(400).json({
@@ -39,6 +40,50 @@ exports.verifySubscription = async (req, res) => {
       });
     }
 
+    let finalAmount = plan.price;
+
+// ✅ Apply promo ONLY if user provided it
+if (promoCode) {
+  const promo = await Promo.findOne({
+    code: promoCode.toUpperCase()
+  });
+
+  if (!promo || !promo.isActive) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid promo code"
+    });
+  }
+
+  // optional checks (recommended)
+  if (promo.expiryDate && promo.expiryDate < new Date()) {
+    return res.status(400).json({
+      success: false,
+      message: "Promo expired"
+    });
+  }
+
+  if (promo.usedCount >= promo.maxUses) {
+    return res.status(400).json({
+      success: false,
+      message: "Promo usage limit reached"
+    });
+  }
+
+  // apply discount
+  if (promo.discountType === "percentage") {
+    finalAmount -= (finalAmount * promo.discountValue) / 100;
+  } else {
+    finalAmount -= promo.discountValue;
+  }
+
+  // avoid negative amount
+  if (finalAmount < 0) finalAmount = 0;
+
+  promo.usedCount += 1;
+  await promo.save();
+}
+    
     const startDate = new Date();
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + plan.duration);
@@ -46,7 +91,8 @@ exports.verifySubscription = async (req, res) => {
     const subscription = await Subscription.create({
       user: userId,
       plan: plan._id,
-      amount: plan.price,
+      // amount: plan.price,
+      amount: finalAmount,
       startDate,
       endDate,
       status: "active",

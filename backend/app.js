@@ -170,6 +170,18 @@ mountRoute("/user/watchlist", watchlistRoutes);
 const subscriptionRoutes = require("./routes/user/subscription.routes");
 mountRoute("/subscription", subscriptionRoutes);
 
+// ================= PROMO =================
+mountRoute("/promo", require("./routes/user/promo.routes"));
+
+// ================= VOUCHER =================
+mountRoute("/voucher", require("./routes/user/voucher.routes"));
+
+// ================= ADMIN PROMO =================
+mountRoute("/admin/promo", require("./routes/admin/promo.routes"));
+
+// ================= ADMIN VOUCHER =================
+mountRoute("/admin/voucher", require("./routes/admin/voucher.routes"));
+
 // ================= INTERACTION =================
 
 const interactionRoutes = require("./routes/user/interaction.routes");

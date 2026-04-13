@@ -9,8 +9,8 @@ const {
   resetPassword,sendEmailOtp,changeAdminEmail,getAdminProfile
 } = require("../../controllers/auth/adminAuth.controller");
 
-const isAuth = require("../../middlewares/auth.middleware");
-const isAdmin = require("../../middlewares/admin.middleware");
+const {isAuth} = require("../../middlewares/auth.middleware");
+const {isAdmin} = require("../../middlewares/admin.middleware");
 
 // ✅ Login
 router.post("/login", adminLogin);

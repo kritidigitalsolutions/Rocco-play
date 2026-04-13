@@ -129,8 +129,9 @@ export default function AddContent() {
           // formData.append("category", JSON.stringify(form.category.split(",").map(s => s.trim()).filter(Boolean)));
           formData.append("category", JSON.stringify([form.category]));
           formData.append("rating", Number(form.rating));
-          formData.append("isPremium", form.isPremium);
-          formData.append("isComingSoon", form.isComingSoon);
+          // formData.append("isPremium", form.isPremium);
+          formData.append("isPremium", String(form.isPremium));
+          formData.append("isComingSoon", String(form.isComingSoon));
           formData.append("releaseDate", form.releaseDate);
           // Add poster - file takes precedence over URL
           if (posterFile) {
@@ -152,6 +153,7 @@ export default function AddContent() {
           } else if (form.trailerUrl) {
             formData.append("trailerUrl", form.trailerUrl);
           }
+          
 
           // formData.append("cast", JSON.stringify(form.cast));
           // Prepare cast with placeholders
@@ -306,7 +308,9 @@ Object.keys(castFiles).forEach((key) => {
       setEpisodeVideoFiles({});
     } catch (err) {
       console.error(err);
-      alert("Error adding content ❌");
+      // alert("Error adding content ❌");
+      alert(err.response?.data?.message || err.message);
+console.log(err.response?.data);
     }
     setLoading(false);
   };

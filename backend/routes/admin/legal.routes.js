@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const isAuth = require("../../middlewares/auth.middleware");
-const isAdmin = require("../../middlewares/admin.middleware");
+const {isAuth} = require("../../middlewares/auth.middleware");
+const {isAdmin} = require("../../middlewares/admin.middleware");
 const { getLegalDocuments,getLegalByType,addOrUpdateLegalDocument, togglePublish } = require("../../controllers/admin/legal.controller");    
 router.use(isAuth, isAdmin);
 

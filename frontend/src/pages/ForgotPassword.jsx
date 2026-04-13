@@ -13,10 +13,13 @@ const ForgotPassword = () => {
 
   // ================= SEND OTP =================
   const handleSendOtp = async () => {
+    if (!email.trim()) {
+      alert("Please enter your email address");
+      return;
+    }
     try {
       await API.post("/admin/auth/send-otp", {
-        identifier: email,
-        type: "email",
+        email,
       });
 
       setStep(2);
@@ -29,11 +32,14 @@ const ForgotPassword = () => {
 
   // ================= VERIFY OTP =================
   const handleVerifyOtp = async () => {
+    if (!otp.trim()) {
+      alert("Please enter the OTP");
+      return;
+    }
     try {
       await API.post("/admin/auth/verify-otp", {
-        identifier: email,
+        email,
         otp,
-        type: "email",
       });
 
       localStorage.setItem("resetIdentifier", email);

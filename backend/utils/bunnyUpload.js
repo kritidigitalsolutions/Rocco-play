@@ -50,8 +50,12 @@ const uploadToBunny = async (filePathOrBuffer, fileName, folder = "") => {
     return `https://${storageZone}.b-cdn.net/${finalPath}`;
 
   } catch (error) {
-    console.error("❌ Bunny Upload Error:", error.response?.data || error.message);
-    return null;
+  console.error("❌ Bunny Upload Full Error:");
+  console.error("message:", error.message);
+  console.error("status:", error.response?.status);
+  console.error("data:", error.response?.data);
+  return null;
+
   }
 };
 

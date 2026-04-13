@@ -8,9 +8,9 @@ exports.getRevenue = async (req, res) => {
     // ✅ Only count ACTIVE subscriptions
     const validSubs = subscriptions.filter(sub => sub.status === "active");
 
-    const totalRevenue = validSubs.reduce((sum, sub) => {
-      return sum + (sub.plan?.price || 0);
-    }, 0);
+   const totalRevenue = validSubs.reduce((sum, sub) => {
+  return sum + (sub.amount || 0);
+}, 0);
 
     res.json({
       success: true,

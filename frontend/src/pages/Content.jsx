@@ -79,9 +79,9 @@ export default function Content() {
 
       // Auto-sync series totalSeasons locally to reflect in UI instantly
       const maxS = eps.length > 0 ? Math.max(...eps.map(e => e.seasonNumber)) : 0;
-      setSelectedSeries(prev => prev ? { ...prev, totalSeasons: Math.max(prev.totalSeasons||0, maxS) } : prev);
-      setData(prevData => prevData.map(s => s._id === seriesId ? { ...s, totalSeasons: Math.max(s.totalSeasons||0, maxS) } : s));
-      setSearchResults(prev => prev ? prev.map(s => s._id === seriesId ? { ...s, totalSeasons: Math.max(s.totalSeasons||0, maxS) } : s) : prev);
+      setSelectedSeries(prev => prev ? { ...prev, totalSeasons: Math.max(prev.totalSeasons || 0, maxS) } : prev);
+      setData(prevData => prevData.map(s => s._id === seriesId ? { ...s, totalSeasons: Math.max(s.totalSeasons || 0, maxS) } : s));
+      setSearchResults(prev => prev ? prev.map(s => s._id === seriesId ? { ...s, totalSeasons: Math.max(s.totalSeasons || 0, maxS) } : s) : prev);
     } catch (err) {
       console.error(err);
       setEpisodes([]);
@@ -128,11 +128,11 @@ export default function Content() {
   const groupEpisodesBySeason = () => {
     const grouped = {};
     const filteredEpisodes = episodeSearchQuery.trim()
-      ? episodes.filter(ep => 
-          ep.title.toLowerCase().includes(episodeSearchQuery.toLowerCase()) || 
-          ep.seasonNumber.toString() === episodeSearchQuery.trim() ||
-          ep.episodeNumber.toString() === episodeSearchQuery.trim()
-        )
+      ? episodes.filter(ep =>
+        ep.title.toLowerCase().includes(episodeSearchQuery.toLowerCase()) ||
+        ep.seasonNumber.toString() === episodeSearchQuery.trim() ||
+        ep.episodeNumber.toString() === episodeSearchQuery.trim()
+      )
       : episodes;
 
     filteredEpisodes.forEach(ep => {
@@ -452,7 +452,7 @@ export default function Content() {
                             </div>
                           </div>
                         </td>
-                        <td>{movie.genre?.join(", ")}</td>
+                        <td>{Array.isArray(movie.genre) ? movie.genre.join(", ") : movie.genre}</td>
                         <td>{movie.releaseYear}</td>
                         <td>{movie.rating}</td>
                         <td><span className={`badge ${movie.isPremium ? "badge-active" : "badge-draft"}`}>{movie.isPremium ? "Premium" : "Free"}</span></td>
@@ -522,7 +522,7 @@ export default function Content() {
                             </div>
                           </div>
                         </td>
-                        <td>{series.genre?.join(", ")}</td>
+                        <td>{Array.isArray(series.genre) ? series.genre.join(", ") : series.genre}</td>
                         <td>{series.releaseYear}</td>
                         <td>{series.rating}</td>
                         <td>{series.totalSeasons}</td>
@@ -922,32 +922,32 @@ export default function Content() {
                     )
                   )} */}
                   {contentType === "movies" && !isLocked(selectedItem) && (
-  <div className="view-video-section">
-    
-    <div style={{ padding: "10px 14px 0" }}>
-      <h4>🎬 FULL MOVIE</h4>
-    </div>
+                    <div className="view-video-section">
 
-    {(selectedItem.videoUrl || selectedItem.video) ? (
-      <>
-        <video
-          ref={videoRef}
-          controls
-          className="view-video-player"
-          src={selectedItem.videoUrl || selectedItem.video}
-        />
-        <button className="btn btn-primary pip-btn" onClick={handlePiP}>
-          PiP
-        </button>
-      </>
-    ) : (
-      <div style={{ padding: "20px", textAlign: "center" }}>
-        No video available
-      </div>
-    )}
-    
-  </div>
-)}
+                      <div style={{ padding: "10px 14px 0" }}>
+                        <h4>🎬 FULL MOVIE</h4>
+                      </div>
+
+                      {(selectedItem.videoUrl || selectedItem.video) ? (
+                        <>
+                          <video
+                            ref={videoRef}
+                            controls
+                            className="view-video-player"
+                            src={selectedItem.videoUrl || selectedItem.video}
+                          />
+                          <button className="btn btn-primary pip-btn" onClick={handlePiP}>
+                            PiP
+                          </button>
+                        </>
+                      ) : (
+                        <div style={{ padding: "20px", textAlign: "center" }}>
+                          No video available
+                        </div>
+                      )}
+
+                    </div>
+                  )}
 
                   <div className="view-details">
                     <div className="detail-item"><strong>Release Year</strong><span>{selectedItem.releaseYear}</span></div>

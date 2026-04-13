@@ -6,110 +6,111 @@ const Promo = require("../models/promocode.model");
 // =====================================================
 // 🔐 CREATE SUBSCRIPTION (CORRECT FLOW)
 // =====================================================
-exports.verifySubscription = async (req, res) => {
-  try {
-    const userId = req.user.id; // ✅ from token
-    const { planId, promoCode } = req.body;
+// exports.verifySubscription = async (req, res) => {
+//   try {
+//     const userId = req.user.id; // ✅ from token
+//     const { planId, promoCode } = req.body;
 
-    if (!planId) {
-      return res.status(400).json({
-        success: false,
-        message: "planId is required",
-      });
-    }
+//     if (!planId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "planId is required",
+//       });
+//     }
 
-    const user = await User.findById(userId);
+//     const user = await User.findById(userId);
 
-    const plan = await Plan.findById(planId);
-    if (!plan) {
-      return res.status(404).json({
-        success: false,
-        message: "Plan not found",
-      });
-    }
+//     const plan = await Plan.findById(planId);
+//     if (!plan) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Plan not found",
+//       });
+//     }
 
-    const existing = await Subscription.findOne({
-      user: userId,
-      status: "active",
-    });
+//     const existing = await Subscription.findOne({
+//       user: userId,
+//       status: "active",
+//     });
 
-    if (existing && new Date() < existing.endDate) {
-      return res.status(400).json({
-        success: false,
-        message: "Already subscribed",
-      });
-    }
+//     if (existing && new Date() < existing.endDate) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Already subscribed",
+//       });
+//     }
 
-    let finalAmount = plan.price;
+//     let finalAmount = plan.price;
 
-// ✅ Apply promo ONLY if user provided it
-if (promoCode) {
-  const promo = await Promo.findOne({
-    code: promoCode.toUpperCase()
-  });
+// // ✅ Apply promo ONLY if user provided it
+// if (promoCode) {
+//   const promo = await Promo.findOne({
+//     code: promoCode.toUpperCase()
+//   });
 
-  if (!promo || !promo.isActive) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid promo code"
-    });
-  }
+//   if (!promo || !promo.isActive) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "Invalid promo code"
+//     });
+//   }
 
-  // optional checks (recommended)
-  if (promo.expiryDate && promo.expiryDate < new Date()) {
-    return res.status(400).json({
-      success: false,
-      message: "Promo expired"
-    });
-  }
+//   // optional checks (recommended)
+//   if (promo.expiryDate && promo.expiryDate < new Date()) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "Promo expired"
+//     });
+//   }
 
-  if (promo.usedCount >= promo.maxUses) {
-    return res.status(400).json({
-      success: false,
-      message: "Promo usage limit reached"
-    });
-  }
+//   if (promo.usedCount >= promo.maxUses) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "Promo usage limit reached"
+//     });
+//   }
 
-  // apply discount
-  if (promo.discountType === "percentage") {
-    finalAmount -= (finalAmount * promo.discountValue) / 100;
-  } else {
-    finalAmount -= promo.discountValue;
-  }
+//   // apply discount
+//   if (promo.discountType === "percentage") {
+//     finalAmount -= (finalAmount * promo.discountValue) / 100;
+//   } else {
+//     finalAmount -= promo.discountValue;
+//   }
 
-  // avoid negative amount
-  if (finalAmount < 0) finalAmount = 0;
+//   // avoid negative amount
+//   if (finalAmount < 0) finalAmount = 0;
 
-  promo.usedCount += 1;
-  await promo.save();
-}
+//   promo.usedCount += 1;
+//   await promo.save();
+// }
     
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + plan.duration);
+//     const startDate = new Date();
+//     const endDate = new Date();
+//     endDate.setDate(endDate.getDate() + plan.duration);
 
-    const subscription = await Subscription.create({
-      user: userId,
-      plan: plan._id,
-      // amount: plan.price,
-      amount: finalAmount,
-      startDate,
-      endDate,
-      status: "active",
-    });
+//     const subscription = await Subscription.create({
+//       user: userId,
+//       plan: plan._id,
+//       // amount: plan.price,
+//       amount: finalAmount,
+//       startDate,
+//       endDate,
+//       status: "active",
+//     });
 
-    res.json({
-      success: true,
-      subscription,
-    });
+//     res.json({
+//       success: true,
+//       subscription,
+//     });
 
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
-  }
-};
+//   } catch (err) {
+//     res.status(500).json({
+//       success: false,
+//       message: err.message,
+//     });
+//   }
+// };
+
 // =====================================================
 // 🔁 CANCEL SUBSCRIPTION
 // =====================================================

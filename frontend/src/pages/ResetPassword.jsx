@@ -5,19 +5,37 @@ import "./Dashboard.css";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const email = localStorage.getItem("resetIdentifier");
 
   const handleReset = async () => {
-    await API.post("/admin/auth/reset-password", {
-       identifier: email,
-  password,
-  type: "email",
-    });
+    if (!email) {
+      alert("Session expired. Please restart the forgot password flow.");
+      navigate("/forgot-password");
+      return;
+    }
+    if (password.length < 6) {
+      alert("Password must be at least 6 characters.");
+      return;
+    }
 
-    localStorage.removeItem("resetIdentifier");
-    navigate("/dashboard");
+    setLoading(true);
+    try {
+      await API.post("/admin/auth/reset-password", {
+        email,
+        password,
+      });
+
+      localStorage.removeItem("resetIdentifier");
+      alert("Password reset successful! Please log in.");
+      navigate("/");
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to reset password. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -33,13 +51,14 @@ const ResetPassword = () => {
 
         <input
           type="password"
-          placeholder="New Password"
+          placeholder="New Password (min. 6 characters)"
           className="login-input"
+          value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <button className="login-btn" onClick={handleReset}>
-          Update Password →
+        <button className="login-btn" onClick={handleReset} disabled={loading}>
+          {loading ? "Updating..." : "Update Password →"}
         </button>
       </div>
     </div>

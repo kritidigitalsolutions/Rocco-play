@@ -52,7 +52,11 @@ subscriptionId: {
   type: String,
   default: null,   // optional
 },
-    paymentId: String,
+    paymentId: {
+  type: String,
+  unique: true,
+  sparse: true
+},
 
     amount: Number,
 

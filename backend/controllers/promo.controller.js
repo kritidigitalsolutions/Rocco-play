@@ -26,14 +26,16 @@ exports.applyPromo = async (req, res) => {
     }
 
     // check applicable plans
-    if (
-      promo.applicablePlans.length &&
-      !promo.applicablePlans.includes(plan._id)
-    ) {
-      return res.status(400).json({
-        message: "Promo not valid for this plan"
-      });
-    }
+ if (
+  promo.applicablePlans.length &&
+  !promo.applicablePlans.some(
+    id => id.toString() === plan._id.toString()
+  )
+) {
+  return res.status(400).json({
+    message: "Promo not valid for this plan"
+  });
+}
 
     let discount = 0;
 

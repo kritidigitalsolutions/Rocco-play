@@ -9,14 +9,14 @@ const {
   playEpisode, updateEpisode, deleteEpisode
 } = require("../../controllers/admin/episode.controller");
 
-const auth = require("../../middlewares/auth.middleware");
-const admin = require("../../middlewares/admin.middleware");
+const isAuth = require("../../middlewares/auth.middleware");
+const isAdmin = require("../../middlewares/admin.middleware");
 
 // ➕ Add episode
 router.post(
   "/",
-  auth,
-  admin,
+  isAuth,
+  isAdmin,
   videoUpload.fields([
     { name: "video", maxCount: 1 }
   ]),
@@ -27,13 +27,13 @@ router.post(
 router.get("/", getEpisodes);
 
 // 🎥 Play episode
-router.get("/play/:seriesId/:season/:episode", auth, playEpisode);
+router.get("/play/:seriesId/:season/:episode", isAuth, playEpisode);
 // ✏️ Update episode
-// router.put("/:id", auth, admin, updateEpisode);
+// router.put("/:id", isAuth, isAdmin, updateEpisode);
 router.put(
   "/:id",
-  auth,
-  admin,
+  isAuth,
+  isAdmin,
   videoUpload.fields([
     { name: "video", maxCount: 1 }
   ]),
@@ -41,10 +41,10 @@ router.put(
 );
 
 // ❌ Delete episode
-router.delete("/:id", auth, admin, deleteEpisode);
+router.delete("/:id", isAuth, isAdmin, deleteEpisode);
 
 // ❌ Delete all episodes in a season
-router.delete("/season/:seriesId/:seasonNumber", auth, admin, async (req, res) => {
+router.delete("/season/:seriesId/:seasonNumber", isAuth, isAdmin, async (req, res) => {
   try {
     const Episode = require("../../models/episode.model");
     const { seriesId, seasonNumber } = req.params;

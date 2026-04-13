@@ -25,6 +25,11 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    // for notification
+    fcmToken: {
+      type: String,
+      default: null
+    },
 
     role: {
       type: String,

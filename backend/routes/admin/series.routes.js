@@ -10,8 +10,8 @@ const {
   updateSeries
 } = require("../../controllers/admin/series.controller");
 
-const auth = require("../../middlewares/auth.middleware");
-const admin = require("../../middlewares/admin.middleware");
+const isAuth = require("../../middlewares/auth.middleware");
+const isAdmin = require("../../middlewares/admin.middleware");
 
 router.get("/", getAllSeries);
 router.get("/search", async (req, res) => {
@@ -32,12 +32,12 @@ router.get("/search", async (req, res) => {
   }
 });
 router.get("/:slug", getSeriesBySlug);
-router.delete("/:slug", auth, admin, deleteSeries);
-// router.put("/:slug", auth, admin, updateSeries);
+router.delete("/:slug", isAuth, isAdmin, deleteSeries);
+// router.put("/:slug", isAuth, isAdmin, updateSeries);
 router.put(
   "/:slug",
-  auth,
-  admin,
+  isAuth,
+  isAdmin,
   videoUpload.fields([
     { name: "poster", maxCount: 1 },
     { name: "banner", maxCount: 1 },
@@ -56,8 +56,8 @@ router.put(
 
 router.post(
   "/",
-  auth,
-  admin,
+  isAuth,
+  isAdmin,
   videoUpload.fields([
     { name: "poster", maxCount: 1 },
     { name: "banner", maxCount: 1 },

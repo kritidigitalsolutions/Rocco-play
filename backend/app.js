@@ -215,6 +215,13 @@ mountRoute("/admin", searchRoutes);
 
 // ================= GLOBAL ERROR HANDLER =================
 
+// app.use("/api/notification", require("./routes/user/notification.routes"));
+/* ROUTES */
+const notificationRoutes = require("./routes/user/notification.routes");
+
+/* API ROUTES */
+app.use("/api/notifications", notificationRoutes);
+
 app.use((err, req, res, next) => {
   console.error("❌ Global Error:", err.message);
   const status = err.status || 500;
@@ -224,6 +231,10 @@ app.use((err, req, res, next) => {
   });
 });
 
+// ================Razor Pay===============
+app.use("/api/payment", require("./routes/user/payment.routes"));
+
+
 // ================= 404 HANDLER =================
 
 app.use((req, res) => {
@@ -232,6 +243,7 @@ app.use((req, res) => {
     message: `Route ${req.method} ${req.path} not found`,
   });
 });
+
 
 
 

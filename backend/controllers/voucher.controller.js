@@ -21,7 +21,18 @@ exports.redeemVoucher = async (req, res) => {
     if (voucher.expiryDate && voucher.expiryDate < new Date()) {
       return res.status(400).json({ message: "Voucher expired" });
     }
+const existing = await Subscription.findOne({
+  user: userId,
+  status: "active",
+  endDate: { $gt: new Date() }
+});
 
+if (existing) {
+  return res.status(400).json({
+    success: false,
+    message: "You already have an active subscription"
+  });
+}
     const startDate = new Date();
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + voucher.validityDays);

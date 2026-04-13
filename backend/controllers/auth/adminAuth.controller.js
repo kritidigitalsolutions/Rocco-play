@@ -2,7 +2,7 @@ const Admin = require('../../models/admin.model');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require("nodemailer");
-const Otp = require('../../models/otp.model'); // 🔥 NEW
+const Otp = require('../../models/admin.otp.model'); // 🔥 NEW
 const connectDB = require('../../config/db');
 
 // ✅ Lazy transporter factory — created per-call so env vars are always available
@@ -194,65 +194,59 @@ exports.changeAdminPassword = async (req, res) => {
 // };
 exports.sendOtp = async (req, res) => {
   try {
-    const { identifier, type } = req.body;
+    const { email } = req.body;
 
-    // ✅ VALIDATION
-    if (!identifier || !type) {
-      return res.status(400).json({ message: "Identifier and type required" });
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
     }
 
-    const normalizedIdentifier =
-      type === "email"
-        ? identifier.trim().toLowerCase()
-        : identifier.trim();
+    const normalizedEmail = email.trim().toLowerCase();
 
-    // 🔥 OPTIONAL: check admin only for email
-    if (type === "email") {
-      const admin = await Admin.findOne({ email: normalizedIdentifier });
-      if (!admin) {
-        return res.status(404).json({ message: "Admin not found" });
-      }
+    const admin = await Admin.findOne({ email: normalizedEmail });
+
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found",
+      });
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    console.log("Generated OTP:", otp);
+    await Otp.deleteMany({ email: normalizedEmail });
 
-    // 🔥 SAVE OTP (UNIFIED)
-    await Otp.findOneAndUpdate(
-      { identifier: normalizedIdentifier, type },
-      {
-        otp,
-        expiresAt: Date.now() + 5 * 60 * 1000,
-      },
-      { upsert: true, new: true }
-    );
+    await Otp.create({
+      email: normalizedEmail,
+      otp,
+      purpose: "reset-password",
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    });
 
-    console.log("OTP saved ✅");
+    await getTransporter().sendMail({
+      from: `"RoccoPlay" <${process.env.EMAIL}>`,
+      to: normalizedEmail,
+      subject: "Admin OTP",
+      html: `
+        <h2>Admin Verification</h2>
+        <p>Your OTP is:</p>
+        <h1>${otp}</h1>
+        <p>Valid for 5 minutes</p>
+      `,
+    });
 
-    // 🔥 SEND LOGIC
-    if (type === "email") {
-      await getTransporter().sendMail({
-        from: `"RoccoPlay" <${process.env.EMAIL}>`,
-        to: normalizedIdentifier,
-        subject: "Password Reset OTP",
-        html: `
-          <h2>RoccoPlay OTP</h2>
-          <p>Your OTP is:</p>
-          <h1 style="color:#e50914;">${otp}</h1>
-          <p>Valid for 5 minutes</p>
-        `,
-      });
-    } else if (type === "phone") {
-      // 🔥 TODO: integrate 2factor here
-      console.log("Send OTP to phone:", normalizedIdentifier);
-    }
-
-    res.json({ message: `OTP sent via ${type} 📩` });
-
+    res.status(200).json({
+      success: true,
+      message: "OTP sent to email",
+    });
   } catch (error) {
     console.error("Send OTP Error:", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Failed to send OTP",
+    });
   }
 };
 
@@ -298,39 +292,42 @@ exports.sendOtp = async (req, res) => {
 // };
 exports.verifyOtp = async (req, res) => {
   try {
-    const { identifier, otp, type } = req.body;
+    const { email, otp } = req.body;
 
-    if (!identifier || !otp || !type) {
-      return res.status(400).json({ message: "All fields required" });
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and OTP are required",
+      });
     }
 
-    const normalizedIdentifier =
-      type === "email"
-        ? identifier.trim().toLowerCase()
-        : identifier.trim();
+    const normalizedEmail = email.trim().toLowerCase();
 
     const record = await Otp.findOne({
-      identifier: normalizedIdentifier,
-      type,
+      email: normalizedEmail,
+      otp: String(otp).trim(),
+      expiresAt: { $gt: new Date() },
     });
 
     if (!record) {
-      return res.status(400).json({ message: "OTP not found" });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired OTP",
+      });
     }
 
-    if (record.otp !== otp.toString()) {
-      return res.status(400).json({ message: "Invalid OTP" });
-    }
+    await Otp.deleteOne({ _id: record._id });
 
-    if (record.expiresAt < Date.now()) {
-      return res.status(400).json({ message: "OTP expired" });
-    }
-
-    res.json({ message: "OTP verified successfully ✅" });
-
+    return res.status(200).json({
+      success: true,
+      message: "OTP verified successfully",
+    });
   } catch (error) {
     console.error("Verify OTP Error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
@@ -381,36 +378,24 @@ exports.verifyOtp = async (req, res) => {
 // };
 exports.resetPassword = async (req, res) => {
   try {
-    const { identifier, password, type } = req.body;
+    const { email, password } = req.body;
 
-    if (!identifier || !password || !type) {
-      return res.status(400).json({ message: "All fields required" });
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
     }
 
-    if (type !== "email") {
-      return res.status(400).json({ message: "Password reset only for email" });
-    }
+    const normalizedEmail = email.trim().toLowerCase();
 
-    const email = identifier.trim().toLowerCase();
-
-    const admin = await Admin.findOne({ email });
+    const admin = await Admin.findOne({ email: normalizedEmail });
 
     if (!admin) {
-      return res.status(404).json({ message: "Admin not found" });
-    }
-
-    // 🔥 VERIFY OTP AGAIN (SECURITY)
-    const record = await Otp.findOne({
-      identifier: email,
-      type: "email",
-    });
-
-    if (!record) {
-      return res.status(400).json({ message: "OTP not found" });
-    }
-
-    if (record.expiresAt < Date.now()) {
-      return res.status(400).json({ message: "OTP expired" });
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found",
+      });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -418,16 +403,20 @@ exports.resetPassword = async (req, res) => {
 
     await admin.save();
 
-    await Otp.deleteOne({ identifier: email, type: "email" });
+    await Otp.deleteMany({ email: normalizedEmail });
 
-    res.json({ message: "Password reset successful 🔐" });
-
+    res.status(200).json({
+      success: true,
+      message: "Password reset successful",
+    });
   } catch (error) {
     console.error("Reset Password Error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
-
 // ================= EMAIL OTP =================
 // exports.sendEmailOtp = async (req, res) => {
 //   try {
@@ -458,39 +447,60 @@ exports.sendEmailOtp = async (req, res) => {
     const admin = await Admin.findById(req.user.id);
 
     if (!admin) {
-      return res.status(404).json({ message: "Admin not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found",
+      });
     }
 
     const { newEmail } = req.body;
 
+    if (!newEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "New email is required",
+      });
+    }
+
+    const normalizedNewEmail = newEmail.trim().toLowerCase();
+
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // 🔥 Save OTP against NEW EMAIL (for later verification)
-    await Otp.findOneAndUpdate(
-      { identifier: newEmail, type: "email-change" },
-      { otp, expiresAt: Date.now() + 5 * 60 * 1000 },
-      { upsert: true }
-    );
-
-    // ✅ SEND OTP TO OLD EMAIL (CURRENT EMAIL)
-    await getTransporter().sendMail({
-      to: admin.email, // 🔥 IMPORTANT CHANGE
-      subject: "Confirm Email Change",
-      html: `
-        <h2>RoccoPlay Email Change Request</h2>
-        <p>You requested to change your email to:</p>
-        <b>${newEmail}</b>
-        <p>Your OTP is:</p>
-        <h1 style="color:#e50914;">${otp}</h1>
-        <p>If this was not you, ignore this email.</p>
-      `
+    await Otp.deleteMany({
+      email: normalizedNewEmail,
+      purpose: "change-email",
     });
 
-    res.json({ message: "OTP sent to your current email 📩" });
+    await Otp.create({
+      email: normalizedNewEmail,
+      otp,
+      purpose: "change-email",
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    });
 
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: err.message });
+    await getTransporter().sendMail({
+      to: admin.email,
+      subject: "Confirm Email Change",
+      html: `
+        <h2>Email Change Request</h2>
+        <p>You requested to change your email to:</p>
+        <b>${normalizedNewEmail}</b>
+        <p>Your OTP is:</p>
+        <h1>${otp}</h1>
+        <p>Valid for 5 minutes</p>
+      `,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "OTP sent to current email",
+    });
+  } catch (error) {
+    console.error("sendEmailOtp Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to send OTP",
+    });
   }
 };
 
@@ -499,24 +509,54 @@ exports.sendEmailOtp = async (req, res) => {
 exports.changeAdminEmail = async (req, res) => {
   try {
     const admin = await Admin.findById(req.user.id);
-    const { oldEmail, newEmail, otp } = req.body;
 
-    const record = await Otp.findOne({
-      identifier: newEmail,
-      type: "email-change"
-    });
-
-    if (!record || record.otp !== otp) {
-      return res.status(400).json({ message: "Invalid OTP" });
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found",
+      });
     }
 
-    admin.email = newEmail;
+    const { newEmail, otp } = req.body;
+
+    if (!newEmail || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "New email and OTP are required",
+      });
+    }
+
+    const normalizedNewEmail = newEmail.trim().toLowerCase();
+
+    const record = await Otp.findOne({
+      email: normalizedNewEmail,
+      otp: String(otp).trim(),
+      purpose: "change-email",
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (!record) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired OTP",
+      });
+    }
+
+    admin.email = normalizedNewEmail;
     await admin.save();
 
-    res.json({ message: "Email updated" });
+    await Otp.deleteOne({ _id: record._id });
 
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(200).json({
+      success: true,
+      message: "Email updated successfully",
+    });
+  } catch (error) {
+    console.error("changeAdminEmail Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 

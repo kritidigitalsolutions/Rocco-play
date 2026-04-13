@@ -13,8 +13,8 @@ const {
   playContent
 } = require("../../controllers/admin/movie.controller");
 
-const authMiddleware = require("../../middlewares/auth.middleware");
-const adminMiddleware = require("../../middlewares/admin.middleware");
+const {isAuth }= require("../../middlewares/auth.middleware");
+const {isAdmin }= require("../../middlewares/admin.middleware");
 
 
 // ================= PUBLIC ROUTES =================
@@ -29,10 +29,10 @@ router.get("/category", getMoviesByCategory);
 router.get("/search", searchMovies);
 
 // 🎥 Movie Play
-router.get("/play/:slug", authMiddleware, playContent);
+router.get("/play/:slug", isAuth, playContent);
 
 // 📺 Series Play
-router.get("/play/:slug/:season/:episode", authMiddleware, playContent);
+router.get("/play/:slug/:season/:episode", isAuth, playContent);
 
 // 🔍 Get movie by slug
 router.get("/slug/:slug", getMovieBySlug);
@@ -43,8 +43,8 @@ router.get("/slug/:slug", getMovieBySlug);
 // ➕ Add movie
 router.post(
   "/add",
-  authMiddleware,
-  adminMiddleware,
+  isAuth,
+  isAdmin,
   videoUpload.fields([
     { name: "poster", maxCount: 1 },
     { name: "banner", maxCount: 1 },
@@ -60,11 +60,11 @@ router.post(
 );
 
 // ✏️ Update movie
-// router.put("/slug/:slug", authMiddleware, adminMiddleware, updateMovieBySlug);
+// router.put("/slug/:slug", isAuth, isAdmin, updateMovieBySlug);
 router.put(
   "/slug/:slug",
-  authMiddleware,
-  adminMiddleware,
+  isAuth,
+  isAdmin,
   videoUpload.fields([
     { name: "poster", maxCount: 1 },
     { name: "banner", maxCount: 1 },
@@ -81,7 +81,7 @@ router.put(
 );
 
 // ❌ Delete movie
-router.delete("/slug/:slug", authMiddleware, adminMiddleware, deleteMovieBySlug);
+router.delete("/slug/:slug", isAuth, isAdmin, deleteMovieBySlug);
 
 router.get("/coming-soon", async (req, res) => {
   try {

@@ -7,13 +7,17 @@ const { isAdmin } = require("../../middlewares/admin.middleware");
 const {
   sendNotification,
   getNotifications,
-  deleteNotification
+  deleteNotification,
+  markAsRead,
+  getUnreadCount
 } = require("../../controllers/admin/notification.controller");
 
 router.use(isAuth, isAdmin);
 
 router.post("/send", sendNotification);
+router.get("/unread-count", getUnreadCount);
 router.get("/", getNotifications);
+router.patch("/:id/read", markAsRead);
 router.delete("/:id", deleteNotification);
 
 module.exports = router;

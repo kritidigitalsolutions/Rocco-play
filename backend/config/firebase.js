@@ -32,7 +32,7 @@ const serviceAccount = {
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-//   storageBucket: process.env.FIREBASE_STORAGE_BUCKET
+  //   storageBucket: process.env.FIREBASE_STORAGE_BUCKET
 });
 
 // const bucket = admin.storage().bucket();

@@ -44,6 +44,7 @@ export default function NotificationsPage() {
   const [userDropOpen, setUserDropOpen]   = useState(false);
   const [selectedUser, setSelectedUser]   = useState(null);
   const [toast, setToast]             = useState(null);
+  const [viewNotif, setViewNotif]     = useState(null); // the notification being viewed
 
   // ── Toast helper ──────────────────────────────────────────────────────
   const showToast = (msg, type = "success") => {
@@ -144,6 +145,21 @@ export default function NotificationsPage() {
       showToast("Notification deleted.");
     } catch (err) {
       showToast(err.response?.data?.message || "Delete failed.", "error");
+    }
+  };
+
+  // ── View notification & Mark as Read ───────────────────────────────────
+  const handleView = async (notif) => {
+    setViewNotif(notif);
+    if (!notif.isRead) {
+      try {
+        await API.patch(`/admin/notifications/${notif._id}/read`);
+        setNotifications((prev) =>
+          prev.map((n) => (n._id === notif._id ? { ...n, isRead: true } : n))
+        );
+      } catch (err) {
+        console.error("Failed to mark as read", err);
+      }
     }
   };
 
@@ -384,13 +400,14 @@ export default function NotificationsPage() {
                   <th>Type</th>
                   <th>Target</th>
                   <th>Date</th>
+                  <th>Status</th>
                   <th style={{ textAlign: "center" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {notifications.length === 0 ? (
                   <tr>
-                    <td colSpan={5}>
+                    <td colSpan={6}>
                       <div className="empty-state">
                         <div style={{ fontSize: "2rem" }}>🔔</div>
                         <p>No notifications sent yet</p>
@@ -399,9 +416,9 @@ export default function NotificationsPage() {
                   </tr>
                 ) : (
                   notifications.map((n) => (
-                    <tr key={n._id}>
+                    <tr key={n._id} style={{ opacity: n.isRead ? 0.75 : 1, background: !n.isRead ? "rgba(255,255,255,0.02)" : "transparent" }}>
                       <td>
-                        <span className="notif-row-title">{n.title}</span>
+                        <span className="notif-row-title" style={{ fontWeight: !n.isRead ? "bold" : "normal" }}>{n.title}</span>
                       </td>
 
                       <td>
@@ -429,8 +446,22 @@ export default function NotificationsPage() {
                       </td>
 
                       <td>
+                        <span className={`badge ${n.isRead ? "" : "badge-active"}`} style={{ 
+                          background: n.isRead ? "rgba(100,116,139,0.15)" : "rgba(16, 185, 129, 0.15)",
+                          color: n.isRead ? "#94a3b8" : "#10b981"
+                        }}>
+                          {n.isRead ? "Read" : "Unread"}
+                        </span>
+                      </td>
+
+                      <td>
                         <div className="tbl-actions" style={{ justifyContent: "center" }}>
-                          <button className="icon-btn view" title="View">
+                          <button 
+                            className="icon-btn view" 
+                            title="View Details"
+                            type="button"
+                            onClick={() => handleView(n)}
+                          >
                             <Eye size={15} />
                           </button>
                           <button
@@ -451,6 +482,78 @@ export default function NotificationsPage() {
           )}
         </div>
       </div>
+
+      {/* ── View Detail Modal ── */}
+      {viewNotif && (
+        <div className="profile-overlay" onClick={() => setViewNotif(null)}>
+          <div className="profile-card notif-view-modal" onClick={e => e.stopPropagation()} style={{ width: "420px", padding: 0 }}>
+            <div className="profile-header" style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
+              <h2 style={{ fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                🔔 Notification Details
+              </h2>
+              <button className="close-btn" onClick={() => setViewNotif(null)}>
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="profile-body" style={{ padding: "20px", textAlign: "left", marginTop: 0 }}>
+              <div style={{ marginBottom: "16px" }}>
+                <span className="badge" style={{
+                  background: TYPE_COLORS[viewNotif.type]?.bg || TYPE_COLORS.GENERAL.bg,
+                  color: TYPE_COLORS[viewNotif.type]?.color || TYPE_COLORS.GENERAL.color,
+                  marginBottom: "8px",
+                  display: "inline-block"
+                }}>
+                  {viewNotif.type || "GENERAL"}
+                </span>
+                <h3 style={{ fontSize: "1.2rem", margin: "4px 0", lineHeight: 1.3 }}>{viewNotif.title}</h3>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: "4px" }}>
+                  Sent on {new Date(viewNotif.createdAt || viewNotif.sentAt).toLocaleString("en-IN", {
+                    day: "2-digit", month: "short", year: "numeric",
+                    hour: "2-digit", minute: "2-digit"
+                  })}
+                </p>
+              </div>
+
+              <div style={{ 
+                background: "var(--bg)", 
+                padding: "12px", 
+                borderRadius: "8px", 
+                border: "1px solid var(--border)",
+                color: "var(--text)",
+                fontSize: "0.95rem",
+                lineHeight: 1.5,
+                whiteSpace: "pre-wrap",
+                marginBottom: "20px"
+              }}>
+                {viewNotif.message}
+              </div>
+
+              <div className="notif-detail-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <div>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Target User(s)</span>
+                  <div style={{ fontSize: "0.9rem", marginTop: "2px" }}>{resolveTarget(viewNotif)}</div>
+                </div>
+                <div>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Action URL</span>
+                  <div style={{ fontSize: "0.9rem", marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {viewNotif.metadata?.actionUrl ? (
+                      <a href={viewNotif.metadata.actionUrl} target="_blank" rel="noreferrer" style={{ color: "var(--primary)" }}>
+                        {viewNotif.metadata.actionUrl}
+                      </a>
+                    ) : "—"}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div style={{ padding: "16px 20px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end" }}>
+              <button className="btn" onClick={() => setViewNotif(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

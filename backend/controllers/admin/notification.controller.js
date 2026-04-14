@@ -2,6 +2,8 @@ const Notification = require("../../models/notification.model");
 const User = require("../../models/user.model");
 const { sendPushNotification } = require("../../utils/fcm.service");
 
+// ── Admin-level "read" tracking uses a separate readByAdmin flag ──────────
+
 exports.sendNotification = async (req, res) => {
   try {
     const {
@@ -126,5 +128,40 @@ exports.deleteNotification = async (req, res) => {
       success: false,
       message: error.message
     });
+  }
+};
+
+// ── Mark a single notification as read (adds admin to readBy) ─────────────
+exports.markAsRead = async (req, res) => {
+  try {
+    const notif = await Notification.findByIdAndUpdate(
+      req.params.id,
+      {
+        isRead: true,
+        readAt: new Date(),
+        $addToSet: {
+          readBy: { user: req.user.id, readAt: new Date() }
+        }
+      },
+      { new: true }
+    );
+
+    if (!notif) {
+      return res.status(404).json({ success: false, message: "Notification not found" });
+    }
+
+    res.status(200).json({ success: true, data: notif });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ── Count unread notifications (isRead: false) ────────────────────────────
+exports.getUnreadCount = async (req, res) => {
+  try {
+    const count = await Notification.countDocuments({ isRead: false, isActive: true });
+    res.status(200).json({ success: true, count });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

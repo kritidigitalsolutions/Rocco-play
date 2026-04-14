@@ -219,6 +219,10 @@ mountRoute("/admin", searchRoutes);
 /* ROUTES */
 const notificationRoutes = require("./routes/user/notification.routes");
 
+// ================= ADMIN NOTIFICATION =================
+
+mountRoute("/admin/notifications", require("./routes/admin/notification.routes"));
+
 /* API ROUTES */
 app.use("/api/notifications", notificationRoutes);
 

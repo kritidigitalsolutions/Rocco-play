@@ -111,106 +111,98 @@ exports.verifyPayment = async (req, res) => {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      planId,
-      promoCode
+      planId
     } = req.body;
 
     if (
-  !razorpay_order_id ||
-  !razorpay_payment_id ||
-  !razorpay_signature ||
-  !planId
-) {
-  return res.status(400).json({
-    success: false,
-    message: "Missing required payment fields"
-  });
-}
+      !razorpay_order_id ||
+      !razorpay_payment_id ||
+      !razorpay_signature ||
+      !planId
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required payment fields"
+      });
+    }
 
+    // Signature Verify
     const body = razorpay_order_id + "|" + razorpay_payment_id;
 
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(body.toString())
+      .update(body)
       .digest("hex");
 
     if (expectedSignature !== razorpay_signature) {
       return res.status(400).json({
         success: false,
-        message: "Payment verification failed",
+        message: "Payment verification failed"
       });
     }
 
     const userId = req.user.id;
+
+    // Prevent duplicate payment record
     const alreadyPaid = await Subscription.findOne({
-  paymentId: razorpay_payment_id
-});
+      paymentId: razorpay_payment_id
+    });
 
-if (alreadyPaid) {
-  return res.json({
-    success: true,
-    message: "Payment already processed",
-    subscription: alreadyPaid
-  });
-}
-    const plan = await Plan.findById(planId);
+    if (alreadyPaid) {
+      return res.json({
+        success: true,
+        message: "Payment already processed",
+        subscription: alreadyPaid
+      });
+    }
+
+    // Prevent multiple active subscriptions
     const existing = await Subscription.findOne({
-  user: userId,
-  status: "active",
-  endDate: { $gt: new Date() }
-});
+      user: userId,
+      status: "active",
+      endDate: { $gt: new Date() }
+    });
 
-if (existing) {
-  return res.status(400).json({
-    success: false,
-    message: "You already have an active subscription"
-  });
-}
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: "You already have an active subscription"
+      });
+    }
+
+    const plan = await Plan.findById(planId);
 
     if (!plan) {
       return res.status(404).json({
         success: false,
-        message: "Plan not found",
+        message: "Plan not found"
       });
     }
 
+    // Fetch order details from Razorpay
     const orderDetails = await razorpay.orders.fetch(razorpay_order_id);
 
-let finalAmount = plan.price;
-const appliedCode = orderDetails.notes?.promoCode || "";
+    let finalAmount = plan.price;
+    const appliedCode = orderDetails.notes?.promoCode || "";
 
-if (appliedCode) {
-  const promo = await Promo.findOne({
-    code: appliedCode.toUpperCase(),
-    isActive: true,
-  });
-
-  if (promo) {
-    if (promo.discountType === "percentage") {
-      finalAmount -= (plan.price * promo.discountValue) / 100;
-    } else {
-      finalAmount -= promo.discountValue;
-    }
-
-    finalAmount = Math.max(finalAmount, 0);
-
-    promo.usedCount += 1;
-    await promo.save();
-  }
-}
+    // Apply promo once only
+    if (appliedCode) {
       const promo = await Promo.findOne({
-        code: promoCode.toUpperCase(),
-        isActive: true,
+        code: appliedCode.toUpperCase(),
+        isActive: true
       });
 
       if (promo) {
+        let discount = 0;
+
         if (promo.discountType === "percentage") {
-          finalAmount -= (plan.price * promo.discountValue) / 100;
+          discount = (plan.price * promo.discountValue) / 100;
         } else {
-          finalAmount -= promo.discountValue;
+          discount = promo.discountValue;
         }
 
-        finalAmount = Math.max(finalAmount, 0);
+        finalAmount = Math.max(plan.price - discount, 0);
+
         promo.usedCount += 1;
         await promo.save();
       }
@@ -228,19 +220,19 @@ if (appliedCode) {
       subscriptionId: razorpay_order_id,
       amount: finalAmount,
       startDate,
-      endDate,
+      endDate
     });
 
     res.json({
       success: true,
       message: "Payment verified",
-      subscription,
+      subscription
     });
 
   } catch (err) {
     res.status(500).json({
       success: false,
-      message: err.message,
+      message: err.message
     });
   }
 };

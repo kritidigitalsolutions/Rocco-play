@@ -1,7 +1,22 @@
 import { useEffect, useState } from "react";
 import API from "../api/axios";
 import "./Dashboard.css";
-import { BarChart3, Users, Film, Radio, TrendingUp, RefreshCw } from "lucide-react";
+import {
+  BarChart3,
+  Users,
+  Film,
+  Radio,
+  TrendingUp, RefreshCw,
+  BadgeCheck,
+  UserX,
+  Clock3,
+  Sun,
+  CalendarDays,
+  CalendarRange,
+  Calendar,
+  CalendarClock,
+  Wallet
+} from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
@@ -24,9 +39,26 @@ function ChartTip({ active, payload, label }) {
 
 export default function Dashboard() {
   const [users,   setUsers]   = useState([]);
+  const [subscriptionStats, setSubscriptionStats] = useState({
+    totalSubscribedUsers: 0,
+    totalNotSubscribedUsers: 0,
+    expirySubscriptionCount: 0,
+  });
+  const [registrationStats, setRegistrationStats] = useState({
+    todayRegistration: 0,
+    yesterdayRegistration: 0,
+    totalRegistration: 0,
+  });
+  const [incomeStats, setIncomeStats] = useState({
+    todayIncome: 0,
+    yesterdayIncome: 0,
+    weeklyIncome: 0,
+    monthlyIncome: 0,
+    yearlyIncome: 0,
+    totalIncome: 0,
+  });
  
   const [loading, setLoading] = useState(true);
-  const [revenue, setRevenue] = useState(0);
   const [growthData, setGrowthData] = useState([]);
 
   const GROWTH = growthData.length ? growthData : [];
@@ -34,10 +66,8 @@ export default function Dashboard() {
     const [contentStats, setContentStats] = useState([]);
   const PIE = contentStats.length ? contentStats : [];
 
-  useEffect(() => { fetchData(); }, []);
-
   // ✅ CORRECT BACKEND ENDPOINTS
-  const fetchData = async () => {
+  async function fetchData() {
     setLoading(true);
     try {
       // const [uRes, cRes] = await Promise.all([
@@ -52,11 +82,13 @@ export default function Dashboard() {
 //   API.get("/admin/user/growth"),
 //   API.get("/admin/content/stats"),
 // ]);
-const [uRes, sRes, rRes, gRes] = await Promise.all([
+const [uRes, sRes, gRes, subStatsRes, incomeStatsRes, regStatsRes] = await Promise.all([
   API.get("/user"),
   API.get("/admin/content/stats"),
-  API.get("/admin/subscription/revenue"),
   API.get("/admin/user/growth"),
+  API.get("/admin/subscription/stats"),
+  API.get("/admin/subscription/income-stats"),
+  API.get("/admin/user/registration-stats"),
 ]);
 
 setContentStats(sRes.data.data || []);
@@ -65,14 +97,36 @@ setContentStats(sRes.data.data || []);
 
 setGrowthData(gRes.data.data || []);
 
-setRevenue(rRes.data.revenue || 0);
+setSubscriptionStats(subStatsRes.data?.data || {
+  totalSubscribedUsers: 0,
+  totalNotSubscribedUsers: 0,
+  expirySubscriptionCount: 0,
+});
+setIncomeStats(incomeStatsRes.data?.data || {
+  todayIncome: 0,
+  yesterdayIncome: 0,
+  weeklyIncome: 0,
+  monthlyIncome: 0,
+  yearlyIncome: 0,
+  totalIncome: 0,
+});
+setRegistrationStats(regStatsRes.data?.data || {
+  todayRegistration: 0,
+  yesterdayRegistration: 0,
+  totalRegistration: 0,
+});
       setUsers(uRes.data?.data || uRes.data || []);
       // setContent(cRes.data?.data || cRes.data || []);
     } catch (err) {
       console.log("Dashboard fetch error:", err);
     }
     setLoading(false);
-  };
+  }
+
+  useEffect(() => { fetchData(); }, []);
+
+  const formatCurrency = (value) =>
+    `₹${Number(value || 0).toLocaleString("en-IN")}`;
 
   const moviesCount = contentStats.find(c => c.name === "Movies")?.value || 0;
 const seriesCount = contentStats.find(c => c.name === "Series")?.value || 0;
@@ -124,14 +178,95 @@ const totalContent = moviesCount + seriesCount;
           <div className="stat-value">{loading ? "..." : activeUsers}</div>
           <div className="stat-trend up">↑ Live now</div>
         </div>
-        <div className="stat-card s-orange">
-          <div className="stat-icon">💰</div>
-          <div className="stat-label">Monthly Revenue</div>
-          {/* <div className="stat-value">₹1.24L</div> */}
-          <div className="stat-value">
-  ₹{loading ? "..." : (revenue / 100000).toFixed(2)}L
-</div>
-          {/* <div className="stat-trend down">↓ -2% vs last</div> */}
+      </div>
+
+      <div className="content-box">
+        <h3>Registration</h3>
+        <div className="stat-grid">
+          <div className="stat-card s-red">
+            <div className="stat-icon"><Sun size={28} /></div>
+            <div className="stat-label">Today Registration</div>
+            <div className="stat-value">{loading ? "..." : registrationStats.todayRegistration}</div>
+            <div className="stat-trend up">New users today</div>
+          </div>
+          <div className="stat-card s-blue">
+            <div className="stat-icon"><CalendarDays size={28} /></div>
+            <div className="stat-label">Yesterday Registration</div>
+            <div className="stat-value">{loading ? "..." : registrationStats.yesterdayRegistration}</div>
+            <div className="stat-trend up">New users yesterday</div>
+          </div>
+          <div className="stat-card s-green">
+            <div className="stat-icon"><Users size={28} /></div>
+            <div className="stat-label">Total Registration counts</div>
+            <div className="stat-value">{loading ? "..." : registrationStats.totalRegistration}</div>
+            <div className="stat-trend up">All registered users</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="content-box">
+        <h3>Subscriptions</h3>
+        <div className="stat-grid">
+          <div className="stat-card s-green">
+            <div className="stat-icon"><BadgeCheck size={28} /></div>
+            <div className="stat-label">Total Subscribe Users</div>
+            <div className="stat-value">{loading ? "..." : subscriptionStats.totalSubscribedUsers}</div>
+            <div className="stat-trend up">Active subscription users</div>
+          </div>
+          <div className="stat-card s-blue">
+            <div className="stat-icon"><UserX size={28} /></div>
+            <div className="stat-label">Total Not Subscribe Users</div>
+            <div className="stat-value">{loading ? "..." : subscriptionStats.totalNotSubscribedUsers}</div>
+            <div className="stat-trend down">No active subscription</div>
+          </div>
+          <div className="stat-card s-orange">
+            <div className="stat-icon"><Clock3 size={28} /></div>
+            <div className="stat-label">Expiry Subscription counts</div>
+            <div className="stat-value">{loading ? "..." : subscriptionStats.expirySubscriptionCount}</div>
+            <div className="stat-trend down">Expired subscriptions</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="content-box">
+        <h3>Income</h3>
+        <div className="stat-grid">
+          <div className="stat-card s-red">
+            <div className="stat-icon"><Sun size={28} /></div>
+            <div className="stat-label">Today Income</div>
+            <div className="stat-value">{loading ? "..." : formatCurrency(incomeStats.todayIncome)}</div>
+            <div className="stat-trend up">Current day earnings</div>
+          </div>
+          <div className="stat-card s-blue">
+            <div className="stat-icon"><CalendarDays size={28} /></div>
+            <div className="stat-label">Yesterday Income</div>
+            <div className="stat-value">{loading ? "..." : formatCurrency(incomeStats.yesterdayIncome)}</div>
+            <div className="stat-trend up">Previous day earnings</div>
+          </div>
+          <div className="stat-card s-green">
+            <div className="stat-icon"><CalendarRange size={28} /></div>
+            <div className="stat-label">Weekly Income</div>
+            <div className="stat-value">{loading ? "..." : formatCurrency(incomeStats.weeklyIncome)}</div>
+            <div className="stat-trend up">This week earnings</div>
+          </div>
+          <div className="stat-card s-orange">
+            <div className="stat-icon"><Calendar size={28} /></div>
+            <div className="stat-label">Monthly Income</div>
+            <div className="stat-value">{loading ? "..." : formatCurrency(incomeStats.monthlyIncome)}</div>
+            <div className="stat-trend up">This month earnings</div>
+          </div>
+          <div className="stat-card s-blue">
+            <div className="stat-icon"><CalendarClock size={28} /></div>
+            <div className="stat-label">Yearly Income</div>
+            <div className="stat-value">{loading ? "..." : formatCurrency(incomeStats.yearlyIncome)}</div>
+            <div className="stat-trend up">This year earnings</div>
+          </div>
+          <div className="stat-card s-green">
+            <div className="stat-icon"><Wallet size={28} /></div>
+            <div className="stat-label">Total Income Counts</div>
+            <div className="stat-value">{loading ? "..." : formatCurrency(incomeStats.totalIncome)}</div>
+            <div className="stat-trend up">Overall revenue</div>
+          </div>
         </div>
       </div>
 

@@ -16,7 +16,10 @@ const {
   sendTestNotification
 } = require("../../controllers/user.controller");
 
-const { getUserGrowth } = require("../../controllers/admin/user.controller");
+const {
+  getUserGrowth,
+  getRegistrationStats,
+} = require("../../controllers/admin/user.controller");
 
 /* PROFILE */
 router.get("/profile", isAuth, getProfile);
@@ -26,6 +29,7 @@ router.patch("/profile-update", isAuth, upload.any(), updateProfile);
 /* USERS */
 router.get("/", getAllUsers);
 router.get("/growth", isAuth, isAdmin, getUserGrowth);
+router.get("/registration-stats", isAuth, isAdmin, getRegistrationStats);
 
 /* FCM NOTIFICATION */
 router.post("/fcm-token", isAuth, saveFcmToken);

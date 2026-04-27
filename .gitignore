@@ -1,5 +1,13 @@
-node_modules
+node_modules/
 .env
-dist
-build
+.env.*
+!.env.example
+
+dist/
+build/
+
 *.log
+*.pem
+*.key
+
+backend/firebase/serviceAccountKey.json

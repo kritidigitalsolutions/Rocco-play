@@ -8,8 +8,6 @@ const connectDB = require("../config/db");
 const Movie = require("../models/movie.model");
 const Series = require("../models/series.model");
 const Episode = require("../models/episode.model");
-const ShortDrama = require("../models/shortdrama.model");
-const DramaEpisode = require("../models/dramaEpisode.model");
 
 const BUNNY_CDN_URL = (process.env.BUNNY_CDN_URL || "").trim().replace(/\/+$/, "");
 
@@ -169,90 +167,6 @@ const run = async () => {
         totalMigrated++;
         migrationSummary.push({
           type: "Episode",
-          id: doc._id,
-          title: doc.title || `Episode ${doc.episodeNumber}`,
-          updates,
-        });
-        if (!dryRun) {
-          await doc.save();
-        }
-      }
-    }
-
-    // --- 4. SHORT DRAMAS ---
-    const dramas = await ShortDrama.find({});
-    console.log(`Inspecting ${dramas.length} short dramas...`);
-    for (const doc of dramas) {
-      let changed = false;
-      totalInspected++;
-
-      const fieldsToCheck = ["poster", "banner"];
-      const updates = {};
-
-      for (const field of fieldsToCheck) {
-        if (doc[field]) {
-          const newVal = migrateUrl(doc[field]);
-          if (newVal !== doc[field]) {
-            updates[field] = { from: doc[field], to: newVal };
-            doc[field] = newVal;
-            changed = true;
-          }
-        }
-      }
-
-      // Check cast
-      if (doc.cast && doc.cast.length > 0) {
-        doc.cast.forEach((c, idx) => {
-          if (c.image) {
-            const newVal = migrateUrl(c.image);
-            if (newVal !== c.image) {
-              updates[`cast[${idx}].image`] = { from: c.image, to: newVal };
-              c.image = newVal;
-              changed = true;
-            }
-          }
-        });
-      }
-
-      if (changed) {
-        totalMigrated++;
-        migrationSummary.push({
-          type: "ShortDrama",
-          id: doc._id,
-          title: doc.title,
-          updates,
-        });
-        if (!dryRun) {
-          await doc.save();
-        }
-      }
-    }
-
-    // --- 5. DRAMA EPISODES ---
-    const dramaEpisodes = await DramaEpisode.find({});
-    console.log(`Inspecting ${dramaEpisodes.length} drama episodes...`);
-    for (const doc of dramaEpisodes) {
-      let changed = false;
-      totalInspected++;
-
-      const fieldsToCheck = ["thumbnail", "videoUrl"];
-      const updates = {};
-
-      for (const field of fieldsToCheck) {
-        if (doc[field]) {
-          const newVal = migrateUrl(doc[field]);
-          if (newVal !== doc[field]) {
-            updates[field] = { from: doc[field], to: newVal };
-            doc[field] = newVal;
-            changed = true;
-          }
-        }
-      }
-
-      if (changed) {
-        totalMigrated++;
-        migrationSummary.push({
-          type: "DramaEpisode",
           id: doc._id,
           title: doc.title || `Episode ${doc.episodeNumber}`,
           updates,

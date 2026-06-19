@@ -127,20 +127,6 @@ const seriesUserRoutes = require("./routes/user/series.routes");
 const contentAdminRoutes = require("./routes/admin/content.routes");
 const contentUserRoutes = require("./routes/user/content.routes");
 
-const shortDramaRoutes = require(
-  "./routes/admin/shortdrama.routes"
-);
-
-const dramaEpisodeRoutes = require(
-  "./routes/admin/dramaEpisode.routes"
-);
-const dramaUserRoutes = require(
-  "./routes/user/shortdrama.routes"
-);
-const dramaEpisodeUserRoutes = require(
-  "./routes/user/dramaEpisode.routes"
-);
-
 const updateUpcomingStatus = require("./middlewares/updateUpcomingStatus.middleware");
 
 app.use(
@@ -179,27 +165,6 @@ app.use(
   "/api/admin/content",
   updateUpcomingStatus,
   contentAdminRoutes
-);
-
-
-app.use(
-  "/api/admin/shortdramas",
-  shortDramaRoutes
-);
-
-app.use(
-  "/api/admin/drama-episodes",
-  dramaEpisodeRoutes
-);
-
-app.use(
-  "/api/shortdramas",
-  dramaUserRoutes
-);
-
-app.use(
-  "/api/drama-episodes",
-  dramaEpisodeUserRoutes
 );
 
 
@@ -296,24 +261,6 @@ app.use("/api/interaction", interactionRoutes);
 // const paymentRoutes = require("./routes/user/payment.routes");
 // app.use("/api/payment", paymentRoutes);
 
-// SUPPORT ROUTES
-const userSupportRoutes = require(
-  "./routes/user/support.routes"
-);
-
-const adminSupportRoutes = require(
-  "./routes/admin/support.routes"
-);
-
-app.use(
-  "/api/support",
-  userSupportRoutes
-);
-
-app.use(
-  "/api/admin/support",
-  adminSupportRoutes
-);
 // ========================================
 // EXPORT
 // ========================================

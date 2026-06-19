@@ -9,6 +9,13 @@ const { OAuth2Client } = require("google-auth-library");
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const axios = require("axios");
+
+const DUMMY_OTP_PHONE = "+919999999999";
+const DUMMY_OTP_CODE = "123456";
+
+const isDummyOtpPhone = (phone) =>
+  phone === DUMMY_OTP_PHONE;
+
 // ========================================
 // FORMAT INDIAN PHONE
 // ========================================
@@ -145,43 +152,62 @@ exports.sendOTP = async (req, res) => {
       });
     }
 
-    // rate limit
-    const recentOtp =
-      await OTP.findOne({
-        phone: normalizedPhone,
-        createdAt: {
-          $gt: new Date(
-            Date.now() - 60 * 1000
-          ),
-        },
-      });
+    const isDummyPhone =
+      isDummyOtpPhone(normalizedPhone);
 
-    if (recentOtp) {
-      return res.status(429).json({
-        success: false,
-        message:
-          "Please wait before requesting another OTP",
-      });
+    // rate limit
+    if (!isDummyPhone) {
+      const recentOtp =
+        await OTP.findOne({
+          phone: normalizedPhone,
+          createdAt: {
+            $gt: new Date(
+              Date.now() - 60 * 1000
+            ),
+          },
+        });
+
+      if (recentOtp) {
+        return res.status(429).json({
+          success: false,
+          message:
+            "Please wait before requesting another OTP",
+        });
+      }
     }
 
-    // generate otp
-    const otp = Math.floor(
-      100000 + Math.random() * 900000
-    ).toString();
+    const otp = isDummyPhone
+      ? DUMMY_OTP_CODE
+      : Math.floor(
+          100000 + Math.random() * 900000
+        ).toString();
 
-    // remove old otp
-    await OTP.deleteMany({
-      phone: normalizedPhone,
-    });
+    if (isDummyPhone) {
+      await User.updateOne(
+        { phone: normalizedPhone },
+        {
+          $setOnInsert: {
+            phone: normalizedPhone,
+            role: "USER",
+          },
+        },
+        { upsert: true }
+      );
+    } else {
+      // remove old otp
+      await OTP.deleteMany({
+        phone: normalizedPhone,
+      });
 
-    // save new otp
-    await OTP.create({
-      phone: normalizedPhone,
-      otp,
-      expiresAt: new Date(
-        Date.now() + 5 * 60 * 1000
-      ),
-    });
+      // save new otp
+      await OTP.create({
+        phone: normalizedPhone,
+        otp,
+        expiresAt: new Date(
+          Date.now() + 5 * 60 * 1000
+        ),
+      });
+    }
 
     // check if user exists
     const user = await User.findOne({
@@ -193,10 +219,11 @@ exports.sendOTP = async (req, res) => {
 
     // console otp
  const smsSent =
-  await sendSMS(
+  isDummyPhone ||
+  (await sendSMS(
     normalizedPhone,
     otp
-  );
+  ));
 
 if (!smsSent) {
   return res.status(500).json({
@@ -210,12 +237,13 @@ console.log(
   `📱 OTP sent to ${normalizedPhone}`
 );
 
-return res.status(200).json({
-  success: true,
-  message:
-    "OTP sent successfully",
-  isNewUser,
-});
+    return res.status(200).json({
+      success: true,
+      message:
+        "OTP sent successfully",
+      isNewUser,
+      ...(isDummyPhone && { otp }),
+    });
 
   } catch (error) {
     console.error(
@@ -253,8 +281,13 @@ exports.verifyOtp = async (req, res) => {
       otp
     ).trim();
 
-    const otpRecord =
-      await OTP.findOne({
+    const isDummyOtp =
+      isDummyOtpPhone(normalizedPhone) &&
+      normalizedOtp === DUMMY_OTP_CODE;
+
+    const otpRecord = isDummyOtp
+      ? null
+      : await OTP.findOne({
         phone: normalizedPhone,
         otp: normalizedOtp,
         expiresAt: {
@@ -265,7 +298,7 @@ exports.verifyOtp = async (req, res) => {
       });
 
     // wrong otp
-    if (!otpRecord) {
+    if (!isDummyOtp && !otpRecord) {
       const existing =
         await OTP.findOne({
           phone: normalizedPhone,
@@ -301,9 +334,11 @@ exports.verifyOtp = async (req, res) => {
     }
 
     // delete otp after success
-    await OTP.deleteOne({
-      _id: otpRecord._id,
-    });
+    if (otpRecord) {
+      await OTP.deleteOne({
+        _id: otpRecord._id,
+      });
+    }
 
     // check user
     let user = await User.findOne({

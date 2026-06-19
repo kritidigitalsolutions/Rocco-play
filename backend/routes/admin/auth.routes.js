@@ -29,8 +29,6 @@ const allowedUploadFolders = {
   movies: new Set(["posters", "banners", "trailers", "videos", "cast"]),
   series: new Set(["posters", "banners", "trailers", "cast"]),
   episodes: new Set(["posters", "videos"]),
-  shortdramas: new Set(["posters", "banners", "trailers", "cast"]),
-  dramaepisodes: new Set(["posters", "videos"]),
   profile: new Set(["others", "avatars"]),
 };
 

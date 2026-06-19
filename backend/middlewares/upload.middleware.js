@@ -9,10 +9,7 @@ const getUploadInfo = (req, file) => {
 
   if (req.originalUrl.includes("/series")) type = "series";
   if (req.originalUrl.includes("/episodes")) type = "episodes";
-  if (req.originalUrl.includes("/drama-episodes")) type = "dramaepisodes";
-  if (req.originalUrl.includes("/shortdramas")) type = "shortdramas";
   if (req.originalUrl.includes("/user")) type = "profile";
-  if (req.originalUrl.includes("/support")) type = "support";
 
   let subfolder = "others";
 
@@ -95,29 +92,8 @@ const fileFilter = (req, file, cb) => {
     "video/quicktime",
   ];
 
-  if (req.originalUrl && req.originalUrl.includes("/support")) {
-    const allowedSupportTypes = [
-      "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "application/vnd.ms-excel",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "text/plain",
-      "application/zip",
-      "application/x-zip-compressed",
-      "application/octet-stream",
-    ];
-
-    if (
-      allowedMimeTypes.includes(file.mimetype) ||
-      allowedSupportTypes.includes(file.mimetype)
-    ) {
-      return cb(null, true);
-    }
-  } else {
-    if (allowedMimeTypes.includes(file.mimetype)) {
-      return cb(null, true);
-    }
+  if (allowedMimeTypes.includes(file.mimetype)) {
+    return cb(null, true);
   }
 
   cb(new Error("Invalid file type"), false);

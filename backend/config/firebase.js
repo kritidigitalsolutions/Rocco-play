@@ -1,43 +1,45 @@
 const admin = require("firebase-admin");
 const path = require("path");
+const fs = require("fs");
 
-// const serviceAccount = require(path.join(
-//   __dirname,
-//   "../firebase/roccoplay-firebase-adminsdk-fbsvc-0c75cc515b.json"
-// ));
+let firebaseInitialized = false;
 
-// if (!admin.apps.length) {
-//   admin.initializeApp({
-//     credential: admin.credential.cert(serviceAccount),
-//   });
-// }
+try {
+  // Option 1: Initialize using environment variables if present
+  if (
+    process.env.FIREBASE_PROJECT_ID &&
+    process.env.FIREBASE_PRIVATE_KEY &&
+    process.env.FIREBASE_CLIENT_EMAIL
+  ) {
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n");
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: privateKey,
+      }),
+    });
+    firebaseInitialized = true;
+    console.log("✅ Firebase Admin SDK initialized successfully via environment variables.");
+  } else {
+    // Option 2: Fallback to local serviceAccountKey.json if present
+    const serviceAccountPath = path.join(__dirname, "../firebase/serviceAccountkey.json");
+    if (fs.existsSync(serviceAccountPath)) {
+      const serviceAccount = require(serviceAccountPath);
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+      firebaseInitialized = true;
+      console.log("✅ Firebase Admin SDK initialized successfully via serviceAccountKey.json.");
+    } else {
+      console.warn("⚠️ Firebase credentials missing in both environment variables and serviceAccountKey.json. FCM service running in mock/stub mode.");
+    }
+  }
+} catch (error) {
+  console.error("❌ Firebase Admin SDK Initialization Error:", error);
+}
 
-// module.exports = admin;
-
-
-// Use environment variables for Firebase credentials (secure for production)
-const serviceAccount = {
-  type: "service_account",
-  project_id: process.env.FIREBASE_PROJECT_ID,
-  private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-  private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-  client_email: process.env.FIREBASE_CLIENT_EMAIL,
-  client_id: process.env.FIREBASE_CLIENT_ID,
-  auth_uri: "https://accounts.google.com/o/oauth2/auth",
-  token_uri: "https://oauth2.googleapis.com/token",
-  auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-  client_x509_cert_url: process.env.FIREBASE_CERT_URL,
-  universe_domain: "googleapis.com"
+module.exports = {
+  admin,
+  firebaseInitialized,
 };
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  //   storageBucket: process.env.FIREBASE_STORAGE_BUCKET
-});
-
-// const bucket = admin.storage().bucket();
-
-module.exports = admin;
-
-// For backward compatibility
-// module.exports.default = bucket;

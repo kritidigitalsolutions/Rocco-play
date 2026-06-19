@@ -24,6 +24,12 @@ const helpSchema = new mongoose.Schema(
       required: true
     },
 
+    // ADD THIS
+    supportNumber: {
+      type: String,
+      default: ""
+    },
+
     isPublished: {
       type: Boolean,
       default: true

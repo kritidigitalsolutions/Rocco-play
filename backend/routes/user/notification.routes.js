@@ -8,12 +8,13 @@ const {
     markAllAsRead,
     deleteNotification
 } = require("../../controllers/notification.controller");
-
-
 const { saveFcmToken } = require("../../controllers/user.controller");
 
 // All routes require authentication
 router.use(isAuth);
+
+// POST /api/notifications/fcm-token - Connect device FCM token to logged-in user
+router.post("/fcm-token", saveFcmToken);
 
 // GET /api/notifications - Get user's notifications
 router.get("/", getMyNotifications);
@@ -30,6 +31,4 @@ router.patch("/:id/read", markAsRead);
 // DELETE /api/notifications/:id - Delete notification
 router.delete("/:id", deleteNotification);
 
-// 🔐 User must be logged in
-router.post("/fcm-token", isAuth, saveFcmToken);
 module.exports = router;

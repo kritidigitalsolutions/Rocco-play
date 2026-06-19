@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import API from "../api/axios";
 import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import "../pages/Dashboard.css"; // Uses shared .login-page classes
 
 const AdminLogin = () => {
@@ -8,6 +9,7 @@ const AdminLogin = () => {
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -40,8 +42,10 @@ const AdminLogin = () => {
       <form className="login-card" onSubmit={handleSubmit}>
         {/* Brand */}
         <div className="login-brand">
-          <div className="login-logo">RP</div>
-          <h1>RoccoPlay</h1>
+          <div className="login-logo">
+            <img src="/favicon.png" alt="Logo" />
+          </div>
+          <h1>Rocco Play</h1>
           <p>Sign in to your Admin Panel</p>
         </div>
 
@@ -64,28 +68,39 @@ const AdminLogin = () => {
           required
         />
 
-        <input
-          className="login-input"
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={handleChange}
-          required
-        />
+        <div className="password-input-container">
+          <input
+            className="login-input"
+            type={showPassword ? "text" : "password"}
+            name="password"
+            placeholder="Password"
+            value={form.password}
+            onChange={handleChange}
+            required
+          />
+          <button
+            type="button"
+            className="password-toggle-btn"
+            onClick={() => setShowPassword(!showPassword)}
+            tabIndex={-1}
+          >
+            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
+        </div>
 
         <button type="submit" className="login-btn" disabled={loading}>
           {loading ? "Signing in..." : "Sign In →"}
         </button>
         <p
-  className="text-sm text-right text-blue-400 cursor-pointer"
-  onClick={() => navigate("/forgot-password")}
->
-  Forgot Password?
-</p>
+          className="text-sm text-right text-blue-400 cursor-pointer"
+          onClick={() => navigate("/forgot-password")}
+          style={{ cursor: "pointer", marginTop: "12px", color: "#3182ce", fontSize: "0.88rem", textAlign: "right" }}
+        >
+          Forgot Password?
+        </p>
       </form>
     </div>
   );
 };
-
 export default AdminLogin;
+

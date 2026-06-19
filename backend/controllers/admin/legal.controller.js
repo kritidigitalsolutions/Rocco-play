@@ -1,94 +1,192 @@
 const legalModel = require("../../models/legal.model");
 
-//Get all legal documents
+// ========================================
+// GET ALL LEGAL DOCUMENTS
+// ========================================
+
 exports.getLegalDocuments = async (req, res) => {
   try {
-    const documents = await legalModel.find().sort("type");
-    res.status(200).json({ documents });
-  } catch (error) { 
-    console.error("Error in getting legal documents:", error);
-    res.status(500).json({ message: "Server error" });
-  } 
-};
-//get legal document by type
-exports.getLegalByType = async (req, res) => {
-  try {
-    const document = await legalModel.findOne({ type: req.params.type });   
-    if (!document) {
-        return res.status(404).json({ message: "Document not found" });
-    }
-    res.status(200).json({ document });
+
+    const documents = await legalModel
+      .find()
+      .sort("type")
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      documents
+    });
+
   } catch (error) {
-    console.error("Error in getting legal document by type:", error);
-    res.status(500).json({ message: "Server error" });
+
+    console.error(
+      "GET LEGAL DOCS ERROR:",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
   }
 };
-//Add or update legal document
-exports.addOrUpdateLegalDocument = async (req, res) => {
-  try {
-    const { type, title, content } = req.body;
 
-    if (!type || !title || !content) {
-      return res.status(400).json({
-        message: "Type, title and content required"
+// ========================================
+// GET LEGAL DOCUMENT BY TYPE
+// ========================================
+
+exports.getLegalByType = async (req, res) => {
+  try {
+
+    const document =
+      await legalModel.findOne({
+        type: req.params.type
+      }).lean();
+
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        message: "Document not found"
       });
     }
 
-    let document = await legalModel.findOne({ type });
+    res.status(200).json({
+      success: true,
+      document
+    });
 
+  } catch (error) {
+
+    console.error(
+      "GET LEGAL BY TYPE ERROR:",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
+
+// ========================================
+// CREATE OR UPDATE LEGAL DOCUMENT
+// ========================================
+
+exports.addOrUpdateLegalDocument = async (req, res) => {
+  try {
+
+    const {
+      type,
+      title,
+      content
+    } = req.body;
+
+    if (
+      !type ||
+      !title ||
+      !content
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Type, title and content required"
+      });
+    }
+
+    let document =
+      await legalModel.findOne({
+        type
+      });
+
+    // UPDATE
     if (document) {
-      document.content = content;
+
       document.title = title;
+
+      document.content = content;
+
+      document.lastUpdatedBy =
+        req.user?.id || "Admin";
+
       await document.save();
 
       return res.status(200).json({
+        success: true,
         message: "Document updated",
-        document
-      });
-    } else {
-      document = await legalModel.create({
-        type,
-        title,
-        content
-      });
-
-      return res.status(201).json({
-        message: "Document created",
         document
       });
     }
 
+    // CREATE
+    document = await legalModel.create({
+      type,
+      title,
+      content,
+      lastUpdatedBy:
+        req.user?.id || "Admin"
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Document created",
+      document
+    });
+
   } catch (error) {
-    console.error("Error in adding/updating legal document:", error);
-    res.status(500).json({ message: "Server error" });
+
+    console.error(
+      "ADD/UPDATE LEGAL ERROR:",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
   }
 };
-//Delete legal document
-// exports.deleteLegalDocument = async (req, res) => {
-//   try { 
-//     const { id } = req.params;
-//     const document = await legalModel.findByIdAndDelete(id);
-//     if (!document) {
-//       return res.status(404).json({ message: "Document not found" });
-//     }
-//     res.status(200).json({ message: "Document deleted" });
-//     } catch (error) {
-//     console.error("Error in deleting legal document:", error);
-//     res.status(500).json({ message: "Server error" });
-//   } 
-// };
 
-// ─── TOGGLE PUBLISH ───────────────────────────────────────────────────────────
-// PATCH /api/admin/legal/:type/toggle
+// ========================================
+// TOGGLE PUBLISH STATUS
+// ========================================
+
 exports.togglePublish = async (req, res) => {
   try {
-    const page = await legalModel.findOne({ type: req.params.type });
-    if (!page) return res.status(404).json({ success: false, message: "Legal page not found" });
-    page.isPublished = !page.isPublished;
+
+    const page =
+      await legalModel.findOne({
+        type: req.params.type
+      });
+
+    if (!page) {
+      return res.status(404).json({
+        success: false,
+        message: "Legal page not found"
+      });
+    }
+
+    page.isPublished =
+      !page.isPublished;
+
     await page.save();
-    res.status(200).json({ success: true, message: `Legal page ${page.isPublished ? "published" : "unpublished"}`, page });
+
+    res.status(200).json({
+      success: true,
+      message:
+        `Legal page ${
+          page.isPublished
+            ? "published"
+            : "unpublished"
+        }`,
+      page
+    });
+
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
-  
 };

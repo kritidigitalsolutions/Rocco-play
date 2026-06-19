@@ -2,35 +2,15 @@ import axios from "axios";
 
 const rawBaseUrl =
   import.meta.env.VITE_API_BASE_URL?.trim() ||
-  import.meta.env.VITE_API_URL?.trim() ||
   "http://localhost:5000/api";
 
-const FALLBACK_API_BASE_URL =
-  import.meta.env.VITE_API_FALLBACK_BASE_URL?.trim() ||
-  "https://rocco-play-backend.vercel.app/api";
-
 const toSafeBaseUrl = (value) => {
-  const normalized = (value || "").replace(/\/+$/, "");
-
-  try {
-    const parsed = new URL(normalized);
-    const blockedHosts = new Set(["dating-app-3apa.vercel.app"]);
-    const isBlockedHost = blockedHosts.has(parsed.hostname);
-    const isLocalhostInProd =
-      window.location.hostname.endsWith("vercel.app") &&
-      ["localhost", "127.0.0.1"].includes(parsed.hostname);
-
-    if (isBlockedHost || isLocalhostInProd) {
-      return FALLBACK_API_BASE_URL.replace(/\/+$/, "");
-    }
-  } catch {
-    // Keep normalized value if URL parsing fails.
-  }
-
-  return normalized;
+  return (value || "").replace(/\/+$/, "");
 };
 
 const API_BASE_URL = toSafeBaseUrl(rawBaseUrl);
+const BASE_URL = API_BASE_URL.replace("/api", "");
+
 
 const API = axios.create({
   baseURL: API_BASE_URL,
@@ -57,5 +37,6 @@ API.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-export { API_BASE_URL };
+export { API_BASE_URL, BASE_URL };
+
 export default API;

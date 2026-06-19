@@ -1,11 +1,13 @@
 const MB = 1024 * 1024;
+const GB = 1024 * MB;
 
 const limits = {
-  poster: 5 * MB,
-  banner: 5 * MB,
-  profileImage: 2 * MB,
-  trailer: 500 * MB,
-  video: 1024 * MB,
+  poster:       5  * MB,
+  banner:       5  * MB,
+  thumbnail:    5  * MB,
+  profileImage: 2  * MB,
+  trailer:      5  * GB,  // 5 GB
+  video:        5  * GB,  // 5 GB
 };
 
 function validateSingle(file, field) {
@@ -20,7 +22,8 @@ function validateSingle(file, field) {
   }
 
   if (max && file.size > max) {
-    throw new Error(`${field} exceeds ${max / MB}MB limit`);
+    const display = max >= GB ? `${max / GB}GB` : `${max / MB}MB`;
+    throw new Error(`${field} exceeds ${display} limit`);
   }
 }
 

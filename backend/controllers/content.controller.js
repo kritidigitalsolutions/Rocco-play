@@ -1,181 +1,154 @@
 const Movie = require("../models/movie.model");
 const Series = require("../models/series.model");
-const Episode = require("../models/episode.model");
-const Subscription = require("../models/subscription.model");
-const User = require("../models/user.model");
 
-// =====================================================
-// 🔐 COMMON SUBSCRIPTION CHECK FUNCTION
-// =====================================================
-const checkUserSubscription = async (userId) => {
-  if (!userId) return false;
 
-  const user = await User.findById(userId);
-
-  if (!user || !user.subscriptions.length) return false;
-
-  const subscription = await Subscription.findById(
-    user.subscriptions[user.subscriptions.length - 1]
-  );
-
-  if (
-    !subscription ||
-    subscription.status !== "active" ||
-    new Date() > subscription.endDate
-  ) {
-    return false;
-  }
-
-  return true;
-};
-
-// =====================================================
-// 📄 GET ALL CONTENT
-// =====================================================
-const getAllContent = async (req, res) => {
+// ========================================
+// GET HOME CONTENT (COMBINED)
+// ========================================
+const getHomeContent = async (req, res) => {
   try {
-    const movies = await Movie.find();
-    const series = await Series.find();
+    // Fetch active movies and series
+    const movies = await Movie.find().sort({ priority: -1, createdAt: -1 }).limit(20).lean();
+    const series = await Series.find().sort({ priority: -1, createdAt: -1 }).limit(20).lean();
 
-    const content = [
-      ...movies.map((m) => ({ ...m.toObject(), contentType: "movie" })),
-      ...series.map((s) => ({ ...s.toObject(), contentType: "series" })),
-    ];
+    const [
+  moviesCount,
+  seriesCount,
+  seriesData
+] = await Promise.all([
+  Movie.countDocuments(),
+  Series.countDocuments(),
+  Series.find({}, "totalEpisodes").lean()
+]);
+    const episodesCount = seriesData.reduce((acc, s) => acc + (s.totalEpisodes || 0), 0);
 
-    res.json({
-      success: true,
-      data: content,
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: "Error fetching content",
-      error: error.message,
-    });
-  }
-};
+    // Format and add flags
+    const formattedMovies = movies.map((m) => ({
+      ...m,
+      type: "movie",
+      isTrending: m.category?.includes("trending") || false
+    }));
 
-// =====================================================
-// 🔍 GET CONTENT BY SLUG
-// =====================================================
-const getContentBySlug = async (req, res) => {
-  try {
-    const { slug } = req.params;
+    const formattedSeries = series.map((s) => ({
+      ...s,
+      type: "series",
+      isTrending: s.category?.includes("trending") || false
+    }));
 
-    let content = await Movie.findOne({ slug });
-
-    if (content) {
-      return res.json({
-        success: true,
-        type: "movie",
-        data: content,
-      });
-    }
-
-    content = await Series.findOne({ slug });
-
-    if (content) {
-      return res.json({
-        success: true,
-        type: "series",
-        data: content,
-      });
-    }
-
-    return res.status(404).json({
-      message: "Content not found",
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: "Error fetching content",
-      error: error.message,
-    });
-  }
-};
-
-// =====================================================
-// 🎬 PLAY CONTENT (MOVIE + SERIES)
-// =====================================================
-const playContent = async (req, res) => {
-  try {
-    const { slug, season, episode } = req.params;
-    const userId = req.query.userId;
-
-    // 🎬 MOVIE CHECK
-    const movie = await Movie.findOne({ slug });
-
-    if (movie) {
-      // 🔒 Premium check
-      if (movie.isPremium) {
-        const isSubscribed = await checkUserSubscription(userId);
-
-        if (!isSubscribed) {
-          return res.status(403).json({
-            message: "Subscribe to watch 🔒",
-          });
-        }
+    // Combine and sort by priority, then date
+    const content = [...formattedMovies, ...formattedSeries].sort(
+      (a, b) => {
+      const priorityDiff =(b.priority || 0)-(a.priority || 0);
+        if (priorityDiff !== 0) return priorityDiff;
+        return new Date(b.createdAt) - new Date(a.createdAt);
       }
-
-      return res.json({
-        success: true,
-        type: "movie",
-        videoUrl: movie.videoUrl,
-      });
-    }
-
-    // 📺 SERIES CHECK
-    const series = await Series.findOne({ slug });
-
-    if (!series) {
-      return res.status(404).json({
-        message: "Content not found",
-      });
-    }
-
-    if (!season || !episode) {
-      return res.status(400).json({
-        message: "Season & episode required",
-      });
-    }
-
-    const ep = await Episode.findOne({
-      seriesId: series._id,
-      seasonNumber: season,
-      episodeNumber: episode,
-    });
-
-    if (!ep) {
-      return res.status(404).json({
-        message: "Episode not found",
-      });
-    }
-
-    // 🔒 Premium check for series
-    if (series.isPremium) {
-      const isSubscribed = await checkUserSubscription(userId);
-
-      if (!isSubscribed) {
-        return res.status(403).json({
-          message: "Subscribe to watch 🔒",
-        });
-      }
-    }
+    );
 
     return res.json({
       success: true,
-      type: "series",
-      videoUrl: ep.videoUrl,
+      moviesCount,
+      seriesCount,
+      episodesCount,
+      content
     });
-
   } catch (error) {
-    res.status(500).json({
-      message: "Error playing content",
-      error: error.message,
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+
+
+
+// ========================================
+// SEARCH CONTENT
+// ========================================
+const searchContent = async (req, res) => {
+  try {
+    const { query } = req.query;
+    if (!query) return res.status(400).json({ success: false, message: "Search query is required" });
+
+    const movies = await Movie.find(
+  {
+    $text: {
+      $search: query
+    }
+  },
+  {
+    score: {
+      $meta: "textScore"
+    }
+  }
+)
+.select({
+  score: {
+    $meta: "textScore"
+  }
+})
+.sort({
+  score: {
+    $meta: "textScore"
+  }
+})
+.lean();
+
+
+const series = await Series.find(
+  {
+    $text: {
+      $search: query
+    }
+  },
+  {
+    score: {
+      $meta: "textScore"
+    }
+  }
+)
+.select({
+  score: {
+    $meta: "textScore"
+  }
+})
+.sort({
+  score: {
+    $meta: "textScore"
+  }
+})
+.lean();
+
+    const results = [
+  ...movies.map(m => ({
+    ...m,
+    type: "movie"
+  })),
+  ...series.map(s => ({
+    ...s,
+    type: "series"
+  }))
+].sort(
+  (a, b) =>
+    (b.score || 0) -
+    (a.score || 0)
+);
+
+
+
+    return res.json({
+      success: true,
+      results
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };
 
 module.exports = {
-  getAllContent,
-  getContentBySlug,
-  playContent,
+  getHomeContent,
+  searchContent
 };

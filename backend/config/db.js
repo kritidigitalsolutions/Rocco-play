@@ -1,49 +1,39 @@
 const mongoose = require("mongoose");
 
-let connectionPromise = null;
+let isConnected = false;
 
-mongoose.set("bufferCommands", false);
-mongoose.set("bufferTimeoutMS", 0);
+mongoose.set("strictQuery", true);
 
 const connectDB = async () => {
-  const uri = process.env.MONGO_URI;
+  try {
+    if (isConnected) {
+      return;
+    }
 
-  if (!uri || typeof uri !== "string") {
-    throw new Error(
-      "MONGO_URI is missing. Add it to your Vercel environment variables."
-    );
-  }
+    const uri = process.env.MONGO_URI?.trim();
 
-  // ✅ Skip if already connected (serverless warm invocations reuse the connection)
-  if (mongoose.connection.readyState === 1) {
-    console.log("✅ MongoDB already connected (reusing)");
-    return;
-  }
+    if (!uri) {
+      throw new Error("MONGO_URI is missing in .env");
+    }
 
-  // If a connection attempt is already running, await it instead of starting another.
-  if (connectionPromise) {
-    await connectionPromise;
-    return;
-  }
-
-  connectionPromise = mongoose
-    .connect(uri, {
-      // ✅ Fail fast — don't hang for minutes trying to find a server
+    const connection = await mongoose.connect(uri, {
       serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 8000,
-      socketTimeoutMS: 30000,
-
-      // ✅ Recommended for serverless connection pooling
-      maxPoolSize: 10,
-      minPoolSize: 0,
-    })
-    .finally(() => {
-      connectionPromise = null;
+      connectTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      maxPoolSize: 100,
     });
 
-  await connectionPromise;
+    isConnected = connection.connections[0].readyState === 1;
 
-  console.log("✅ MongoDB Connected");
+    console.log("✅ MongoDB Connected");
+  } catch (error) {
+    console.error("❌ MongoDB Connection Error:", error.message);
+    if (process.env.VERCEL) {
+      throw error;
+    } else {
+      process.exit(1);
+    }
+  }
 };
 
 module.exports = connectDB;

@@ -1,72 +1,66 @@
+:root {
+  --pv-primary: #6366f1;
+  /* Indigo for Promos */
+  --pv-secondary: #f472b6;
+  /* Pink for Vouchers */
+}
+
 .pv-container {
   padding: 24px;
   color: white;
 }
 
-.pv-toggle {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
+/* Glassmorphism for card effects */
+.glass-card {
+  background: rgba(30, 30, 47, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 24px;
 }
 
-.pv-toggle button {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 20px;
-  background: #2b2b3c;
-  color: white;
-  cursor: pointer;
+/* Modal specific tweaks */
+.modal-box-view {
+  border-radius: 24px !important;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
 }
 
-.pv-toggle .active {
-  background: #ff4d6d;
+.detail-item {
+  transition: transform 0.2s ease;
 }
 
-.pv-form {
-  background: #1e1e2f;
-  padding: 20px;
-  border-radius: 10px;
-  margin-bottom: 20px;
+.detail-item:hover {
+  transform: translateY(-2px);
 }
 
-.pv-form input,
-.pv-form select {
-  width: 100%;
-  margin: 8px 0;
-  padding: 10px;
-  border-radius: 6px;
-  border: none;
-  background: #2a2a3d;
-  color: white;
+/* Tab styling overrides if needed */
+.tab-group button {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.pv-form button {
-  margin-top: 10px;
-  padding: 10px;
-  background: #ff4d6d;
-  border: none;
-  border-radius: 6px;
-  color: white;
-  cursor: pointer;
+/* Status Badges */
+.badge-pub {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
-
-
-
-
-.pv-actions button {
-  padding: 6px 10px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
+.badge-draft {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-.pv-actions button:first-child {
-  background: #4caf50;
-  color: white;
+/* Layout for the view details */
+.view-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
 }
 
-.pv-actions button:last-child {
-  background: #f44336;
-  color: white;
+@media (max-width: 600px) {
+  .view-grid {
+    grid-template-columns: 1fr;
+  }
 }

@@ -18,6 +18,7 @@
     grid-template-columns: 1fr;
   }
 }
+
 /* =========================
    🚀 Coming Soon Section
 ========================= */
@@ -79,17 +80,22 @@
 
 .cast-row-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr auto;
-  gap: 10px;
+  grid-template-columns: 2fr 2fr 2fr auto;
+  gap: 12px;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.cast-row-grid input {
+  height: 40px;
+  width: 100%;
 }
 
 .cast-row-grid input[type="file"] {
   background: #0f172a;
   color: #fff;
   border: 1px solid #334155;
-  padding: 8px;
+  padding: 6px;
   border-radius: 8px;
   width: 100%;
 }
@@ -116,25 +122,72 @@
   background: #ef4444;
   color: white;
 }
+
 .form-card {
   padding: 20px;
 }
 
-.cast-row-grid input {
-  height: 40px;
-}
-.cast-row-grid {
-  display: grid;
-  grid-template-columns: 2fr 2fr 2fr auto;
-  gap: 12px;
+/* ---- Checkbox Row ---- */
+.checkbox-row {
+  display: flex;
   align-items: center;
-  margin-bottom: 12px;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: var(--transition);
 }
 
-.cast-row-grid input {
-  width: 100%;
+.checkbox-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
 }
 
-.cast-row-grid input[type="file"] {
-  padding: 6px;
+.checkbox-row span {
+  font-weight: 700;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---- Buttons ---- */
+.btn-lg {
+  background: var(--grad-primary);
+  color: white;
+  border: none;
+  padding: 18px 40px;
+  border-radius: 16px;
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
+  box-shadow: 0 10px 30px rgba(var(--primary-rgb), 0.3);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-lg:hover:not(:disabled) {
+  transform: scale(1.02) translateY(-4px);
+  box-shadow: 0 15px 40px rgba(var(--primary-rgb), 0.45);
+}
+
+.btn-lg:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Animations */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

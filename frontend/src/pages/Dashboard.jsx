@@ -38,7 +38,7 @@ function ChartTip({ active, payload, label }) {
 }
 
 export default function Dashboard() {
-  const [users,   setUsers]   = useState([]);
+  const [users, setUsers] = useState([]);
   const [subscriptionStats, setSubscriptionStats] = useState({
     totalSubscribedUsers: 0,
     totalNotSubscribedUsers: 0,
@@ -57,13 +57,13 @@ export default function Dashboard() {
     yearlyIncome: 0,
     totalIncome: 0,
   });
- 
+
   const [loading, setLoading] = useState(true);
   const [growthData, setGrowthData] = useState([]);
 
   const GROWTH = growthData.length ? growthData : [];
 
-    const [contentStats, setContentStats] = useState([]);
+  const [contentStats, setContentStats] = useState([]);
   const PIE = contentStats.length ? contentStats : [];
 
   // ✅ CORRECT BACKEND ENDPOINTS
@@ -74,48 +74,48 @@ export default function Dashboard() {
       //   API.get("/user"),       // ✅ correct: /api/user
       //   API.get("/movies"),     // ✅ correct: /api/movies
       // ]);
-//     const [uRes, cRes, rRes, gRes, sRes] = await Promise.all([
-//   API.get("/user"),
-//   // API.get("/movies"),
-//   API.get("/admin/content/stats"),
-//   API.get("/admin/subscription/revenue"),
-//   API.get("/admin/user/growth"),
-//   API.get("/admin/content/stats"),
-// ]);
-const [uRes, sRes, gRes, subStatsRes, incomeStatsRes, regStatsRes] = await Promise.all([
-  API.get("/user"),
-  API.get("/admin/content/stats"),
-  API.get("/admin/user/growth"),
-  API.get("/admin/subscription/stats"),
-  API.get("/admin/subscription/income-stats"),
-  API.get("/admin/user/registration-stats"),
-]);
+      //     const [uRes, cRes, rRes, gRes, sRes] = await Promise.all([
+      //   API.get("/user"),
+      //   // API.get("/movies"),
+      //   API.get("/admin/content/stats"),
+      //   API.get("/admin/subscription/revenue"),
+      //   API.get("/admin/user/growth"),
+      //   API.get("/admin/content/stats"),
+      // ]);
+      const [uRes, sRes, gRes, subStatsRes, incomeStatsRes, regStatsRes] = await Promise.all([
+        API.get("/admin/users"),
+        API.get("/admin/content/stats"),
+        API.get("/admin/user/growth"),
+        API.get("/admin/subscription/stats"),
+        API.get("/admin/subscription/income-stats"),
+        API.get("/admin/user/registration-stats"),
+      ]);
 
-setContentStats(sRes.data.data || []);
+      setContentStats(sRes.data.data || []);
 
 
 
-setGrowthData(gRes.data.data || []);
+      setGrowthData(gRes.data.data || []);
 
-setSubscriptionStats(subStatsRes.data?.data || {
-  totalSubscribedUsers: 0,
-  totalNotSubscribedUsers: 0,
-  expirySubscriptionCount: 0,
-});
-setIncomeStats(incomeStatsRes.data?.data || {
-  todayIncome: 0,
-  yesterdayIncome: 0,
-  weeklyIncome: 0,
-  monthlyIncome: 0,
-  yearlyIncome: 0,
-  totalIncome: 0,
-});
-setRegistrationStats(regStatsRes.data?.data || {
-  todayRegistration: 0,
-  yesterdayRegistration: 0,
-  totalRegistration: 0,
-});
-      setUsers(uRes.data?.data || uRes.data || []);
+      setSubscriptionStats(subStatsRes.data?.data || {
+        totalSubscribedUsers: 0,
+        totalNotSubscribedUsers: 0,
+        expirySubscriptionCount: 0,
+      });
+      setIncomeStats(incomeStatsRes.data?.data || {
+        todayIncome: 0,
+        yesterdayIncome: 0,
+        weeklyIncome: 0,
+        monthlyIncome: 0,
+        yearlyIncome: 0,
+        totalIncome: 0,
+      });
+      setRegistrationStats(regStatsRes.data?.data || {
+        todayRegistration: 0,
+        yesterdayRegistration: 0,
+        totalRegistration: 0,
+      });
+      setUsers(uRes.data?.users || uRes.data?.data || uRes.data || []);
       // setContent(cRes.data?.data || cRes.data || []);
     } catch (err) {
       console.log("Dashboard fetch error:", err);
@@ -129,9 +129,9 @@ setRegistrationStats(regStatsRes.data?.data || {
     `₹${Number(value || 0).toLocaleString("en-IN")}`;
 
   const moviesCount = contentStats.find(c => c.name === "Movies")?.value || 0;
-const seriesCount = contentStats.find(c => c.name === "Series")?.value || 0;
+  const seriesCount = contentStats.find(c => c.name === "Series")?.value || 0;
 
-const totalContent = moviesCount + seriesCount;
+  const totalContent = moviesCount + seriesCount;
 
 
   // const PIE = [
@@ -148,7 +148,7 @@ const totalContent = moviesCount + seriesCount;
       <div className="pg-header">
         <div>
           <h1 className="pg-title"><BarChart3 style={{ display: "inline-block", marginRight: 8 }} size={32} /> Platform Overview</h1>
-          <p className="pg-sub">Real-time stats and analytics for Rocco Play</p>
+          <p className="pg-sub">Real-time stats and analytics for Mirchi</p>
         </div>
         <button className="btn btn-ghost" onClick={fetchData}>
           {loading ? <><TrendingUp size={18} style={{ marginRight: 6 }} /> Loading...</> : <><RefreshCw size={18} style={{ marginRight: 6 }} /> Refresh</>}
@@ -168,8 +168,8 @@ const totalContent = moviesCount + seriesCount;
           <div className="stat-label">Content Library</div>
           {/* <div className="stat-value">{loading ? "..." : (Array.isArray(content) ? content.length : 0)}</div> */}
           <div className="stat-value">
-  {loading ? "..." : totalContent}
-</div>
+            {loading ? "..." : totalContent}
+          </div>
           <div className="stat-trend up">↑ +8% this week</div>
         </div>
         <div className="stat-card s-green">

@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const {isAuth }= require("../../middlewares/auth.middleware");
+
 const {isAdmin }= require("../../middlewares/admin.middleware");
 
 const {
@@ -12,7 +12,7 @@ const {
   toggleHelp
 } = require("../../controllers/admin/help.controller");
 
-router.use(isAuth, isAdmin);
+router.use(isAdmin);
 
 router.post("/", addHelp);
 router.get("/", getAllHelp);

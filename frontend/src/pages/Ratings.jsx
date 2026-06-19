@@ -8,7 +8,7 @@ export default function RatingsPage() {
 
   const fetchRatings = async () => {
     try {
-      const res = await API.get("/rating/all");
+      const res = await API.get("rating/all");
       setRatings(res.data.ratings);
     } catch (err) {
       console.error("Error fetching ratings:", err);

@@ -1,59 +1,58 @@
 const Movie = require("../../models/movie.model");
 const Series = require("../../models/series.model");
 
-// 📊 Content Stats
-exports.getContentStats = async (req, res) => {
+// ========================================
+// GET CONTENT STATS
+// ========================================
+const getContentStats = async (req, res) => {
   try {
-    const movies = await Movie.countDocuments();
-    const series = await Series.countDocuments();
+    const moviesCount = await Movie.countDocuments();
+    const seriesCount = await Series.countDocuments();
 
-    res.json({
+    return res.json({
       success: true,
-      data: [
-        { name: "Movies", value: movies },
-        { name: "Series", value: series }
-      ]
+      stats: {
+        movies: moviesCount,
+        series: seriesCount,
+        total: moviesCount + seriesCount
+      }
     });
-
-  } catch (err) {
-    res.status(500).json({
+  } catch (error) {
+    return res.status(500).json({
       success: false,
-      message: err.message
+      message: error.message
     });
   }
 };
 
-// 📚 GET ALL CONTENT (ADMIN)
-exports.getAllContent = async (req, res) => {
+// ========================================
+// GET ALL CONTENT (COMBINED)
+// ========================================
+const getAllContent = async (req, res) => {
   try {
-    const movies = await Movie.find().lean();
-    const series = await Series.find().lean();
+    const movies = await Movie.find().sort({ createdAt: -1 }).lean();
+    const series = await Series.find().sort({ createdAt: -1 }).lean();
 
-    // Add type manually
-    const formattedMovies = movies.map(m => ({
-      ...m,
-      type: "movie"
-    }));
+    const formattedMovies = movies.map(m => ({ ...m, contentType: "movie" }));
+    const formattedSeries = series.map(s => ({ ...s, contentType: "series" }));
 
-    const formattedSeries = series.map(s => ({
-      ...s,
-      type: "series"
-    }));
+    const allContent = [...formattedMovies, ...formattedSeries].sort((a, b) => 
+      new Date(b.createdAt) - new Date(a.createdAt)
+    );
 
-    const allContent = [...formattedMovies, ...formattedSeries];
-
-    // sort latest first
-    allContent.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-    res.json({
+    return res.json({
       success: true,
-      data: allContent
+      content: allContent
     });
-
-  } catch (err) {
-    res.status(500).json({
+  } catch (error) {
+    return res.status(500).json({
       success: false,
-      message: err.message
+      message: error.message
     });
   }
+};
+
+module.exports = {
+  getContentStats,
+  getAllContent
 };

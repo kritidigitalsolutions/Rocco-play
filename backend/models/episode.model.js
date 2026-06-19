@@ -2,8 +2,16 @@ const mongoose = require("mongoose");
 
 const episodeSchema = new mongoose.Schema(
   {
-    title: String,
-    description: String,
+    title: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    description: {
+      type: String,
+      default: ""
+    },
 
     seriesId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -11,13 +19,55 @@ const episodeSchema = new mongoose.Schema(
       required: true
     },
 
-    seasonNumber: Number,
-    episodeNumber: Number,
+    seasonNumber: {
+      type: Number,
+      required: true,
+      min: 1
+    },
 
-    videoUrl: String,
-    duration: String
+    episodeNumber: {
+      type: Number,
+      required: true,
+      min: 1
+    },
+
+    videoUrl: {
+      type: String,
+      required: true
+    },
+
+    thumbnail: {
+      type: String,
+      default: ""
+    },
+
+    duration: {
+      type: String,
+      default: ""
+    }
   },
-  { timestamps: true }
+  {
+    timestamps: true
+  }
 );
 
-module.exports = mongoose.model("Episode", episodeSchema);
+episodeSchema.index({
+  createdAt: -1
+});
+
+episodeSchema.index(
+  {
+    seriesId: 1,
+    seasonNumber: 1,
+    episodeNumber: 1
+  },
+  {
+    unique: true,
+    name: "unique_episode_per_season"
+  }
+);
+
+module.exports = mongoose.model(
+  "Episode",
+  episodeSchema
+);

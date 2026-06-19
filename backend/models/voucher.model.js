@@ -1,35 +1,134 @@
 const mongoose = require("mongoose");
 
-const voucherSchema = new mongoose.Schema({
-  code: {
-    type: String,
-    unique: true,
-    required: true,
-    uppercase: true
-  },
+const voucherSchema =
+  new mongoose.Schema(
+    {
+      // ========================================
+      // VOUCHER CODE
+      // ========================================
 
-  plan: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Plan",
-    required: true
-  },
+      code: {
+        type: String,
 
-  validityDays: {
-    type: Number,
-    required: true
-  },
+        unique: true,
 
-  isUsed: {
-    type: Boolean,
-    default: false
-  },
+        required: true,
 
-  usedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User"
-  },
+        uppercase: true,
+        trim: true,
 
-  expiryDate: Date
-}, { timestamps: true });
+        index: true,
+      },
 
-module.exports = mongoose.model("Voucher", voucherSchema);
+      // ========================================
+      // PLAN
+      // ========================================
+
+      plan: {
+        type:
+          mongoose.Schema.Types
+            .ObjectId,
+
+        ref: "Plan",
+
+        required: true,
+
+        index: true,
+      },
+
+      // ========================================
+      // VALIDITY DAYS
+      // ========================================
+
+      validityDays: {
+        type: Number,
+
+        required: true,
+
+        min: 1,
+      },
+
+      // ========================================
+      // USED STATUS
+      // ========================================
+
+      isUsed: {
+        type: Boolean,
+
+        default: false,
+
+        index: true,
+      },
+
+      // ========================================
+      // USED BY
+      // ========================================
+
+      usedBy: {
+        type:
+          mongoose.Schema.Types
+            .ObjectId,
+
+        ref: "User",
+
+        default: null,
+      },
+
+      // ========================================
+      // EXPIRY DATE
+      // ========================================
+
+      expiryDate: {
+        type: Date,
+
+        index: true,
+      },
+
+      // ========================================
+      // OPTIONAL DESCRIPTION
+      // ========================================
+
+      description: {
+        type: String,
+
+        trim: true,
+
+        default: "",
+      },
+    },
+
+    {
+      timestamps: true,
+    }
+  );
+
+
+// ========================================
+// INDEXES
+// ========================================
+
+voucherSchema.index({
+  code: 1,
+});
+
+voucherSchema.index({
+  isUsed: 1,
+});
+
+voucherSchema.index({
+  expiryDate: 1,
+});
+
+voucherSchema.index({
+  plan: 1,
+});
+
+
+// ========================================
+// EXPORT
+// ========================================
+
+module.exports = mongoose.model(
+  "Voucher",
+  voucherSchema
+);

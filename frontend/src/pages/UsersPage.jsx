@@ -1,21 +1,29 @@
 import { useEffect, useState } from "react";
-import API from "../api/axios";
+import API, { API_BASE_URL } from "../api/axios";
 import { Users, RefreshCw, User, CheckCircle, AlertCircle, Search, Loader, Eye, Trash2, X } from "lucide-react";
 import "./Dashboard.css";
 
 export default function UsersPage() {
-  const [users,    setUsers]    = useState([]);
-  const [search,   setSearch]   = useState("");
+  const [users, setUsers] = useState([]);
+  const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
-  const [loading,  setLoading]  = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const getImageUrl = (path) => {
+    if (!path) return null;
+    if (path.startsWith("http")) return path;
+    const serverUrl = API_BASE_URL.replace("/api", "").replace(/\/+$/, "");
+    const cleanPath = path.replace(/\\/g, "/").replace(/^\/+/, "");
+    return `${serverUrl}/${cleanPath}`;
+  };
 
   useEffect(() => { fetchUsers(); }, []);
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await API.get("/user");
-      setUsers(res.data.data || []);
+      const res = await API.get("/admin/users");
+      setUsers(res.data.users || []);
     } catch { setUsers([]); }
     setLoading(false);
   };
@@ -23,10 +31,18 @@ export default function UsersPage() {
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this user permanently?")) return;
     try {
-      await API.delete(`/user/${id}`);
+      await API.delete(`/admin/users/${id}`);
       setUsers(p => p.filter(u => u._id !== id));
     } catch { alert("Failed to delete"); }
   };
+
+  // const handleToggleBlock = async (id) => {
+  //   try {
+  //     const res = await API.patch(`/admin/users/${id}/block`);
+  //     setUsers(p => p.map(u => u._id === id ? res.data.user : u));
+  //     if (selected?._id === id) setSelected(res.data.user);
+  //   } catch { alert("Failed to update status"); }
+  // };
 
   const filtered = users.filter(u =>
     (u.name?.toLowerCase() || "").includes(search.toLowerCase()) ||
@@ -98,7 +114,13 @@ export default function UsersPage() {
                     <td style={{ color: "var(--text-muted)", fontWeight: 600 }}>{i + 1}</td>
                     <td>
                       <div className="user-cell">
-                        <div className="u-avatar">{u.name ? u.name[0].toUpperCase() : "U"}</div>
+                        <div className="u-avatar">
+                          {u.profileImage ? (
+                            <img src={getImageUrl(u.profileImage)} alt={u.name} />
+                          ) : (
+                            u.name ? u.name[0].toUpperCase() : "U"
+                          )}
+                        </div>
                         <span className="u-name">{u.name || "Unknown"}</span>
                       </div>
                     </td>
@@ -112,7 +134,7 @@ export default function UsersPage() {
                     <td>
                       <div className="tbl-actions">
                         <button className="icon-btn view" onClick={() => setSelected(u)} title="View"><Eye size={16} /></button>
-                        <button className="icon-btn del"  onClick={() => handleDelete(u._id)} title="Delete"><Trash2 size={16} /></button>
+                        <button className="icon-btn del" onClick={() => handleDelete(u._id)} title="Delete"><Trash2 size={16} /></button>
                       </div>
                     </td>
                   </tr>
@@ -125,40 +147,79 @@ export default function UsersPage() {
 
       {/* Modal */}
       {selected && (
-        <div className="modal-overlay">
-          <div className="modal-box">
+        <div className="modal-overlay" onClick={() => setSelected(null)}>
+          <div className="modal-box modal-box-view" onClick={e => e.stopPropagation()}>
             <div className="modal-head">
-              <h3><User size={20} style={{ display: "inline-block", marginRight: 6 }} /> User Profile</h3>
+              <h3><User size={20} style={{ display: "inline-block", marginRight: 8 }} /> User Profile</h3>
               <button className="modal-close" onClick={() => setSelected(null)}><X size={24} /></button>
             </div>
-            <div className="modal-body">
-              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 8 }}>
-                <div className="u-avatar" style={{ width: 56, height: 56, fontSize: "1.4rem" }}>
-                  {selected.name?.[0]?.toUpperCase() || "U"}
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: "1.1rem" }}>{selected.name || "Unknown"}</div>
-                  <div style={{ color: "var(--text-muted)", fontSize: "0.88rem" }}>{selected.email}</div>
+            
+            <div className="modal-body p-0">
+              {/* Profile Hero */}
+              <div className="profile-hero">
+                <div className="profile-hero-bg" />
+                <div className="profile-hero-content">
+                  <div className="u-avatar large">
+                    {selected.profileImage ? (
+                      <img src={getImageUrl(selected.profileImage)} alt={selected.name} />
+                    ) : (
+                      selected.name?.[0]?.toUpperCase() || "U"
+                    )}
+                  </div>
+                  <div className="profile-hero-text">
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                      <h2 style={{ margin: 0 }}>{selected.name || "Unknown User"}</h2>
+                      {selected.profileComplete && (
+                        <span className="badge badge-active" style={{ fontSize: "0.65rem", padding: "2px 8px" }}>✓ VERIFIED</span>
+                      )}
+                    </div>
+                    <p>{selected.email}</p>
+                    <span className={`badge ${selected.isBlocked ? "badge-blocked" : "badge-active"}`}>
+                      {selected.isBlocked ? "BLOCKED" : "ACTIVE ACCOUNT"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="form-row">
-                <label className="form-label">Account ID</label>
-                <input className="form-input" value={selected._id} disabled />
-              </div>
-              <div className="form-row">
-                <label className="form-label">Joined</label>
-                <input className="form-input" value={new Date(selected.createdAt).toDateString()} disabled />
-              </div>
-              <div className="form-row">
-                <label className="form-label">Status</label>
-                <span className={`badge ${selected.isBlocked ? "badge-blocked" : "badge-active"}`} style={{ fontSize: "0.9rem" }}>
-                  {selected.isBlocked ? "Blocked" : "Active"}
-                </span>
+              {/* Profile Details Grid */}
+              <div className="profile-details-grid">
+                <div className="p-detail-card">
+                  <span className="p-detail-label">Full Name</span>
+                  <span className="p-detail-value">{selected.name || "—"}</span>
+                </div>
+                <div className="p-detail-card">
+                  <span className="p-detail-label">Phone Number</span>
+                  <span className="p-detail-value mono">{selected.phone || "—"}</span>
+                </div>
+                <div className="p-detail-card">
+                  <span className="p-detail-label">Email Address</span>
+                  <span className="p-detail-value">{selected.email || "—"}</span>
+                </div>
+                <div className="p-detail-card">
+                  <span className="p-detail-label">Profile Status</span>
+                  <span className={`p-detail-value ${selected.profileComplete ? "text-success" : "text-warning"}`}>
+                    {selected.profileComplete ? "Complete" : "Incomplete"}
+                  </span>
+                </div>
+                <div className="p-detail-card">
+                  <span className="p-detail-label">Account ID</span>
+                  <span className="p-detail-value mono">{selected._id}</span>
+                </div>
+                <div className="p-detail-card">
+                  <span className="p-detail-label">Member Since</span>
+                  <span className="p-detail-value">
+                    {selected.createdAt?.$date 
+                      ? new Date(selected.createdAt.$date).toLocaleDateString("en-IN", { day: 'numeric', month: 'long', year: 'numeric' })
+                      : selected.createdAt 
+                        ? new Date(selected.createdAt).toLocaleDateString("en-IN", { day: 'numeric', month: 'long', year: 'numeric' })
+                        : "—"}
+                  </span>
+                </div>
               </div>
             </div>
+
             <div className="modal-foot">
-              <button className="btn btn-primary" onClick={() => setSelected(null)}>Done</button>
+              <button className="btn btn-ghost" style={{ width: "100%" }} onClick={() => setSelected(null)}>Close Window</button>
             </div>
           </div>
         </div>

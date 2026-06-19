@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, Bell, Moon, Sun, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Search, Bell, Moon, Sun, X, Menu, User, LogOut, Mail, Shield, Clock } from "lucide-react";
 import "./Topbar.css";
 import API from "../api/axios";
 
@@ -11,7 +12,8 @@ const TYPE_COLORS = {
   PROMOTIONAL: { bg: "rgba(245,158,11,0.2)",  color: "#f59e0b" },
 };
 
-export default function Topbar({ theme, toggleTheme, setActiveTab }) {
+export default function Topbar({ theme, toggleTheme, toggleSidebar }) {
+  const navigate = useNavigate();
   const [adminName, setAdminName] = useState("Admin");
   const [adminData, setAdminData] = useState(null);
   const [search, setSearch]       = useState("");
@@ -104,13 +106,13 @@ export default function Topbar({ theme, toggleTheme, setActiveTab }) {
 };
 const handleSelect = (item) => {
   if (item.type === "User") {
-    setActiveTab("users");
+    navigate("/dashboard/users");
   } 
   else if (item.type === "Movie") {
-    setActiveTab("content");
+    navigate("/dashboard/content");
   } 
   else if (item.type === "Help") {
-    setActiveTab("help");
+    navigate("/dashboard/help");
   }
 
   setSearch("");
@@ -136,18 +138,23 @@ const handleSelect = (item) => {
       <header className="topbar">
         {/* LEFT — Greeting */}
         <div className="topbar-left">
-          <h2 className="topbar-greeting">
-            Welcome back,{" "}
-            <span className="topbar-name">{adminName}</span> 👋
-          </h2>
-          <p className="topbar-date">
-            {new Date().toLocaleDateString("en-IN", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
-          </p>
+          <button className="mobile-menu-btn" onClick={toggleSidebar}>
+            <Menu size={24} />
+          </button>
+          <div className="topbar-info">
+            <h2 className="topbar-greeting">
+              Welcome back,{" "}
+              <span className="topbar-name">{adminName}</span> 👋
+            </h2>
+            <p className="topbar-date">
+              {new Date().toLocaleDateString("en-IN", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </p>
+          </div>
         </div>
 
         {/* RIGHT — Actions */}
@@ -273,7 +280,7 @@ const handleSelect = (item) => {
                   <button
                     className="notif-panel-view-all"
                     onClick={() => {
-                      setActiveTab("notifications");
+                      navigate("/dashboard/notifications");
                       setNotifOpen(false);
                     }}
                   >
@@ -321,15 +328,17 @@ const handleSelect = (item) => {
                     setShowProfile(true);
                     setShowMenu(false);
                   }}
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
                 >
-                  👤 View Profile
+                  <User size={16} /> View Profile
                 </div>
 
                 <div
                   className="dropdown-item logout"
                   onClick={handleLogout}
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
                 >
-                  🚪 Logout
+                  <LogOut size={16} /> Logout
                 </div>
               </div>
             )}
@@ -348,25 +357,65 @@ const handleSelect = (item) => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="profile-header">
-              <h2>Admin Profile</h2>
+              <h2>Admin Panel Profile</h2>
               <button
-                className="close-btn"
+                className="profile-close-btn"
                 onClick={() => setShowProfile(false)}
+                aria-label="Close Profile"
               >
-                ✖
+                <X size={16} />
               </button>
             </div>
 
             <div className="profile-body">
-              <div className="profile-avatar">
-                {adminName.charAt(0).toUpperCase()}
+              {/* Avatar Frame with pulsing ring & status badge */}
+              <div className="profile-avatar-wrapper">
+                <div className="profile-avatar-glow" />
+                <div className="profile-avatar">
+                  {adminName.charAt(0).toUpperCase()}
+                </div>
+                <div className="profile-status-badge">
+                  <span className="pulse-dot" />
+                  ONLINE
+                </div>
               </div>
 
-              <h3>{adminData?.name}</h3>
-              <p>{adminData?.email}</p>
+              <h3 className="profile-name">{adminData?.name || "System Admin"}</h3>
+              <div className="profile-role-pill">
+                {adminData?.role || "SUPER ADMIN"}
+              </div>
 
-              <div className="profile-role">
-                Role: {adminData?.role || "ADMIN"}
+              {/* Grid of info cards */}
+              <div className="profile-info-grid">
+                <div className="profile-info-card">
+                  <div className="info-card-icon-wrapper">
+                    <Mail size={18} />
+                  </div>
+                  <div className="info-card-content">
+                    <span className="info-card-label">Email Address</span>
+                    <span className="info-card-value">{adminData?.email || "admin@roccoplay.com"}</span>
+                  </div>
+                </div>
+
+                <div className="profile-info-card">
+                  <div className="info-card-icon-wrapper">
+                    <Shield size={18} />
+                  </div>
+                  <div className="info-card-content">
+                    <span className="info-card-label">Access Level</span>
+                    <span className="info-card-value">Full Permissions</span>
+                  </div>
+                </div>
+
+                <div className="profile-info-card">
+                  <div className="info-card-icon-wrapper">
+                    <Clock size={18} />
+                  </div>
+                  <div className="info-card-content">
+                    <span className="info-card-label">Last Login</span>
+                    <span className="info-card-value">Current Session</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

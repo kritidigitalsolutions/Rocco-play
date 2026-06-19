@@ -1,72 +1,90 @@
 const express = require("express");
-const router = express.Router();
-const videoUpload = require("../../middlewares/videoUpload.middleware");
 
+const router = express.Router();
+
+const upload = require(
+  "../../middlewares/upload.middleware"
+);
+const validateFileSizes = require("../../middlewares/validateFileSizes");
+
+const {
+  isAdmin
+} = require("../../middlewares/admin.middleware");
 
 const {
   addEpisode,
   getEpisodes,
-  playEpisode, updateEpisode, deleteEpisode
-} = require("../../controllers/admin/episode.controller");
-
-const isAuth = require("../../middlewares/auth.middleware");
-const isAdmin = require("../../middlewares/admin.middleware");
-
-// ➕ Add episode
-router.post(
-  "/",
-  isAuth,
-  isAdmin,
-  videoUpload.fields([
-    { name: "video", maxCount: 1 }
-  ]),
-  addEpisode
-);;
-
-// 📄 Get episodes
-router.get("/", getEpisodes);
-
-// 🎥 Play episode
-router.get("/play/:seriesId/:season/:episode", isAuth, playEpisode);
-// ✏️ Update episode
-// router.put("/:id", isAuth, isAdmin, updateEpisode);
-router.put(
-  "/:id",
-  isAuth,
-  isAdmin,
-  videoUpload.fields([
-    { name: "video", maxCount: 1 }
-  ]),
-  updateEpisode
+  updateEpisode,
+  deleteEpisode,
+  deleteSeason,
+  searchEpisodes,
+} = require(
+  "../../controllers/admin/episode.controller"
 );
 
-// ❌ Delete episode
-router.delete("/:id", isAuth, isAdmin, deleteEpisode);
 
-// ❌ Delete all episodes in a season
-router.delete("/season/:seriesId/:seasonNumber", isAuth, isAdmin, async (req, res) => {
-  try {
-    const Episode = require("../../models/episode.model");
-    const { seriesId, seasonNumber } = req.params;
-    const result = await Episode.deleteMany({ seriesId, seasonNumber: Number(seasonNumber) });
+// ========================================
+// MULTER
+// ========================================
+const episodeUpload =
+  upload.fields([
+    {
+      name: "video",
+      maxCount: 1,
+    },
+    {
+      name: "thumbnail",
+      maxCount: 1,
+    },
+  ]);
 
-    // Recalculate max season
-    try {
-      const Series = require("../../models/series.model");
-      const maxSeasonAgg = await Episode.aggregate([
-        { $match: { seriesId: new require("mongoose").Types.ObjectId(seriesId) } },
-        { $group: { _id: null, maxSeason: { $max: "$seasonNumber" } } }
-      ]);
-      const maxSeason = maxSeasonAgg.length > 0 ? maxSeasonAgg[0].maxSeason : 0;
-      await Series.findByIdAndUpdate(seriesId, { totalSeasons: maxSeason });
-    } catch (ignoreErr) {
-      // ignore
-    }
 
-    res.json({ message: `Season ${seasonNumber} deleted — ${result.deletedCount} episodes removed` });
-  } catch (err) {
-    res.status(500).json({ message: "Error deleting season", error: err.message });
-  }
-});
+// ========================================
+// ROUTES (Protected)
+// ========================================
+router.post("/add", isAdmin, episodeUpload, validateFileSizes, addEpisode);
+router.patch("/:id", isAdmin, episodeUpload, validateFileSizes, updateEpisode);
+// router.post(
+//   "/add",
+//   isAdmin,
+//   episodeUpload,
+//   addEpisode
+// );
+
+router.get(
+  "/",
+  isAdmin,
+  getEpisodes
+);
+
+router.get(
+  "/search",
+  isAdmin,
+  searchEpisodes
+);
+
+
+// router.patch(
+//   "/:id",
+
+//   isAdmin,
+//   episodeUpload,
+//   updateEpisode
+// );
+
+router.delete(
+  "/season/:seriesId/:seasonNumber",
+  isAdmin,
+  deleteSeason
+);
+
+router.delete(
+  "/:id",
+  isAdmin,
+  deleteEpisode
+);
+
+
+
 
 module.exports = router;

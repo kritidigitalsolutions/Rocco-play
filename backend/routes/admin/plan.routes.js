@@ -6,16 +6,16 @@ const {
   updatePlan,
   deletePlan,
   getAllPlans
-} = require("../../controllers/admin/admin.plan.controller");
+} = require("../../controllers/admin/plan.controller");
 
-const { isAuth } = require("../../middlewares/auth.middleware"); // ✅ ADD
+
 const { isAdmin } = require("../../middlewares/admin.middleware");
 
 // ================= ADMIN PLAN ROUTES =================
 
-router.post("/", isAuth, isAdmin, createPlan);
-router.get("/", isAuth, isAdmin, getAllPlans);
-router.put("/:id", isAuth, isAdmin, updatePlan);
-router.delete("/:id", isAuth, isAdmin, deletePlan);
+router.post("/", isAdmin, createPlan);
+router.get("/", isAdmin, getAllPlans);
+router.patch("/:id", isAdmin, updatePlan);
+router.delete("/:id", isAdmin, deletePlan);
 
 module.exports = router;

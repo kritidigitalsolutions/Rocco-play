@@ -4,9 +4,9 @@ import { FileText, Eye, Edit2, X, Save } from "lucide-react";
 import "./Dashboard.css";
 
 export default function LegalPage() {
-  const [legal,    setLegal]    = useState([]);
+  const [legal, setLegal] = useState([]);
   const [selected, setSelected] = useState(null);
-  const [mode,     setMode]     = useState("view");
+  const [mode, setMode] = useState("view");
 
   useEffect(() => { fetchLegal(); }, []);
 

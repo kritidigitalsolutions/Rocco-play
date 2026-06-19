@@ -1,62 +1,146 @@
 const Voucher = require("../models/voucher.model");
-const Subscription = require("../models/subscription.model");
 
-exports.redeemVoucher = async (req, res) => {
+const Subscription = require(
+  "../models/subscription.model"
+);
+
+const {
+  expireSubscriptionIfNeeded,
+} = require(
+  "../utils/subscription.helper"
+);
+
+
+// =====================================================
+// REDEEM VOUCHER
+// =====================================================
+exports.redeemVoucher = async (
+  req,
+  res
+) => {
   try {
+
     const userId = req.user.id;
+
     const { code } = req.body;
 
-    const voucher = await Voucher.findOne({
-      code: code.toUpperCase()
-    }).populate("plan");
+    // ========================================
+    // GET VOUCHER
+    // ========================================
+
+    const voucher =
+      await Voucher.findOne({
+        code: code.toUpperCase(),
+      }).populate("plan");
 
     if (!voucher) {
-      return res.status(400).json({ message: "Invalid voucher" });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid voucher",
+      });
     }
 
+    // already used
     if (voucher.isUsed) {
-      return res.status(400).json({ message: "Already used" });
+      return res.status(400).json({
+        success: false,
+        message: "Already used",
+      });
     }
 
-    if (voucher.expiryDate && voucher.expiryDate < new Date()) {
-      return res.status(400).json({ message: "Voucher expired" });
+    // voucher expired
+    if (
+      voucher.expiryDate &&
+      voucher.expiryDate < new Date()
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Voucher expired",
+      });
     }
-const existing = await Subscription.findOne({
-  user: userId,
-  status: "active",
-  endDate: { $gt: new Date() }
-});
 
-if (existing) {
-  return res.status(400).json({
-    success: false,
-    message: "You already have an active subscription"
-  });
-}
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + voucher.validityDays);
+    // ========================================
+    // CHECK EXISTING SUBSCRIPTION
+    // ========================================
 
-    const subscription = await Subscription.create({
-      user: userId,
-      plan: voucher.plan._id,
-      amount: 0,
-      startDate,
-      endDate,
-      status: "active"
-    });
+    let existing =
+      await Subscription.findOne({
+        user: userId,
+        status: "active",
+      });
+
+    existing =
+      await expireSubscriptionIfNeeded(
+        existing
+      );
+
+    if (
+      existing &&
+      existing.status === "active"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "You already have an active subscription",
+      });
+    }
+
+    // ========================================
+    // CREATE SUBSCRIPTION
+    // ========================================
+
+    const startDate =
+      new Date();
+
+    const endDate =
+      new Date();
+
+    endDate.setUTCDate(
+      endDate.getUTCDate() +
+        voucher.validityDays
+    );
+
+    const subscription =
+      await Subscription.create({
+        user: userId,
+
+        plan: voucher.plan._id,
+
+        amount: 0,
+
+        startDate,
+        endDate,
+
+        status: "active",
+      });
+
+    // ========================================
+    // UPDATE VOUCHER
+    // ========================================
 
     voucher.isUsed = true;
+
     voucher.usedBy = userId;
+
     await voucher.save();
 
-    res.json({
+    res.status(200).json({
       success: true,
-      message: "Voucher applied successfully",
-      subscription
+      message:
+        "Voucher applied successfully",
+      subscription,
     });
 
   } catch (err) {
-    res.status(500).json({ message: err.message });
+
+    console.error(
+      "Redeem Voucher Error:",
+      err
+    );
+
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };

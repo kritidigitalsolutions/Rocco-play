@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Eye, X } from "lucide-react";
 import API from "../api/axios";
 import "./Dashboard.css";
 
@@ -8,18 +8,24 @@ export default function PlansPage() {
     name: "",
     price: "",
     duration: "",
-    features: ""
+    features: "",
+    planType: "monthly",
+    sortOrder: 0,
+    isRecommended: false,
+    isActive: true
   });
 
   const [loading, setLoading] = useState(false);
   const [plans, setPlans] = useState([]);
   const [editId, setEditId] = useState(null);
+  const [viewPlan, setViewPlan] = useState(null);
 
   // =========================
   // 🧠 INPUT CHANGE
   // =========================
   const ch = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const value = e.target.type === "checkbox" ? e.target.checked : e.target.value;
+    setForm({ ...form, [e.target.name]: value });
   };
 
   // =========================
@@ -27,7 +33,7 @@ export default function PlansPage() {
   // =========================
   const fetchPlans = async () => {
     try {
-      const res = await API.get("/admin/plans");
+      const res = await API.get("/admin/plan");
       setPlans(res.data.plans);
     } catch (err) {
       console.error(err);
@@ -54,21 +60,29 @@ export default function PlansPage() {
           .split(",")
           .map((f) => f.trim())
           .filter(Boolean),
+        planType: form.planType,
+        sortOrder: Number(form.sortOrder),
+        isRecommended: form.isRecommended,
+        isActive: form.isActive
       };
 
       if (editId) {
-        await API.put(`/admin/plans/${editId}`, payload);
-        alert("Plan updated ✏️");
+        await API.patch(`/admin/plan/${editId}`, payload);
+        alert("Plan updated successfully.");
       } else {
-        await API.post("/admin/plans", payload);
-        alert("Plan created ✅");
+        await API.post("/admin/plan", payload);
+        alert("Plan created successfully.");
       }
 
       setForm({
         name: "",
-        price: "",
+        price: "", 
         duration: "",
-        features: ""
+        features: "",
+        planType: "monthly",
+        sortOrder: 0,
+        isRecommended: false,
+        isActive: true
       });
 
       setEditId(null);
@@ -76,7 +90,7 @@ export default function PlansPage() {
 
     } catch (err) {
       console.error(err);
-      alert("Error ❌");
+      alert("An error occurred. Please try again.");
     }
 
     setLoading(false);
@@ -89,7 +103,7 @@ export default function PlansPage() {
     if (!window.confirm("Delete this plan?")) return;
 
     try {
-      await API.delete(`/admin/plans/${id}`);
+      await API.delete(`/admin/plan/${id}`);
       fetchPlans();
     } catch (err) {
       console.error(err);
@@ -104,7 +118,11 @@ export default function PlansPage() {
       name: plan.name,
       price: plan.price,
       duration: plan.duration,
-      features: plan.features.join(", ")
+      features: plan.features.join(", "),
+      planType: plan.planType || "monthly",
+      sortOrder: plan.sortOrder || 0,
+      isRecommended: plan.isRecommended || false,
+      isActive: plan.isActive !== false
     });
     setEditId(plan._id);
   };
@@ -120,7 +138,7 @@ export default function PlansPage() {
       {/* ================= FORM ================= */}
       <form onSubmit={handleSubmit}>
         <div className="form-card">
-          <h3>{editId ? "Edit Plan ✏️" : "Create New Plan"}</h3>
+          <h3>{editId ? "Edit Plan" : "Create New Plan"}</h3>
 
           <div className="form-2col">
             <input
@@ -159,6 +177,47 @@ export default function PlansPage() {
               value={form.features}
               onChange={ch}
             />
+
+            <select
+              className="form-input-styled"
+              name="planType"
+              value={form.planType}
+              onChange={ch}
+            >
+              <option value="monthly">Monthly</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="yearly">Yearly</option>
+              <option value="lifetime">Lifetime</option>
+            </select>
+
+            <input
+              className="form-input-styled"
+              name="sortOrder"
+              type="number"
+              placeholder="Sort Order (e.g. 1)"
+              value={form.sortOrder}
+              onChange={ch}
+            />
+
+            <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+              <input
+                type="checkbox"
+                name="isRecommended"
+                checked={form.isRecommended}
+                onChange={ch}
+              />
+              Recommended Plan
+            </label>
+
+            <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+              <input
+                type="checkbox"
+                name="isActive"
+                checked={form.isActive}
+                onChange={ch}
+              />
+              Active (Visible to users)
+            </label>
           </div>
 
           <button
@@ -187,7 +246,9 @@ export default function PlansPage() {
                 <th>Name</th>
                 <th>Price</th>
                 <th>Duration</th>
-                <th>Features</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Recommended</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -203,7 +264,13 @@ export default function PlansPage() {
                     <td>{p.name}</td>
                     <td>₹{p.price}</td>
                     <td>{p.duration} days</td>
-                    <td>{p.features.join(", ")}</td>
+                    <td style={{ textTransform: 'capitalize' }}>{p.planType || "Monthly"}</td>
+                    <td>
+                      <span className={p.isActive !== false ? "status active" : "status expired"}>
+                        {p.isActive !== false ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td>{p.isRecommended ? "Yes" : "No"}</td>
 
                     {/* <td style={{ display: "flex", gap: 8 }}>
                       <button
@@ -221,13 +288,21 @@ export default function PlansPage() {
                       </button>
                     </td> */}
                     <td className="actions">
-  <button
-    className="icon-btn edit"
-    onClick={() => handleEdit(p)}
-    title="Edit"
-  >
-    <Pencil size={16} />
-  </button>
+                      <button
+                        className="icon-btn view"
+                        onClick={() => setViewPlan(p)}
+                        title="View"
+                      >
+                        <Eye size={16} />
+                      </button>
+
+                      <button
+                        className="icon-btn edit"
+                        onClick={() => handleEdit(p)}
+                        title="Edit"
+                      >
+                        <Pencil size={16} />
+                      </button>
 
   <button
     className="icon-btn delete"
@@ -244,6 +319,62 @@ export default function PlansPage() {
           </table>
         </div>
       </div>
+      {/* ================= VIEW MODAL ================= */}
+      {viewPlan && (
+        <div className="modal-overlay" onClick={() => setViewPlan(null)}>
+          <div className="modal-box modal-box-view" onClick={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>💳 Plan Details</h3>
+              <button className="modal-close" onClick={() => setViewPlan(null)}><X size={24} /></button>
+            </div>
+            
+            <div className="modal-body p-0">
+              <div className="profile-details-grid" style={{ padding: 24, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="p-detail-card" style={{ background: 'var(--bg-card-soft)', padding: '16px', borderRadius: '8px' }}>
+                  <span className="p-detail-label" style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Plan Name</span>
+                  <span className="p-detail-value" style={{ fontWeight: 600, fontSize: '1.1rem' }}>{viewPlan.name}</span>
+                </div>
+                <div className="p-detail-card" style={{ background: 'var(--bg-card-soft)', padding: '16px', borderRadius: '8px' }}>
+                  <span className="p-detail-label" style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Price</span>
+                  <span className="p-detail-value" style={{ fontWeight: 600, fontSize: '1.1rem' }}>₹{viewPlan.price}</span>
+                </div>
+                <div className="p-detail-card" style={{ background: 'var(--bg-card-soft)', padding: '16px', borderRadius: '8px' }}>
+                  <span className="p-detail-label" style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Duration</span>
+                  <span className="p-detail-value" style={{ fontWeight: 600, fontSize: '1.1rem' }}>{viewPlan.duration} days</span>
+                </div>
+                <div className="p-detail-card" style={{ background: 'var(--bg-card-soft)', padding: '16px', borderRadius: '8px' }}>
+                  <span className="p-detail-label" style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Type</span>
+                  <span className="p-detail-value" style={{ fontWeight: 600, fontSize: '1.1rem', textTransform: 'capitalize' }}>{viewPlan.planType || 'Monthly'}</span>
+                </div>
+                <div className="p-detail-card" style={{ background: 'var(--bg-card-soft)', padding: '16px', borderRadius: '8px' }}>
+                  <span className="p-detail-label" style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Status</span>
+                  <span className="p-detail-value" style={{ fontWeight: 600, fontSize: '1.1rem' }}>
+                    <span className={viewPlan.isActive !== false ? "status active" : "status expired"}>
+                      {viewPlan.isActive !== false ? "Active" : "Inactive"}
+                    </span>
+                  </span>
+                </div>
+                <div className="p-detail-card" style={{ background: 'var(--bg-card-soft)', padding: '16px', borderRadius: '8px', gridColumn: '1 / -1' }}>
+                  <span className="p-detail-label" style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Recommended</span>
+                  <span className="p-detail-value" style={{ fontWeight: 600, fontSize: '1.1rem' }}>{viewPlan.isRecommended ? 'Yes' : 'No'}</span>
+                </div>
+                <div className="p-detail-card" style={{ background: 'var(--bg-card-soft)', padding: '16px', borderRadius: '8px', gridColumn: "1 / -1" }}>
+                  <span className="p-detail-label" style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px' }}>Features</span>
+                  <span className="p-detail-value" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {viewPlan.features && viewPlan.features.length > 0 
+                      ? viewPlan.features.map((f, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.95rem' }}>
+                            <span style={{ color: 'var(--primary-color)' }}>✓</span> {f}
+                          </div>
+                        )) 
+                      : "No features added"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

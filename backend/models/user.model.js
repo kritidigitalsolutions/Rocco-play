@@ -1,49 +1,74 @@
 const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
-  {
-    name: { type: String, trim: true, default: "User" },
+    {
+        name: {
+            type: String,
+            trim: true,
+            default: "User",
+        },
 
-    email: {
-      type: String,
-      lowercase: true,
-      trim: true,
-      sparse: true   // ✅ IMPORTANT FIX
-    },
+       email: {
+    type: String,
+    trim: true,
+    lowercase: true,
+    sparse: true,
+},
 
-    phone: {
-      type: String,
-      required: true,
-      unique: true
-    },
+googleId: {
+    type: String,
+    sparse: true,
+},
 
-    profileImage: {
-      type: String
-    },
+authProvider: {
+    type: String,
+    enum: ["PHONE", "GOOGLE"],
+    default: "PHONE",
+},
 
-    profileComplete: {
-      type: Boolean,
-      default: false
-    },
-    // for notification
-    fcmToken: {
-      type: String,
-      default: null
-    },
+        phone: {
+            type: String,
+            required: true,
+            unique: true,
+            trim: true,
+        },
 
-    role: {
-      type: String,
-      default: "USER"
+        profileImage: {
+            type: String,
+            default: "",
+        },
+
+        profileComplete: {
+            type: Boolean,
+            default: false,
+        },
+
+        fcmToken: {
+            type: String,
+            default: null,
+        },
+
+        fcmTokenUpdatedAt: {
+            type: Date,
+            default: null,
+        },
+
+        role: {
+            type: String,
+            enum: ["USER", "ADMIN"],
+            default: "USER",
+        },
+
+        // subscriptions: [
+        //   {
+        //     type: mongoose.Schema.Types.ObjectId,
+        //     ref: "Subscription",
+        //   },
+        // ],
     },
-    subscriptions: [
-  {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Subscription",
-  }
-]
-  },
-  { timestamps: true }
+    {
+        timestamps: true,
+    }
 );
 
-// ✅ prevent overwrite error
-module.exports = mongoose.model("User", userSchema);
+module.exports = mongoose.models.User || mongoose.model("User", userSchema);

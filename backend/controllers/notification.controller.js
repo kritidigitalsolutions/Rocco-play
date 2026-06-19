@@ -1,5 +1,6 @@
 const Notification = require("../models/notification.model");
 const User = require("../models/user.model");
+const Subscription = require("../models/subscription.model");
 const mongoose = require("mongoose");
 
 /**
@@ -14,6 +15,24 @@ const getMyNotifications = async (req, res) => {
         // Fetch userType from DB since JWT doesn't include it
         const user = await User.findById(userId).select('userType');
         const userType = user?.userType || 'INDIVIDUAL';
+        const activeSubscription = await Subscription.exists({
+            user: userId,
+            status: "active",
+            endDate: { $gte: new Date() }
+        });
+
+        const targetConditions = [
+            { targetUser: userId },
+            { targetUser: null, targetUserType: "ALL" },
+            { targetUser: null, targetUserType: userType }
+        ];
+
+        if (activeSubscription) {
+            targetConditions.push({
+                targetUser: null,
+                targetUserType: "SUBSCRIBERS"
+            });
+        }
 
         const { page = 1, limit = 20, unreadOnly = false } = req.query;
 
@@ -24,11 +43,7 @@ const getMyNotifications = async (req, res) => {
         // Also exclude notifications deleted by this user
         const query = {
             isActive: true,
-            $or: [
-                { targetUser: userId },
-                { targetUser: null, targetUserType: "ALL" },
-                { targetUser: null, targetUserType: userType }
-            ],
+            $or: targetConditions,
             "deletedBy.user": { $ne: userId }
         };
 
@@ -49,7 +64,7 @@ const getMyNotifications = async (req, res) => {
             } else {
                 // Check if user is in readBy array (we need to query this separately)
                 // For efficiency, we'll check this in a separate query
-                isRead = false; // Will be updated below
+                // isRead is already initialized to false
             }
 
             return {
@@ -115,15 +130,29 @@ const getUnreadCount = async (req, res) => {
         const userId = new mongoose.Types.ObjectId(req.user.id);
         const user = await User.findById(userId).select('userType');
         const userType = user?.userType || 'INDIVIDUAL';
+        const activeSubscription = await Subscription.exists({
+            user: userId,
+            status: "active",
+            endDate: { $gte: new Date() }
+        });
+
+        const targetConditions = [
+            { targetUser: userId },
+            { targetUser: null, targetUserType: "ALL" },
+            { targetUser: null, targetUserType: userType }
+        ];
+
+        if (activeSubscription) {
+            targetConditions.push({
+                targetUser: null,
+                targetUserType: "SUBSCRIBERS"
+            });
+        }
 
         // Get all applicable notifications
         const query = {
             isActive: true,
-            $or: [
-                { targetUser: userId },
-                { targetUser: null, targetUserType: "ALL" },
-                { targetUser: null, targetUserType: userType }
-            ],
+            $or: targetConditions,
             "deletedBy.user": { $ne: userId }
         };
 
@@ -229,6 +258,22 @@ const markAllAsRead = async (req, res) => {
         const userId = new mongoose.Types.ObjectId(req.user.id);
         const user = await User.findById(userId).select('userType');
         const userType = user?.userType || 'INDIVIDUAL';
+        const activeSubscription = await Subscription.exists({
+            user: userId,
+            status: "active",
+            endDate: { $gte: new Date() }
+        });
+
+        const broadcastTargetConditions = [
+            { targetUserType: "ALL" },
+            { targetUserType: userType }
+        ];
+
+        if (activeSubscription) {
+            broadcastTargetConditions.push({
+                targetUserType: "SUBSCRIBERS"
+            });
+        }
 
         // Update single user notifications (exclude already deleted)
         await Notification.updateMany(
@@ -244,10 +289,7 @@ const markAllAsRead = async (req, res) => {
         const broadcastNotifications = await Notification.find({
             isActive: true,
             targetUser: null,
-            $or: [
-                { targetUserType: "ALL" },
-                { targetUserType: userType }
-            ],
+            $or: broadcastTargetConditions,
             "readBy.user": { $ne: userId },
             "deletedBy.user": { $ne: userId }
         });

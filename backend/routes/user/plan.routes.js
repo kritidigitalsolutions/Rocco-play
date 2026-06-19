@@ -3,7 +3,7 @@ const router = express.Router();
 
 const {
   getPlans,
-} = require("../../controllers/user.plan.controller");
+} = require("../../controllers/plan.controller");
 
 // ================= USER PLAN ROUTES =================
 

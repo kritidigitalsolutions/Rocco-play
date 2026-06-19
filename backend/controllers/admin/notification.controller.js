@@ -1,5 +1,6 @@
 const Notification = require("../../models/notification.model");
 const User = require("../../models/user.model");
+const Subscription = require("../../models/subscription.model");
 const { sendPushNotification } = require("../../utils/fcm.service");
 
 // ── Admin-level "read" tracking uses a separate readByAdmin flag ──────────
@@ -38,7 +39,21 @@ exports.sendNotification = async (req, res) => {
 
       users = await User.find({
         _id: targetUser,
-        fcmToken: { $ne: null }
+        fcmToken: { $type: "string", $ne: "" }
+      });
+
+    } else if (sendTo === "SUBSCRIBERS") {
+      payload.targetUser = null;
+      payload.targetUserType = "SUBSCRIBERS";
+
+      const subscribedUserIds = await Subscription.distinct("user", {
+        status: "active",
+        endDate: { $gte: new Date() }
+      });
+
+      users = await User.find({
+        _id: { $in: subscribedUserIds },
+        fcmToken: { $type: "string", $ne: "" }
       });
 
     } else {
@@ -46,7 +61,7 @@ exports.sendNotification = async (req, res) => {
       payload.targetUserType = "ALL";
 
       users = await User.find({
-        fcmToken: { $ne: null }
+        fcmToken: { $type: "string", $ne: "" }
       });
     }
 
@@ -94,7 +109,8 @@ exports.sendNotification = async (req, res) => {
 
 exports.getNotifications = async (req, res) => {
   try {
-    const data = await Notification.find()
+    const data = await Notification.find({ isActive: true })
+      .populate("targetUser", "name email phone")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -112,11 +128,18 @@ exports.getNotifications = async (req, res) => {
 
 exports.deleteNotification = async (req, res) => {
   try {
-    await Notification.findByIdAndUpdate(
+    const notification = await Notification.findByIdAndUpdate(
       req.params.id,
       { isActive: false },
       { new: true }
     );
+
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: "Notification not found"
+      });
+    }
 
     res.status(200).json({
       success: true,

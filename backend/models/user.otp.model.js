@@ -5,6 +5,7 @@ const userOtpSchema = new mongoose.Schema(
     phone: {
       type: String,
       required: true,
+      trim: true,
       index: true,
     },
 
@@ -18,14 +19,30 @@ const userOtpSchema = new mongoose.Schema(
       default: 0,
     },
 
+    lockedUntil: {
+      type: Date,
+      default: null,
+    },
+
     expiresAt: {
       type: Date,
       required: true,
-      default: () => new Date(Date.now() + 10 * 60 * 1000),
-      index: { expires: 0 },
+      default: () =>
+        new Date(Date.now() + 5 * 60 * 1000),
+
+      index: {
+        expires: 0,
+      },
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-module.exports = mongoose.model("UserOTP", userOtpSchema);
+module.exports =
+  mongoose.models.UserOTP ||
+  mongoose.model(
+    "UserOTP",
+    userOtpSchema
+  );

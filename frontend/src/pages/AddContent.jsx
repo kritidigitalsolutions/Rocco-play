@@ -1,623 +1,594 @@
-import { useState } from "react";
-import API from "../api/axios";
-import "./Dashboard.css";
-import { Plus, Star, Image, Palette, Film, Tv, Users, X, Upload, Play, Rocket, Lock, AlertCircle } from "lucide-react";
+import { useState, useRef } from "react";
 
-const EMPTY_FORM = {
-  title: "", description: "", type: "movie", language: "",
-  releaseYear: "", duration: "", genre: "", category: "",
-  rating: "", videoUrl: "", trailerUrl: "", poster: "", banner: "",
-  isPremium: false,
-  isComingSoon: false,
-  releaseDate: "",
-  cast: [{ name: "", image: "" }],
-  seasons: [],
-};
+import "./Dashboard.css";
+
+import MediaAssetsStep from "../features/content/steps/MediaAssetsStep";
+import CastSection from "../features/content/cast/CastSection";
+import SeasonsSection from "../features/content/seasons/SeasonsSection";
+import BasicInfoSection from "../features/content/basic/BasicInfoSection";
+
+import { createContent } from "../features/services/content.service";
+import useContentForm from "../features/hooks/useContentForm";
+
+import {
+  Plus,
+  Film,
+  Tv,
+  Rocket,
+  ChevronRight,
+} from "lucide-react";
 
 export default function AddContent() {
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [loading, setLoading] = useState(false);
-  const [videoFile, setVideoFile] = useState(null);
-  const [posterFile, setPosterFile] = useState(null);
-  const [bannerFile, setBannerFile] = useState(null);
-  const [trailerFile, setTrailerFile] = useState(null);
-  const [episodeVideoFiles, setEpisodeVideoFiles] = useState({});
-  const [castFiles, setCastFiles] = useState({});     
+  const {
+    form,
+    setForm,
 
-  const ch = (e) => {
-    const { name, value, type, checked } = e.target;
-    setForm(f => ({ ...f, [name]: type === "checkbox" ? checked : value }));
+    ch,
+    setType,
+
+    addCast,
+    removeCast,
+
+
+    chCast,
+
+    addSeason,
+    removeSeason,
+
+    addEp,
+    removeEp,
+    chEp,
+
+    resetForm,
+  } = useContentForm();
+
+  const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadPhase, setUploadPhase] = useState(""); // "main", "episodes", "complete"
+  const [currentEpisodeInfo, setCurrentEpisodeInfo] = useState({ current: 0, total: 0 });
+
+
+
+  const [videoFile, setVideoFile] =
+    useState(null);
+
+  const [posterFile, setPosterFile] =
+    useState(null);
+
+  const [bannerFile, setBannerFile] =
+    useState(null);
+
+  const [trailerFile, setTrailerFile] =
+    useState(null);
+
+  const [
+    episodeVideoFiles,
+    setEpisodeVideoFiles,
+  ] = useState({});
+
+  const [
+    episodeThumbnailFiles,
+    setEpisodeThumbnailFiles,
+  ] = useState({});
+
+  const [castFiles, setCastFiles] =
+    useState({});
+
+  // File Input Refs
+  const videoInputRef = useRef(null);
+
+  const posterInputRef =
+    useRef(null);
+
+  const bannerInputRef =
+    useRef(null);
+
+  const trailerInputRef =
+    useRef(null);
+
+  const getFullUrl = (url) => {
+    if (!url) return "";
+
+    if (
+      /^(https?:\/\/|data:|blob:|\/\/)/i.test(
+        url
+      )
+    ) {
+      return url;
+    }
+
+    return url;
   };
 
+  // Upload Handlers
   const handleVideoFileChange = (e) => {
     const file = e.target.files?.[0];
+
     if (file) {
-      console.log("Video file selected:", file.name);
       setVideoFile(file);
     }
   };
 
-  const handlePosterFileChange = (e) => {
+  const handlePosterFileChange = (
+    e
+  ) => {
     const file = e.target.files?.[0];
+
     if (file) {
-      console.log("Poster file selected:", file.name);
       setPosterFile(file);
     }
   };
 
-
-  const handleBannerFileChange = (e) => {
+  const handleBannerFileChange = (
+    e
+  ) => {
     const file = e.target.files?.[0];
+
     if (file) {
-      console.log("Banner file selected:", file.name);
       setBannerFile(file);
     }
   };
 
-  const handleTrailerFileChange = (e) => {
+  const handleTrailerFileChange = (
+    e
+  ) => {
     const file = e.target.files?.[0];
+
     if (file) {
-      console.log("Trailer file selected:", file.name);
       setTrailerFile(file);
     }
   };
 
-  const handleEpisodeVideoChange = (seasonIndex, episodeIndex, e) => {
+  const handleEpisodeVideoChange = (
+    seasonIndex,
+    episodeIndex,
+    e
+  ) => {
     const file = e.target.files?.[0];
+
     if (file) {
-      const key = `${seasonIndex}_${episodeIndex}`;
-      console.log(`Episode video selected for S${seasonIndex + 1}E${episodeIndex + 1}:`, file.name);
-      setEpisodeVideoFiles(prev => ({
+      const key =
+        `${seasonIndex}_${episodeIndex}`;
+
+      setEpisodeVideoFiles(
+        (prev) => ({
+          ...prev,
+          [key]: file,
+        })
+      );
+    }
+  };
+
+  const handleEpisodeThumbnailChange =
+    (
+      seasonIndex,
+      episodeIndex,
+      e
+    ) => {
+      const file =
+        e.target.files?.[0];
+
+      if (file) {
+        const key =
+          `${seasonIndex}_${episodeIndex}`;
+
+        setEpisodeThumbnailFiles(
+          (prev) => ({
+            ...prev,
+            [key]: file,
+          })
+        );
+      }
+    };
+
+  const handleCastFileChange = (
+    index,
+    e
+  ) => {
+    const file = e.target.files?.[0];
+
+    if (file) {
+      setCastFiles((prev) => ({
         ...prev,
-        [key]: file
+        [index]: file,
       }));
     }
   };
 
-  const handleCastFileChange = (index, e) => {
-  const file = e.target.files?.[0];
-  if (file) {
-    console.log(`Cast image selected for ${index}:`, file.name);
-
-    setCastFiles(prev => ({
-      ...prev,
-      [index]: file
-    }));
-  }
-};
-  const addCast = () => setForm(f => ({ ...f, cast: [...f.cast, { name: "", image: "" }] }));
-  const removeCast = (i) => setForm(f => ({ ...f, cast: f.cast.filter((_, j) => j !== i) }));
-
-  const chCast = (i, field, val) => {
-    setForm(f => {
-      const cast = [...f.cast];
-      cast[i][field] = val;
-      return { ...f, cast };
-    });
-  };
-
-  const addSeason = () => setForm(f => ({
-    ...f, seasons: [...f.seasons, { seasonNumber: f.seasons.length + 1, episodes: [] }]
-  }));
-
-  const addEp = (si) => setForm(f => {
-    const seasons = [...f.seasons];
-    seasons[si].episodes.push({ title: "", videoUrl: "", duration: "" });
-    return { ...f, seasons };
-  });
-
-  const chEp = (si, ei, field, val) => setForm(f => {
-    const seasons = [...f.seasons];
-    seasons[si].episodes[ei][field] = val;
-    return { ...f, seasons };
-  });
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      if (form.type === "movie") {
-        // If any file is selected, send as FormData
-        if (videoFile || posterFile || bannerFile || trailerFile) {
-          const formData = new FormData();
-          formData.append("title", form.title);
-          formData.append("description", form.description);
-          formData.append("language", form.language);
-          formData.append("releaseYear", Number(form.releaseYear));
-          formData.append("duration", form.duration);
-          formData.append("genre", JSON.stringify(form.genre.split(",").map(s => s.trim()).filter(Boolean)));
-          // formData.append("category", JSON.stringify(form.category.split(",").map(s => s.trim()).filter(Boolean)));
-          formData.append("category", JSON.stringify([form.category]));
-          formData.append("rating", Number(form.rating));
-          // formData.append("isPremium", form.isPremium);
-          formData.append("isPremium", String(form.isPremium));
-          formData.append("isComingSoon", String(form.isComingSoon));
-          formData.append("releaseDate", form.releaseDate);
-          // Add poster - file takes precedence over URL
-          if (posterFile) {
-            formData.append("poster", posterFile);
-          } else if (form.poster) {
-            formData.append("poster", form.poster);
-          }
-
-          // Add banner - file takes precedence over URL
-          if (bannerFile) {
-            formData.append("banner", bannerFile);
-          } else if (form.banner) {
-            formData.append("banner", form.banner);
-          }
-
-          // Add trailer - file takes precedence over URL
-          if (trailerFile) {
-            formData.append("trailer", trailerFile);
-          } else if (form.trailerUrl) {
-            formData.append("trailerUrl", form.trailerUrl);
-          }
-          
-
-          // formData.append("cast", JSON.stringify(form.cast));
-          // Prepare cast with placeholders
-const updatedCast = form.cast.map((c, i) => {
-  if (castFiles[i]) {
-    return { ...c, image: `cast_${i}` }; // placeholder
-  }
-  return c;
-});
-
-// Append cast JSON
-formData.append("cast", JSON.stringify(updatedCast));
-
-// Append cast files
-Object.keys(castFiles).forEach((key) => {
-  formData.append(`castImage_${key}`, castFiles[key]);
-});
-
-          // Add video if file is selected
-          if (videoFile) {
-            formData.append("video", videoFile);
-          } else if (form.videoUrl) {
-            formData.append("videoUrl", form.videoUrl);
-          }
-
-          await API.post("/movies/add", formData, {
-            headers: { "Content-Type": "multipart/form-data" }
-          });
-        } else {
-          // Send as JSON if only URL provided
-          const payload = {
-            ...form,
-            releaseYear: Number(form.releaseYear),
-            rating: Number(form.rating),
-            isComingSoon: form.isComingSoon,
-            releaseDate: form.releaseDate,
-            genre: form.genre.split(",").map(s => s.trim()).filter(Boolean),
-            category: form.category.split(",").map(s => s.trim()).filter(Boolean),
-            videoUrl: form.videoUrl,
-            seasons: [],
-          };
-          await API.post("/movies/add", payload);
-        }
-      } else if (form.type === "series") {
-        // Create series first - with FormData if files are provided
-        let seriesId;
-
-        if (posterFile || bannerFile || trailerFile) {
-          const formData = new FormData();
-          formData.append("title", form.title);
-          formData.append("description", form.description);
-          formData.append("language", form.language);
-          formData.append("releaseYear", Number(form.releaseYear));
-          formData.append("duration", form.duration);
-          formData.append("genre", JSON.stringify(form.genre.split(",").map(s => s.trim()).filter(Boolean)));
-          // formData.append("category", JSON.stringify(form.category.split(",").map(s => s.trim()).filter(Boolean)));
-          formData.append("category", JSON.stringify([form.category]));
-          formData.append("rating", Number(form.rating));
-          formData.append("isPremium", form.isPremium);
-          formData.append("isComingSoon", form.isComingSoon);
-          formData.append("releaseDate", form.releaseDate);
-          // Add poster - file takes precedence over URL
-          if (posterFile) {
-            formData.append("poster", posterFile);
-          } else if (form.poster) {
-            formData.append("poster", form.poster);
-          }
-
-          // Add banner - file takes precedence over URL
-          if (bannerFile) {
-            formData.append("banner", bannerFile);
-          } else if (form.banner) {
-            formData.append("banner", form.banner);
-          }
-
-          // Add trailer - file takes precedence over URL
-          if (trailerFile) {
-            formData.append("trailer", trailerFile);
-          } else if (form.trailerUrl) {
-            formData.append("trailerUrl", form.trailerUrl);
-          }
-
-          formData.append("cast", JSON.stringify(form.cast));
-
-          const seriesResponse = await API.post("/series", formData, {
-            headers: { "Content-Type": "multipart/form-data" }
-          });
-          seriesId = seriesResponse.data.data._id;
-        } else {
-          const seriesPayload = {
-            title: form.title,
-            description: form.description,
-            language: form.language,
-            releaseYear: Number(form.releaseYear),
-            duration: form.duration,
-            genre: form.genre.split(",").map(s => s.trim()).filter(Boolean),
-            category: form.category.split(",").map(s => s.trim()).filter(Boolean),
-            rating: Number(form.rating),
-            isPremium: form.isPremium,
-            isComingSoon: form.isComingSoon,
-            releaseDate: form.releaseDate,
-            poster: form.poster,
-            banner: form.banner,
-            trailerUrl: form.trailerUrl,
-            cast: form.cast,
-            totalSeasons: form.seasons.length,
-          };
-          const seriesResponse = await API.post("/series", seriesPayload);
-          seriesId = seriesResponse.data.data._id;
-        }
-
-        // Add episodes
-        for (const season of form.seasons) {
-          let episodeNumber = 1;
-          for (const ep of season.episodes) {
-            const episodeKey = `${form.seasons.indexOf(season)}_${season.episodes.indexOf(ep)}`;
-            const episodeFile = episodeVideoFiles[episodeKey];
-
-            if (episodeFile) {
-              const episodeFormData = new FormData();
-              episodeFormData.append("title", ep.title);
-              episodeFormData.append("duration", ep.duration);
-              episodeFormData.append("seriesId", seriesId);
-              episodeFormData.append("seasonNumber", season.seasonNumber);
-              episodeFormData.append("episodeNumber", episodeNumber);
-              episodeFormData.append("video", episodeFile);
-
-              await API.post("/episodes", episodeFormData, {
-                headers: { "Content-Type": "multipart/form-data" }
-              });
-            } else if (ep.videoUrl) {
-              const episodePayload = {
-                title: ep.title,
-                videoUrl: ep.videoUrl,
-                duration: ep.duration,
-                seriesId,
-                seasonNumber: season.seasonNumber,
-                episodeNumber,
-              };
-              await API.post("/episodes", episodePayload);
-            }
-            episodeNumber++;
-          }
-        }
-      }
-      alert("Content published successfully!");
-      setForm(EMPTY_FORM);
-      setVideoFile(null);
-      setPosterFile(null);
-      setBannerFile(null);
-      setTrailerFile(null);
-      setEpisodeVideoFiles({});
-    } catch (err) {
-      console.error(err);
-      // alert("Error adding content ❌");
-      alert(err.response?.data?.message || err.message);
-console.log(err.response?.data);
+  // Prevent Enter key from submitting form when typing inside input fields
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && e.target.tagName === "INPUT") {
+      e.preventDefault();
     }
-    setLoading(false);
   };
+
+  // Submit
+ // Submit
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setUploadProgress(0);
+  setUploadPhase("main");
+
+  try {
+    await createContent({
+      form,
+      videoFile, posterFile, bannerFile, trailerFile,
+      castFiles,
+      episodeVideoFiles, episodeThumbnailFiles,
+
+      onTrailerProgress: (percent) => {
+        setUploadProgress(percent);
+      },
+
+      onVideoProgress: (percent) => {
+        setUploadProgress(percent);
+        if (percent === 100) {
+          setUploadPhase(form.type === "movie" ? "complete" : "episodes");
+        }
+      },
+
+      onEpisodeProgress: (current, total, percent) => {
+        setUploadPhase("episodes");
+        setCurrentEpisodeInfo({ current, total });
+        setUploadProgress(percent);
+        if (current === total && percent === 100) {
+          setUploadPhase("complete");
+        }
+      },                              // ← callback ends here, no reset inside
+    });
+
+    alert("Content published successfully! 🚀");
+
+    // ✅ Reset HERE — after await resolves, everything is done
+    resetForm();
+    setVideoFile(null);
+    setPosterFile(null);
+    setBannerFile(null);
+    setTrailerFile(null);
+    setEpisodeVideoFiles({});
+    setEpisodeThumbnailFiles({});
+    setCastFiles({});
+    setUploadProgress(0);
+    setUploadPhase("");
+    setCurrentEpisodeInfo({ current: 0, total: 0 });
+
+  } catch (err) {
+    console.error(err);
+    alert(err.response?.data?.message || "Error publishing content");
+    setUploadProgress(0);
+    setUploadPhase("");
+  }
+
+  setLoading(false);
+};
+  
 
   return (
     <div className="add-content-page">
+
       {/* Header */}
-      <div className="pg-header">
+      <div
+        className="pg-header"
+        style={{
+          alignItems: "center",
+        }}
+      >
         <div>
-          <h1 className="pg-title"><Plus size={18} style={{ display: "inline-block", marginRight: 8 }} /> Add New Content</h1>
-          <p className="pg-sub">Publish a movie or series to the platform</p>
+          <h1 className="pg-title">
+            <Plus
+              size={24}
+              style={{
+                color:
+                  "var(--primary)",
+              }}
+            />
+
+            Publish New Content
+          </h1>
+
+          <p className="pg-sub">
+            Fill in the details below
+            to add a {form.type} to
+            the platform
+          </p>
+        </div>
+
+        <div className="content-type-toggle">
+          <button
+            type="button"
+            className={`toggle-btn ${form.type === "movie"
+              ? "active"
+              : ""
+              }`}
+            onClick={() =>
+              setType("movie")
+            }
+          >
+            <Film size={18} />
+            Movies
+          </button>
+
+          <button
+            type="button"
+            className={`toggle-btn ${form.type === "series"
+              ? "active"
+              : ""
+              }`}
+            onClick={() =>
+              setType("series")
+            }
+          >
+            <Tv size={18} />
+            Web Series
+          </button>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-        {/* Basic Info */}
-        <div className="form-card">
-          <h3><Star size={18} style={{ display: "inline-block", marginRight: 6 }} /> Basic Info</h3>
-          <div className="form-2col">
-            <input className="form-input-styled form-full" name="title" placeholder="Title *" onChange={ch} value={form.title} required />
-            <textarea className="form-input-styled form-full" name="description" placeholder="Description / Synopsis *" rows={3} onChange={ch} value={form.description} required />
-
-            <select className="form-input-styled" name="type" onChange={ch} value={form.type}>
-              <option value="movie">Movie</option>
-              <option value="series">Series</option>
-            </select>
-            <input className="form-input-styled" name="language" placeholder="Language (e.g. English)" onChange={ch} value={form.language} />
-            <input className="form-input-styled" name="releaseYear" placeholder="Release Year" type="number" onChange={ch} value={form.releaseYear} />
-            <input className="form-input-styled" name="duration" placeholder="Duration (e.g. 2h 15m)" onChange={ch} value={form.duration} />
-            <input className="form-input-styled" name="genre" placeholder="Genres: Action, Drama" onChange={ch} value={form.genre} />
-            {/* <input className="form-input-styled" name="category" placeholder="Category: trending, top10" onChange={ch} value={form.category} /> */}
-            <select
-  className="form-input-styled"
-  name="category"
-  onChange={ch}
-  value={form.category}
->
-  <option value="">Select Category</option>
-  <option value="trending">Trending</option>
-  <option value="top10">Top 10</option>
-  <option value="recommended">Recommended</option>
-</select>
-            <input className="form-input-styled" name="rating" placeholder="Rating (e.g. 8.5)" type="number" step="0.1" onChange={ch} value={form.rating} />
-          </div>
-
-          {/* ✅ FIXED Coming Soon + Premium */}
-
-          <div style={{ display: "flex", alignItems: "center", gap: 20, marginTop: 16 }}>
-
-            {/* 🚀 Coming Soon */}
-            <label className="checkbox-row">
-              <input
-                type="checkbox"
-                name="isComingSoon"
-                onChange={ch}
-                checked={form.isComingSoon}
-              />
-              <span>🚀 Coming Soon</span>
-            </label>
-
-            {/* 🔒 Premium */}
-            <label className="checkbox-row">
-              <input
-                type="checkbox"
-                name="isPremium"
-                onChange={ch}
-                checked={form.isPremium}
-              />
-              <span>
-                <Lock size={16} style={{ marginRight: 6 }} />
-                Premium-only Content
-              </span>
-            </label>
-
-          </div>
-
-          {/* 📅 DATE INPUT */}
-          {form.isComingSoon && (
-            <div style={{ marginTop: 10 }}>
-
-              <input
-                className="form-input-styled"
-                type="date"
-                name="releaseDate"
-                onChange={ch}
-                value={form.releaseDate}
-                required
-              />
-
-              {form.releaseDate && (
-                <p style={{ marginTop: 5, color: "#aaa" }}>
-                  📅 Selected: {new Date(form.releaseDate).toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric"
-                  })}
-                </p>
-              )}
-
-            </div>
-          )}
-        </div>
-
-        {/* Media URLs */}
-        <div className="form-card">
-          <h3><Image size={18} style={{ display: "inline-block", marginRight: 6 }} /> Media Assets</h3>
-
-          {/* Poster Section */}
-          <div className="form-2col">
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}><Upload size={16} style={{ display: "inline-block", marginRight: 6 }} /> Poster Image</label>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePosterFileChange}
-                  style={{ padding: "8px", borderRadius: "8px", border: "1px solid var(--border)", flex: 1 }}
-                />
-                {posterFile && <small style={{ color: "var(--green)", whiteSpace: "nowrap" }}>✓ {posterFile.name}</small>}
-              </div>
-            </div>
-            <input className="form-input-styled" name="poster" placeholder="OR paste Poster URL (vertical)" onChange={ch} value={form.poster} disabled={posterFile ? true : false} />
-          </div>
-
-          {/* Banner Section */}
-          <div className="form-2col" style={{ marginTop: 16 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}><Palette size={16} style={{ display: "inline-block", marginRight: 6 }} /> Banner Image</label>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleBannerFileChange}
-                  style={{ padding: "8px", borderRadius: "8px", border: "1px solid var(--border)", flex: 1 }}
-                />
-                {bannerFile && <small style={{ color: "var(--green)", whiteSpace: "nowrap" }}>✓ {bannerFile.name}</small>}
-              </div>
-            </div>
-            <input className="form-input-styled" name="banner" placeholder="OR paste Banner URL (horizontal)" onChange={ch} value={form.banner} disabled={bannerFile ? true : false} />
-          </div>
-
-          {/* Trailer Section */}
-          <div className="form-2col" style={{ marginTop: 16 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}><Film size={16} style={{ display: "inline-block", marginRight: 6 }} /> Trailer Video</label>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={handleTrailerFileChange}
-                  style={{ padding: "8px", borderRadius: "8px", border: "1px solid var(--border)", flex: 1 }}
-                />
-                {trailerFile && <small style={{ color: "var(--green)", whiteSpace: "nowrap" }}>✓ {trailerFile.name}</small>}
-              </div>
-            </div>
-            <input className="form-input-styled" name="trailerUrl" placeholder="OR paste Trailer URL" onChange={ch} value={form.trailerUrl} disabled={trailerFile ? true : false} />
-          </div>
-
-          {/* Movie Video Section */}
-          {form.type === "movie" && !form.isComingSoon && (
-            <div className="form-2col" style={{ marginTop: 16 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <label style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}><Play size={16} style={{ display: "inline-block", marginRight: 6 }} /> Movie Video</label>
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={handleVideoFileChange}
-                  style={{ padding: "8px", borderRadius: "8px", border: "1px solid var(--border)" }}
-                />
-                {videoFile && <small style={{ color: "var(--green)", marginTop: 4 }}>✓ {videoFile.name}</small>}
-              </div>
-              <input className="form-input-styled" name="videoUrl" placeholder="OR paste Video URL" onChange={ch} value={form.videoUrl} disabled={videoFile ? true : false} />
-            </div>
-          )}
-        </div>
-
-        {/* Cast */}
-        {/* Cast */}
-<div className="form-card">
-  <h3><Users size={18} style={{ display: "inline-block", marginRight: 6 }} /> Cast Members</h3>
-
-  {form.cast.map((c, i) => (
-    <div key={i} className="cast-row-grid">
-
-      {/* 👤 Name */}
-      <input
-        className="form-input-styled"
-        placeholder="Actor name"
-        value={c.name}
-        onChange={e => chCast(i, "name", e.target.value)}
-      />
-
-      {/* ❌ OLD WRONG INPUT (commented, not removed) */}
-      {/* <input className="form-input-styled" placeholder="Photo URL" value={c.image} onChange={e => chCast(i, "image", e.target.value)} /> */}
-
-      {/* ❌ OLD WRONG NESTED MAP (commented, not removed) */}
-      {/*
-      {form.cast.map((c, i) => (
-        <div key={i} className="cast-row-grid">
-      */}
-      
-      {/* ================== NEW CORRECT UI ================== */}
-
-      {/* 📁 Upload Image */}
-      <input
-        type="file"
-        accept="image/*"
-        onChange={(e) => handleCastFileChange(i, e)}
-        style={{ padding: "8px", borderRadius: "8px", border: "1px solid var(--border)" }}
-      />
-
-      {/* ✅ Show file name */}
-      {castFiles[i] && (
-        <div style={{ fontSize: "12px", color: "#22c55e" }}>
-          ✓ {castFiles[i].name}
-        </div>
-      )}
-
-      {/* 🔗 URL (disabled if file selected) */}
-      <input
-        className="form-input-styled"
-        placeholder="OR Photo URL"
-        value={c.image}
-        onChange={e => chCast(i, "image", e.target.value)}
-        disabled={castFiles[i] ? true : false}
-      />
-
-      {/* ❌ OLD INNER BLOCK CLOSE (commented) */}
-      {/*
-        </div>
-      ))}
-      */}
-
-      {/* ❌ OLD REMOVE BUTTON (commented, duplicate) */}
-      {/*
-      <button type="button" className="btn-sq" onClick={() => removeCast(i)}>
-        <X size={18} />
-      </button>
-      */}
-
-      {/* ✅ FINAL REMOVE BUTTON */}
-      <button
-        type="button"
-        className="btn-sq"
-        onClick={() => removeCast(i)}
+      <form
+        onSubmit={handleSubmit}
+        onKeyDown={handleKeyDown}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 30,
+        }}
       >
-        <X size={18} />
-      </button>
 
-    </div>
-  ))}
+        <BasicInfoSection
+          form={form}
+          ch={ch}
+        />
 
-  <button
-    type="button"
-    className="btn btn-ghost"
-    style={{ marginTop: 8 }}
-    onClick={addCast}
-  >
-    + Add Actor
-  </button>
-</div>
+        <MediaAssetsStep
+          form={form}
+          ch={ch}
 
-        {/* Series */}
-        {form.type === "series" && !form.isComingSoon && (
-          <div className="form-card">
-            <h3><Tv size={18} style={{ display: "inline-block", marginRight: 6 }} /> Seasons & Episodes</h3>
-            {form.seasons.map((s, si) => (
-              <div key={si} className="season-block">
-                <input className="form-input-styled" placeholder={`Season ${si + 1} number`} value={s.seasonNumber}
-                  onChange={e => {
-                    const seasons = [...form.seasons];
-                    seasons[si].seasonNumber = Number(e.target.value);
-                    setForm(f => ({ ...f, seasons }));
+          posterFile={posterFile}
+          posterInputRef={
+            posterInputRef
+          }
+          handlePosterFileChange={
+            handlePosterFileChange
+          }
+
+          bannerFile={bannerFile}
+          bannerInputRef={
+            bannerInputRef
+          }
+          handleBannerFileChange={
+            handleBannerFileChange
+          }
+
+          trailerFile={trailerFile}
+          trailerInputRef={
+            trailerInputRef
+          }
+          handleTrailerFileChange={
+            handleTrailerFileChange
+          }
+
+          videoFile={videoFile}
+          videoInputRef={
+            videoInputRef
+          }
+          handleVideoFileChange={
+            handleVideoFileChange
+          }
+
+          type={form.type}
+          isComingSoon={
+            form.isComingSoon
+          }
+        />
+
+        <CastSection
+          cast={form.cast}
+          castFiles={castFiles}
+          addCast={addCast}
+          removeCast={removeCast}
+          chCast={chCast}
+          handleCastFileChange={
+            handleCastFileChange
+          }
+          getFullUrl={getFullUrl}
+        />
+
+        <SeasonsSection
+          form={form}
+          setForm={setForm}
+
+          addSeason={addSeason}
+          addEp={addEp}
+          removeSeason={removeSeason}
+
+          chEp={chEp}
+          removeEp={removeEp}
+
+          episodeVideoFiles={
+            episodeVideoFiles
+          }
+
+          episodeThumbnailFiles={
+            episodeThumbnailFiles
+          }
+
+          handleEpisodeVideoChange={
+            handleEpisodeVideoChange
+          }
+
+          handleEpisodeThumbnailChange={
+            handleEpisodeThumbnailChange
+          }
+
+          setEpisodeVideoFiles={
+            setEpisodeVideoFiles
+          }
+
+          setEpisodeThumbnailFiles={
+            setEpisodeThumbnailFiles
+          }
+        />
+
+
+
+        {loading && (
+          <div
+            className="upload-progress-card"
+            style={{
+              padding: "24px",
+              borderRadius: "16px",
+              background: "rgba(30, 30, 40, 0.6)",
+              backdropFilter: "blur(12px)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.37)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px",
+              marginTop: "20px",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div
+                  className="spinner"
+                  style={{
+                    width: 20,
+                    height: 20,
+                    border: "3px solid rgba(230, 57, 70, 0.2)",
+                    borderTopColor: "var(--primary)",
+                    borderRadius: "50%",
+                    animation: "spin 1s linear infinite",
                   }}
-                  style={{ marginBottom: 10, width: 200 }}
                 />
-                {s.episodes.map((ep, ei) => (
-                  <div key={ei} className="ep-row">
-                    <input className="form-input-styled" placeholder="Ep title" value={ep.title} onChange={e => chEp(si, ei, "title", e.target.value)} />
-                    <div style={{ display: "flex", gap: 8, alignItems: "center", flex: 1 }}>
-                      <input
-                        type="file"
-                        accept="video/*"
-                        onChange={(e) => handleEpisodeVideoChange(si, ei, e)}
-                        style={{ padding: "8px", borderRadius: "8px", border: "1px solid var(--border)", flex: 1 }}
-                      />
-                      {episodeVideoFiles[`${si}_${ei}`] && <small style={{ color: "var(--green)", whiteSpace: "nowrap" }}>✓ {episodeVideoFiles[`${si}_${ei}`].name}</small>}
-                    </div>
-                    <input className="form-input-styled" placeholder="OR Video URL" value={ep.videoUrl} onChange={e => chEp(si, ei, "videoUrl", e.target.value)} disabled={episodeVideoFiles[`${si}_${ei}`] ? true : false} />
-                    <input className="form-input-styled" placeholder="Duration" value={ep.duration} onChange={e => chEp(si, ei, "duration", e.target.value)} />
-                  </div>
-                ))}
-                <button type="button" className="btn btn-ghost" style={{ marginTop: 8 }} onClick={() => addEp(si)}>+ Episode</button>
+                <span style={{ fontSize: "16px", fontWeight: "600", color: "#fff" }}>
+                  {uploadPhase === "main" && (form.type === "movie" ? "Uploading Movie Assets..." : "Uploading TV Series Details...")}
+                  {uploadPhase === "episodes" && `Uploading Episode ${currentEpisodeInfo.current} of ${currentEpisodeInfo.total}...`}
+                  {uploadPhase === "complete" && "Finalizing and Publishing Content..."}
+                </span>
               </div>
-            ))}
-            <button type="button" className="btn btn-ghost" style={{ marginTop: 12 }} onClick={addSeason}>+ Add Season</button>
+              <span style={{ fontSize: "16px", fontWeight: "700", color: "var(--primary)" }}>
+                {uploadProgress}%
+              </span>
+            </div>
+
+            <div
+              style={{
+                width: "100%",
+                height: "10px",
+                backgroundColor: "rgba(255, 255, 255, 0.05)",
+                borderRadius: "999px",
+                overflow: "hidden",
+                border: "1px solid rgba(255, 255, 255, 0.05)",
+              }}
+            >
+              <div
+                style={{
+                  width: `${uploadProgress}%`,
+                  height: "100%",
+                  background: "linear-gradient(90deg, #e30914 0%, #ff4d5a 100%)",
+                  borderRadius: "999px",
+                  transition: "width 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                  boxShadow: "0 0 12px rgba(227, 9, 20, 0.5)",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "#8a8b98" }}>
+              <span>Please keep this window open until publishing is complete.</span>
+              {uploadPhase === "main" && (
+                <span>
+                  {videoFile || trailerFile ? "Sending media chunks to CDN..." : "Uploading metadata..."}
+                </span>
+              )}
+              {uploadPhase === "episodes" && (
+                <span>
+                  Season {form.seasons.find((_, i) => {
+                    let totalBefore = 0;
+                    for (let sIdx = 0; sIdx < i; sIdx++) {
+                      totalBefore += form.seasons[sIdx].episodes.length;
+                    }
+                    return currentEpisodeInfo.current <= totalBefore + form.seasons[i].episodes.length;
+                  })?.seasonNumber || 1}
+                </span>
+              )}
+              {uploadPhase === "complete" && <span>Syncing CDN distribution nodes...</span>}
+            </div>
           </div>
         )}
 
         {/* Submit */}
-        <div className="submit-row">
-          <button type="submit" className="btn-lg" disabled={loading}>
-            {loading ? "Publishing..." : <><Rocket size={16} style={{ display: "inline-block", marginRight: 6 }} /> Publish to Platform</>}
+        <div
+          className="submit-row"
+          style={{
+            marginTop: 20,
+          }}
+        >
+          <button
+            type="submit"
+            className="btn-lg"
+            disabled={loading}
+            style={{
+              minWidth: "240px",
+              height: "60px",
+
+              display: "flex",
+              alignItems: "center",
+              justifyContent:
+                "center",
+
+              gap: 12,
+            }}
+          >
+            {loading ? (
+              <>
+                <div
+                  className="spinner"
+                  style={{
+                    width: 20,
+                    height: 20,
+
+                    border:
+                      "3px solid rgba(255,255,255,0.3)",
+
+                    borderTopColor:
+                      "white",
+
+                    borderRadius: "50%",
+
+                    animation:
+                      "spin 1s linear infinite",
+                  }}
+                />
+
+                <span>
+                  Publishing...
+                </span>
+              </>
+            ) : (
+              <>
+                <Rocket size={20} />
+
+                <span>
+                  Publish to Platform
+                </span>
+
+                <ChevronRight
+                  size={18}
+                />
+              </>
+            )}
           </button>
         </div>
       </form>
+
+      <style>{`
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
     </div>
   );
 }

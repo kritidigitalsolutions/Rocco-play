@@ -1,39 +1,57 @@
-const admin = require("../config/firebase");
+const {
+  admin,
+  firebaseInitialized,
+} = require("../config/firebase");
 
-const sendPushNotification = async ({ token, title, body, data = {} }) => {
+/**
+ * Sends a real or mock push notification using Firebase Cloud Messaging.
+ * @param {Object} params
+ * @param {string} params.token - Target FCM token
+ * @param {string} params.title - Notification title
+ * @param {string} params.body - Notification body content
+ * @param {Object} [params.data] - Optional metadata (converted to key-value strings)
+ */
+const sendPushNotification = async ({ token, title, body, data }) => {
   try {
     if (!token) {
-      return {
-        success: false,
-        message: "FCM token is required"
-      };
+      return { success: false, error: "No token provided" };
+    }
+
+    if (!firebaseInitialized) {
+      console.log("-----------------------------------------");
+      console.log("PUSH NOTIFICATION SENT (MOCK/STUB MODE)");
+      console.log("To:", token);
+      console.log("Title:", title);
+      console.log("Body:", body);
+      console.log("Data:", data);
+      console.log("-----------------------------------------");
+      return { success: true, messageId: `mock-id-${Date.now()}` };
+    }
+
+    // Convert data fields to strings, as FCM data payload requires string values
+    const stringifiedData = {};
+    if (data) {
+      Object.keys(data).forEach((key) => {
+        stringifiedData[key] = String(data[key]);
+      });
     }
 
     const message = {
       token,
       notification: {
         title,
-        body
+        body,
       },
-      data
+      data: stringifiedData,
     };
 
     const response = await admin.messaging().send(message);
-
-    return {
-      success: true,
-      message: "Notification sent successfully",
-      messageId: response
-    };
-
+    console.log("Successfully sent FCM notification:", response);
+    return { success: true, messageId: response };
   } catch (error) {
-    return {
-      success: false,
-      message: error.message
-    };
+    console.error("FCM Send Error:", error);
+    return { success: false, error: error.message };
   }
 };
 
-module.exports = {
-  sendPushNotification
-};
+module.exports = { sendPushNotification };

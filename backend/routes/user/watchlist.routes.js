@@ -7,11 +7,11 @@ const {
   removeFromWatchlist
 } = require("../../controllers/watchlist.controller");
 
-const authMiddleware = require("../../middlewares/auth.middleware");
+const { isAuth } = require("../../middlewares/auth.middleware");
 
 // all routes protected
-router.post("/", authMiddleware, addToWatchlist);
-router.get("/", authMiddleware, getWatchlist);
-router.delete("/:id", authMiddleware, removeFromWatchlist);
+router.post("/", isAuth, addToWatchlist);
+router.get("/", isAuth, getWatchlist);
+router.delete("/:id", isAuth, removeFromWatchlist);
 
 module.exports = router;

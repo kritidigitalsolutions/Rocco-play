@@ -1,13 +1,37 @@
 const Watchlist = require("../models/watchlist.model");
+const Movie = require("../models/movie.model");
+const Series = require("../models/series.model");
 
 // ➕ Add to watchlist
 const addToWatchlist = async (req, res) => {
   try {
-    const { movieId } = req.body;
+    const { itemId } = req.body;
+
+    if (!itemId) {
+      return res.status(400).json({ message: "itemId is required" });
+    }
+
+    // Auto-detect type
+    let itemModel = "";
+    const isMovie = await Movie.exists({ _id: itemId });
+    
+    if (isMovie) {
+      itemModel = "Movie";
+    } else {
+      const isSeries = await Series.exists({ _id: itemId });
+      if (isSeries) {
+        itemModel = "Series";
+      }
+    }
+
+    if (!itemModel) {
+      return res.status(404).json({ message: "Content not found" });
+    }
 
     const item = await Watchlist.create({
       user: req.user.id,
-      movie: movieId
+      item: itemId,
+      itemModel: itemModel
     });
 
     res.status(201).json({
@@ -15,6 +39,9 @@ const addToWatchlist = async (req, res) => {
       data: item
     });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: "Already in watchlist" });
+    }
     res.status(500).json({
       message: "Error adding to watchlist",
       error: error.message
@@ -26,7 +53,7 @@ const addToWatchlist = async (req, res) => {
 const getWatchlist = async (req, res) => {
   try {
     const list = await Watchlist.find({ user: req.user.id })
-      .populate("movie");
+      .populate("item");
 
     res.json({
       success: true,
@@ -44,7 +71,14 @@ const getWatchlist = async (req, res) => {
 // ❌ Remove from watchlist
 const removeFromWatchlist = async (req, res) => {
   try {
-    await Watchlist.findByIdAndDelete(req.params.id);
+    const deleted = await Watchlist.findOneAndDelete({
+      _id: req.params.id,
+      user: req.user.id
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Item not found in your watchlist" });
+    }
 
     res.json({
       message: "Removed from watchlist ❌"

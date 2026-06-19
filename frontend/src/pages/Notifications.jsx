@@ -68,7 +68,7 @@ export default function NotificationsPage() {
   // ── Fetch users for searchable dropdown ───────────────────────────────
   const fetchUsers = useCallback(async () => {
     try {
-      const res = await API.get("/admin/user/all");
+      const res = await API.get("/admin/users");
       setUsers(res.data.users || res.data.data || []);
     } catch {
       // Non-critical — fallback to empty list

@@ -1,10 +1,20 @@
 const express = require("express");
+
 const router = express.Router();
 
-const { getAllHelp,getHelpByCategory } = require("../../controllers/help.controller");
+const {getPublishedHelp,getHelpByCategory, getAllHelp} = require("../../controllers/help.controller");
 
-// public
-router.get("/", getAllHelp);
-router.get("/:category", getHelpByCategory);
+
+// ========================================
+// GET ALL PUBLISHED HELP DATA
+// ========================================
+router.get("/",getPublishedHelp);
+
+
+// ========================================
+// GET HELP BY CATEGORY
+// ========================================
+router.get("/:category",getHelpByCategory);
+
 
 module.exports = router;

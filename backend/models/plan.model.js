@@ -1,24 +1,127 @@
 const mongoose = require("mongoose");
 
-const planSchema = new mongoose.Schema({
-  name: {
-    type: String, // Basic, Premium
-    required: true
-  },
-  price: {
-    type: Number,
-    required: true
-  },
-  duration: {
-    type: Number, // in days (30, 365)
-    required: true
-  },
-  features: [String],
+const planSchema =
+  new mongoose.Schema(
+    {
+      // ========================================
+      // PLAN NAME
+      // ========================================
 
-  isActive: {
-    type: Boolean,
-    default: true
-  }
-}, { timestamps: true });
+      name: {
+        type: String,
 
-module.exports = mongoose.model("Plan", planSchema);
+        required: true,
+
+        trim: true,
+
+        unique: true,
+      },
+
+      // ========================================
+      // PRICE
+      // ========================================
+
+      price: {
+        type: Number,
+
+        required: true,
+
+        min: 0,
+      },
+
+      // ========================================
+      // DURATION (DAYS)
+      // ========================================
+
+      duration: {
+        type: Number,
+
+        required: true,
+
+        min: 1,
+      },
+
+      // ========================================
+      // FEATURES
+      // ========================================
+
+      features: [
+        {
+          type: String,
+
+          trim: true,
+        },
+      ],
+
+      // ========================================
+      // ACTIVE STATUS
+      // ========================================
+
+      isActive: {
+        type: Boolean,
+
+        default: true,
+
+        index: true,
+      },
+
+      // ========================================
+      // OPTIONAL FUTURE SUPPORT
+      // ========================================
+
+      // monthly / yearly / lifetime
+      planType: {
+        type: String,
+
+        enum: [
+          "monthly",
+          "quarterly",
+          "yearly",
+          "lifetime",
+        ],
+
+        default: "monthly",
+      },
+
+      // display sorting
+      sortOrder: {
+        type: Number,
+
+        default: 0,
+      },
+
+      // recommended badge
+      isRecommended: {
+        type: Boolean,
+
+        default: false,
+      },
+    },
+
+    {
+      timestamps: true,
+    }
+  );
+
+
+// ========================================
+// INDEXES
+// ========================================
+
+planSchema.index({
+  isActive: 1,
+});
+
+planSchema.index({
+  sortOrder: 1,
+});
+
+
+// ========================================
+// EXPORT
+// ========================================
+
+module.exports = mongoose.model(
+  "Plan",
+  planSchema
+);

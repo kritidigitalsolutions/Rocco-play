@@ -1,48 +1,66 @@
 const express = require("express");
+
 const router = express.Router();
 
-const { isAuth } = require("../../middlewares/auth.middleware");
-const { isAdmin } = require("../../middlewares/admin.middleware");
-const upload = require("../../middlewares/videoUpload.middleware");
+const {
+  isAuth,
+} = require("../../middlewares/auth.middleware");
 
-const User = require("../../models/user.model");
+const upload = require("../../middlewares/upload.middleware");
 
 const {
   getProfile,
   completeProfile,
   updateProfile,
-  getAllUsers,
   saveFcmToken,
-  sendTestNotification
 } = require("../../controllers/user.controller");
 
-const {
-  getUserGrowth,
-  getRegistrationStats,
-} = require("../../controllers/admin/user.controller");
 
-/* PROFILE */
-router.get("/profile", isAuth, getProfile);
-router.post("/profile-info", upload.any(), completeProfile);
-router.patch("/profile-update", isAuth, upload.any(), updateProfile);
+// ========================================
+// GET USER PROFILE
+// ========================================
+router.get(
+  "/",
+  isAuth,
+  getProfile
+);
 
-/* USERS */
-router.get("/", getAllUsers);
-router.get("/growth", isAuth, isAdmin, getUserGrowth);
-router.get("/registration-stats", isAuth, isAdmin, getRegistrationStats);
+router.get(
+  "/profile",
+  isAuth,
+  getProfile
+);
 
-/* FCM NOTIFICATION */
-router.post("/fcm-token", isAuth, saveFcmToken);
-router.post("/test-notification", isAuth, sendTestNotification);
 
-/* DELETE USER */
-router.delete("/:id", isAuth, async (req, res) => {
-  try {
-    await User.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "User deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ message: "Failed to delete user" });
-  }
-});
+// ========================================
+// COMPLETE PROFILE
+// ========================================
+router.post(
+  "/complete-profile",
+  isAuth,
+  upload.single("profileImage"),
+  completeProfile
+);
+
+
+// ========================================
+// UPDATE PROFILE
+// ========================================
+router.patch(
+  "/update-profile",
+  isAuth,
+  upload.single("profileImage"),
+  updateProfile
+);
+
+// ========================================
+// CONNECT FCM TOKEN TO USER
+// ========================================
+router.patch(
+  "/fcm-token",
+  isAuth,
+  saveFcmToken
+);
+
 
 module.exports = router;

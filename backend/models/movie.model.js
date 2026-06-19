@@ -2,14 +2,26 @@ const mongoose = require("mongoose");
 
 // Cast Schema
 const castSchema = new mongoose.Schema({
-  name: String,
-  image: String
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+
+  image: {
+    type: String,
+    default: ""
+  }
 });
 
-//  Main Schema
+// Main Schema
 const movieSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true },
+    title: {
+      type: String,
+      required: true,
+      trim: true
+    },
 
     slug: {
       type: String,
@@ -17,50 +29,120 @@ const movieSchema = new mongoose.Schema(
       index: true
     },
 
-    description: String,
-    genre: [String],
+    description: {
+      type: String,
+      default: ""
+    },
+
+    genre: [{
+  type: String,
+  trim: true
+}],
 
     releaseYear: Number,
+
     duration: String,
+
     language: String,
 
     poster: String,
+
     banner: String,
-    isComingSoon: { type: Boolean, default: false },
-    releaseDate: { type: Date },
 
+    isComingSoon: {
+      type: Boolean,
+      default: false
+    },
 
+    releaseDate: {
+      type: Date
+    },
 
-    // Only for movies
-    videoUrl:String,
+    // Higher priority appears first
+    priority: {
+      type: Number,
+      default: 0
+    },
+
+    videoUrl: String,
 
     trailerUrl: String,
 
-    isPremium: { type: Boolean, default: false },
+    isPremium: {
+      type: Boolean,
+      default: false
+    },
 
-    rating: Number,
+    rating: {
+      type: Number,
+      min: 0,
+      max: 10,
+      default: 0
+    },
 
     cast: [castSchema],
 
     category: [
       {
         type: String,
-        enum: ["trending", "top10", "recommended"]
+        enum: [
+          "trending",
+          "top10",
+          "recommended"
+        ]
+      }
+    ],
+
+    likes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User"
+      }
+    ],
+
+    dislikes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User"
       }
     ]
   },
-  { timestamps: true }
+  {
+    timestamps: true
+  }
 );
 
-//  Auto-generate slug
+// Auto-generate slug only once
 movieSchema.pre("save", function () {
-  if (this.title) {
-    this.slug = this.title
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, "-")
-      .replace(/[^\w-]+/g, "");
+
+  if (!this.slug && this.title) {
+
+    this.slug =
+      this.title
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/[^\w-]+/g, "") +
+      "-" +
+      Date.now();
   }
 });
 
-module.exports = mongoose.model("Movie", movieSchema);
+// Indexes
+movieSchema.index({
+  priority: -1,
+  createdAt: -1
+});
+
+movieSchema.index({
+  title: "text",
+  description: "text"
+}, {
+  default_language: "none",
+  language_override: "textLanguage"
+});
+
+module.exports = mongoose.model(
+  "Movie",
+  movieSchema
+);

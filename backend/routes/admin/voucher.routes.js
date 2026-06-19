@@ -8,12 +8,11 @@ const {
   deleteVoucher
 } = require("../../controllers/admin/voucher.controller");
 
-const { isAuth } = require("../../middlewares/auth.middleware");
 const { isAdmin } = require("../../middlewares/admin.middleware");
 
-router.post("/", isAuth, isAdmin, createVoucher);
-router.get("/", isAuth, isAdmin, getVouchers);
-router.put("/:id", isAuth, isAdmin, updateVoucher);
-router.delete("/:id", isAuth, isAdmin, deleteVoucher);
+router.post("/", isAdmin, createVoucher);
+router.get("/", isAdmin, getVouchers);
+router.put("/:id", isAdmin, updateVoucher);
+router.delete("/:id", isAdmin, deleteVoucher);
 
 module.exports = router;

@@ -7,7 +7,6 @@ const {
   verifySubscription,
   cancelSubscription,
   checkSubscription,
-  getAllSubscriptions
 } = require("../../controllers/subscription.controller");
 
 // ❌ COMMENTED (Razorpay)
@@ -17,10 +16,8 @@ const {
 // ✅ FAKE FLOW
 const { isAuth } = require("../../middlewares/auth.middleware");
 
-// router.post("/subscribe", isAuth, verifySubscription);
+router.post("/subscribe", isAuth, verifySubscription);
 router.get("/status", isAuth, checkSubscription);
 router.delete("/cancel", isAuth, cancelSubscription);
-
-router.get("/all", isAuth, getAllSubscriptions);
 
 module.exports = router;

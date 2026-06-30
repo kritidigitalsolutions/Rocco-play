@@ -43,6 +43,12 @@ authProvider: {
             default: false,
         },
 
+        userType: {
+            type: String,
+            enum: ["INDIVIDUAL", "SUBSCRIBERS"],
+            default: "INDIVIDUAL",
+        },
+
         fcmToken: {
             type: String,
             default: null,

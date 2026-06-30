@@ -9,7 +9,9 @@ const {
 
 router.post("/toggle", isAuth, toggleInteraction);
 router.get("/status/:contentId", isAuth, getUserInteraction);
+router.get("/status", isAuth, getUserInteraction);
 router.get("/stats/:contentId", getInteractionStats);
+router.get("/stats", getInteractionStats);
 
 
 module.exports = router;

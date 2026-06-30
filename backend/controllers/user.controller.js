@@ -218,12 +218,15 @@ exports.updateProfile = async (
   }
 };
 
+
 // ========================================
 // SAVE FCM TOKEN
 // ========================================
 exports.saveFcmToken = async (req, res) => {
   try {
-    const rawToken = req.body.fcmToken || req.body.token;
+    console.log("FCM TOKEN SAVE REQUEST - Body:", req.body, "User ID from JWT:", req.user?.id || req.user?._id);
+    
+    const rawToken = req.body.fcmToken || req.body.token || req.body.fcm_token;
     const fcmToken =
       typeof rawToken === "string"
         ? rawToken.trim()
@@ -232,11 +235,19 @@ exports.saveFcmToken = async (req, res) => {
     if (!fcmToken) {
       return res.status(400).json({
         success: false,
-        message: "FCM token is required",
+        message: "FCM token is required in request body (fcmToken, fcm_token, or token)",
       });
     }
 
-    const user = await User.findById(req.user.id);
+    const userId = req.user?.id || req.user?._id;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized - User ID not found in token",
+      });
+    }
+
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -245,6 +256,7 @@ exports.saveFcmToken = async (req, res) => {
       });
     }
 
+    // Unset this token from any other users to prevent multiple deliveries
     await User.updateMany(
       {
         _id: { $ne: user._id },
@@ -263,6 +275,8 @@ exports.saveFcmToken = async (req, res) => {
 
     await user.save();
 
+    console.log(`✅ FCM token saved successfully for user ${user._id} (${user.phone})`);
+
     res.status(200).json({
       success: true,
       message: "FCM token connected to user successfully",
@@ -274,6 +288,8 @@ exports.saveFcmToken = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
+      error: error.message
     });
   }
 };
+

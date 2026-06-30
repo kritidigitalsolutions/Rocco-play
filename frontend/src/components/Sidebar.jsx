@@ -1,21 +1,18 @@
 import "./Sidebar.css";
 import { NavLink } from "react-router-dom";
 // import { BarChart3, Users, Plus, Film, FileText, HelpCircle, CreditCard, Settings, LogOut } from "lucide-react";
-import { X, BarChart3, Users, Plus, Film, FileText, HelpCircle, CreditCard, Settings, LogOut, Star, Bell, MessageSquare, Clapperboard } from "lucide-react";
+import { X, BarChart3, Users, Plus, Film, FileText, HelpCircle, CreditCard, Settings, LogOut, Star, Bell } from "lucide-react";
 
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: BarChart3, color: "#e50914" },
   { id: "users", label: "Users", icon: Users, color: "#3b82f6" },
   { id: "add-content", label: "Add Content", icon: Plus, color: "#10b981" },
   { id: "content", label: "Content Library", icon: Film, color: "#f59e0b" },
-  // { id: "add-drama", label: "Add Short Drama", icon: Plus, color: "#a78bfa" },
-  // { id: "dramas", label: "Short Dramas", icon: Clapperboard, color: "#8b5cf6" },
   { id: "ratings", label: "Ratings", icon: Star, color: "#facc15" },
   { id: "plans", label: "Subscription Plans", icon: CreditCard, color: "#ec4899" },
   { id: "promo", label: "Promo&Voucher", icon: CreditCard, color: "#ec4899" },
   { id: "pricing", label: "User Plan", icon: CreditCard, color: "#ec4899" },
   { id: "notifications", label: "Notifications", icon: Bell, color: "#f59e0b" },
-  { id: "support", label: "Support", icon: MessageSquare, color: "#06b6d4" },
   { id: "legal", label: "Legal", icon: FileText, color: "#8b5cf6" },
   { id: "help", label: "Help Center", icon: HelpCircle, color: "#06b6d4" },
   { id: "settings", label: "Settings", icon: Settings, color: "#64748b" },

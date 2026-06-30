@@ -13,8 +13,9 @@ const { saveFcmToken } = require("../../controllers/user.controller");
 // All routes require authentication
 router.use(isAuth);
 
-// POST /api/notifications/fcm-token - Connect device FCM token to logged-in user
+// Fallbacks for client app FCM saving routes
 router.post("/fcm-token", saveFcmToken);
+router.patch("/fcm-token", saveFcmToken);
 
 // GET /api/notifications - Get user's notifications
 router.get("/", getMyNotifications);

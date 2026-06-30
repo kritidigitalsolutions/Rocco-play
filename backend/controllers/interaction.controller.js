@@ -63,7 +63,11 @@ exports.toggleInteraction = async (req, res) => {
 exports.getUserInteraction = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { contentId } = req.params;
+    const contentId = req.params.contentId || req.query.contentId;
+
+    if (!contentId) {
+      return res.status(400).json({ message: "contentId is required" });
+    }
 
     const interaction = await Interaction.findOne({
       user: userId,
@@ -75,13 +79,17 @@ exports.getUserInteraction = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
 exports.getInteractionStats = async (req, res) => {
   try {
-    const { contentId } = req.params;
+    const contentId = req.params.contentId || req.query.contentId;
+
+    if (!contentId) {
+      return res.status(400).json({ message: "contentId is required" });
+    }
 
     const likes = await Interaction.countDocuments({
       contentId,
@@ -99,6 +107,6 @@ exports.getInteractionStats = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };

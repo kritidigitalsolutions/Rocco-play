@@ -257,9 +257,9 @@ app.use("/api/notifications", userNotificationRoutes);
 const interactionRoutes = require("./routes/user/interation.routes");
 app.use("/api/interaction", interactionRoutes);
 
-// ================Razor Pay===============
-// const paymentRoutes = require("./routes/user/payment.routes");
-// app.use("/api/payment", paymentRoutes);
+// =========Razor Pay===============
+const paymentRoutes = require("./routes/user/payment.routes");
+app.use("/api/payment", paymentRoutes);
 
 // ========================================
 // EXPORT

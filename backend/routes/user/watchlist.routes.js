@@ -13,5 +13,6 @@ const { isAuth } = require("../../middlewares/auth.middleware");
 router.post("/", isAuth, addToWatchlist);
 router.get("/", isAuth, getWatchlist);
 router.delete("/:id", isAuth, removeFromWatchlist);
+router.delete("/", isAuth, removeFromWatchlist);
 
 module.exports = router;

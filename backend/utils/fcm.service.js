@@ -43,6 +43,26 @@ const sendPushNotification = async ({ token, title, body, data }) => {
         body,
       },
       data: stringifiedData,
+      android: {
+        priority: "high",                    // Deliver immediately, wake device screen
+        notification: {
+          sound: "default",
+          clickAction: "FLUTTER_NOTIFICATION_CLICK",
+          channelId: "roccoplay_channel",    // Must match Flutter's AndroidNotificationDetails channel ID
+        },
+      },
+      apns: {
+        headers: {
+          "apns-priority": "10",             // iOS: highest priority
+        },
+        payload: {
+          aps: {
+            alert: { title, body },
+            sound: "default",
+            badge: 1,
+          },
+        },
+      },
     };
 
     const response = await admin.messaging().send(message);

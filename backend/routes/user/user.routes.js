@@ -1,11 +1,7 @@
 const express = require("express");
-
 const router = express.Router();
 
-const {
-  isAuth,
-} = require("../../middlewares/auth.middleware");
-
+const { isAuth } = require("../../middlewares/auth.middleware");
 const upload = require("../../middlewares/upload.middleware");
 
 const {
@@ -14,7 +10,6 @@ const {
   updateProfile,
   saveFcmToken,
 } = require("../../controllers/user.controller");
-
 
 // ========================================
 // GET USER PROFILE
@@ -31,7 +26,6 @@ router.get(
   getProfile
 );
 
-
 // ========================================
 // COMPLETE PROFILE
 // ========================================
@@ -42,6 +36,13 @@ router.post(
   completeProfile
 );
 
+// Fallback alias path for client profile info
+router.post(
+  "/profile-info",
+  isAuth,
+  upload.single("profileImage"),
+  completeProfile
+);
 
 // ========================================
 // UPDATE PROFILE
@@ -62,5 +63,10 @@ router.patch(
   saveFcmToken
 );
 
+router.post(
+  "/fcm-token",
+  isAuth,
+  saveFcmToken
+);
 
 module.exports = router;

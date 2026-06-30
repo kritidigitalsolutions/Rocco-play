@@ -71,10 +71,24 @@ const getWatchlist = async (req, res) => {
 // ❌ Remove from watchlist
 const removeFromWatchlist = async (req, res) => {
   try {
-    const deleted = await Watchlist.findOneAndDelete({
-      _id: req.params.id,
-      user: req.user.id
-    });
+    const mongoose = require("mongoose");
+    const itemId = req.params.id || req.body.itemId || req.query.itemId || req.body.item || req.query.item;
+
+    if (!itemId) {
+      return res.status(400).json({ message: "itemId/id is required" });
+    }
+
+    const query = { user: req.user.id };
+    if (mongoose.Types.ObjectId.isValid(itemId)) {
+      query.$or = [
+        { _id: itemId },
+        { item: itemId }
+      ];
+    } else {
+      return res.status(400).json({ message: "Invalid ID format" });
+    }
+
+    const deleted = await Watchlist.findOneAndDelete(query);
 
     if (!deleted) {
       return res.status(404).json({ message: "Item not found in your watchlist" });

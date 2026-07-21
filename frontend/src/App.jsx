@@ -21,6 +21,7 @@ const NotificationsPage = lazy(() => import("./pages/Notifications"));
 const LegalPage = lazy(() => import("./pages/LegalPage"));
 const HelpPage = lazy(() => import("./pages/HelpPage"));
 const Settings = lazy(() => import("./pages/Settings"));
+const Category = lazy(() => import("./pages/Category"));
 
 // ── Toast Context ──
 const ToastContext = createContext();
@@ -94,6 +95,7 @@ function App() {
             {/* Nested Dashboard Routes */}
             <Route index element={<DashboardHome />} />
             <Route path="users" element={<UsersPage />} />
+            <Route path="categories" element={<Category />} />
             <Route path="add-content" element={<AddContent />} />
             <Route path="content" element={<Content />} />
             <Route path="ratings" element={<RatingsPage />} />

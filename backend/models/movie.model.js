@@ -35,9 +35,9 @@ const movieSchema = new mongoose.Schema(
     },
 
     genre: [{
-  type: String,
-  trim: true
-}],
+      type: String,
+      trim: true
+    }],
 
     releaseYear: Number,
 
@@ -73,6 +73,11 @@ const movieSchema = new mongoose.Schema(
       default: false
     },
 
+    isPublished: {
+      type: Boolean,
+      default: true
+    },
+
     rating: {
       type: Number,
       min: 0,
@@ -85,11 +90,7 @@ const movieSchema = new mongoose.Schema(
     category: [
       {
         type: String,
-        enum: [
-          "trending",
-          "top10",
-          "recommended"
-        ]
+        trim: true,
       }
     ],
 
@@ -114,9 +115,7 @@ const movieSchema = new mongoose.Schema(
 
 // Auto-generate slug only once
 movieSchema.pre("save", function () {
-
   if (!this.slug && this.title) {
-
     this.slug =
       this.title
         .toLowerCase()

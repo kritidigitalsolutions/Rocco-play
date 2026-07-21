@@ -214,6 +214,13 @@ exports.sendOTP = async (req, res) => {
       phone: normalizedPhone,
     });
 
+    if (user && user.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been blocked. Please contact support.",
+      });
+    }
+
     const isNewUser =
       !user || !user.profileComplete;
 
@@ -344,6 +351,13 @@ exports.verifyOtp = async (req, res) => {
     let user = await User.findOne({
       phone: normalizedPhone,
     });
+
+    if (user && user.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been blocked. Please contact support.",
+      });
+    }
 
     // create user automatically
     if (!user) {
@@ -486,6 +500,13 @@ exports.googleLogin = async (req, res) => {
         { email: normalizedEmail }
       ]
     });
+
+    if (user && user.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been blocked. Please contact support.",
+      });
+    }
 
     let isNewUser = false;
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Pencil, Trash2, Eye, X } from "lucide-react";
+import { Pencil, Trash2, Eye, X, ToggleLeft, ToggleRight } from "lucide-react";
 import API from "../api/axios";
 import "./Dashboard.css";
 
@@ -111,6 +111,21 @@ export default function PlansPage() {
   };
 
   // =========================
+  // 🔄 TOGGLE STATUS
+  // =========================
+  const handleToggleStatus = async (plan) => {
+    try {
+      const res = await API.patch(`/admin/plan/${plan._id}/toggle-status`);
+      setPlans(prev =>
+        prev.map(p => p._id === plan._id ? { ...p, isActive: res.data.isActive } : p)
+      );
+    } catch (err) {
+      console.error(err);
+      alert("Failed to toggle plan status");
+    }
+  };
+
+  // =========================
   // ✏️ EDIT
   // =========================
   const handleEdit = (plan) => {
@@ -199,24 +214,42 @@ export default function PlansPage() {
               onChange={ch}
             />
 
-            <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-              <input
-                type="checkbox"
-                name="isRecommended"
-                checked={form.isRecommended}
-                onChange={ch}
-              />
-              Recommended Plan
+            {/* Recommended Toggle */}
+            <label
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                gap: 8, marginTop: 8, padding: "12px 16px",
+                background: form.isRecommended ? "rgba(255,152,0,0.1)" : "var(--bg3)",
+                border: `1px solid ${form.isRecommended ? "rgba(255,152,0,0.3)" : "var(--border)"}`,
+                borderRadius: 10, cursor: "pointer",
+                color: form.isRecommended ? "#ff9800" : "var(--text)",
+                transition: "all 0.2s"
+              }}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 500 }}>
+                ⭐ Recommended Plan
+              </span>
+              <input type="checkbox" name="isRecommended" checked={form.isRecommended} onChange={ch} style={{ display: "none" }} />
+              {form.isRecommended ? <ToggleRight size={26} /> : <ToggleLeft size={26} color="var(--text-muted)" />}
             </label>
 
-            <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-              <input
-                type="checkbox"
-                name="isActive"
-                checked={form.isActive}
-                onChange={ch}
-              />
-              Active (Visible to users)
+            {/* Active Toggle */}
+            <label
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                gap: 8, marginTop: 8, padding: "12px 16px",
+                background: form.isActive ? "rgba(16,185,129,0.1)" : "rgba(220,38,38,0.1)",
+                border: `1px solid ${form.isActive ? "rgba(16,185,129,0.3)" : "rgba(220,38,38,0.3)"}`,
+                borderRadius: 10, cursor: "pointer",
+                color: form.isActive ? "#10b981" : "var(--red)",
+                transition: "all 0.2s"
+              }}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 500 }}>
+                {form.isActive ? "✓ Active" : "✗ Inactive"} (Visible to users)
+              </span>
+              <input type="checkbox" name="isActive" checked={form.isActive} onChange={ch} style={{ display: "none" }} />
+              {form.isActive ? <ToggleRight size={26} /> : <ToggleLeft size={26} />}
             </label>
           </div>
 
@@ -266,9 +299,23 @@ export default function PlansPage() {
                     <td>{p.duration} days</td>
                     <td style={{ textTransform: 'capitalize' }}>{p.planType || "Monthly"}</td>
                     <td>
-                      <span className={p.isActive !== false ? "status active" : "status expired"}>
-                        {p.isActive !== false ? "Active" : "Inactive"}
-                      </span>
+                      <button
+                        onClick={() => handleToggleStatus(p)}
+                        title={p.isActive !== false ? "Click to Deactivate" : "Click to Activate"}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 6,
+                          padding: "4px 12px", borderRadius: 20, border: "1px solid",
+                          cursor: "pointer", fontWeight: 600, fontSize: "0.8rem",
+                          transition: "all 0.2s",
+                          background: p.isActive !== false ? "rgba(16,185,129,0.12)" : "rgba(220,38,38,0.12)",
+                          borderColor: p.isActive !== false ? "rgba(16,185,129,0.4)" : "rgba(220,38,38,0.4)",
+                          color: p.isActive !== false ? "#10b981" : "var(--red)",
+                        }}
+                      >
+                        {p.isActive !== false
+                          ? <><ToggleRight size={16} /> Active</>
+                          : <><ToggleLeft size={16} /> Inactive</>}
+                      </button>
                     </td>
                     <td>{p.isRecommended ? "Yes" : "No"}</td>
 

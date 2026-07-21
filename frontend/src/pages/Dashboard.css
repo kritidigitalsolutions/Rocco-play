@@ -384,6 +384,16 @@ body.light .tbl thead tr {
   color: var(--green);
 }
 
+.badge-subscriber {
+  background: var(--green-dim);
+  color: var(--green);
+}
+
+.badge-individual {
+  background: var(--border2);
+  color: var(--text-soft);
+}
+
 .badge-blocked {
   background: var(--primary-dim);
   color: var(--primary);

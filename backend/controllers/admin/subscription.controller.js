@@ -342,20 +342,56 @@ exports.getAllSubscriptions =
       // auto cleanup
       await expireOldSubscriptions();
 
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const skip = (page - 1) * limit;
+      const search = req.query.search || "";
+      const status = req.query.status || "";
+
+      let query = {};
+
+      // 1. Status Filter
+      if (status && status !== "all") {
+        query.status = status;
+      }
+
+      // 2. Search Filter (by User name or email)
+      if (search) {
+        const users = await User.find({
+          $or: [
+            { name: { $regex: search, $options: "i" } },
+            { email: { $regex: search, $options: "i" } },
+          ]
+        }).select("_id");
+
+        const userIds = users.map((u) => u._id);
+        query.user = { $in: userIds };
+      }
+
+      const total = await Subscription.countDocuments(query);
+
       const subscriptions =
-        await Subscription.find()
+        await Subscription.find(query)
           .populate(
             "user",
-            "name email"
+            "name email phone profileImage"
           )
           .populate("plan")
           .sort({
             createdAt: -1,
-          });
+          })
+          .skip(skip)
+          .limit(limit);
 
       res.status(200).json({
         success: true,
         subscriptions,
+        pagination: {
+          total,
+          page,
+          limit,
+          pages: Math.ceil(total / limit),
+        }
       });
 
     } catch (error) {
@@ -371,3 +407,119 @@ exports.getAllSubscriptions =
       });
     }
   };
+
+// =====================================================
+// 🗑️ DELETE SUBSCRIPTION
+// =====================================================
+exports.deleteSubscription = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const subscription = await Subscription.findById(id);
+    if (!subscription) {
+      return res.status(404).json({
+        success: false,
+        message: "Subscription not found",
+      });
+    }
+
+    await Subscription.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: "Subscription deleted successfully",
+    });
+
+  } catch (error) {
+    console.error("Delete Subscription Error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// =====================================================
+// 🔁 CANCEL SUBSCRIPTION (ADMIN)
+// =====================================================
+exports.cancelSubscription = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const subscription = await Subscription.findById(id);
+    if (!subscription) {
+      return res.status(404).json({
+        success: false,
+        message: "Subscription not found",
+      });
+    }
+
+    subscription.status = "cancelled";
+    await subscription.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Subscription cancelled successfully",
+      subscription,
+    });
+
+  } catch (error) {
+    console.error("Cancel Subscription Error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// =====================================================
+// ➕ CREATE SUBSCRIPTION (ADMIN)
+// =====================================================
+exports.createSubscription = async (req, res) => {
+  try {
+    const { user, plan, amount, currency, startDate, endDate, paymentId, subscriptionId } = req.body;
+
+    if (!user || !plan || !startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: "user, plan, startDate, and endDate are required fields",
+      });
+    }
+
+    const subData = {
+      user,
+      plan,
+      amount: amount || 0,
+      currency: currency || "INR",
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      status: "active",
+    };
+
+    if (paymentId && paymentId.trim()) {
+      subData.paymentId = paymentId.trim();
+    }
+    if (subscriptionId && subscriptionId.trim()) {
+      subData.subscriptionId = subscriptionId.trim();
+    }
+
+    const newSub = await Subscription.create(subData);
+
+    const populatedSub = await Subscription.findById(newSub._id)
+      .populate("user", "name email phone profileImage")
+      .populate("plan");
+
+    res.status(201).json({
+      success: true,
+      message: "Subscription assigned successfully",
+      subscription: populatedSub,
+    });
+
+  } catch (error) {
+    console.error("Create Subscription Error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};

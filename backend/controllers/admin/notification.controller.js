@@ -131,7 +131,7 @@ exports.deleteNotification = async (req, res) => {
     const notification = await Notification.findByIdAndUpdate(
       req.params.id,
       { isActive: false },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!notification) {
@@ -166,7 +166,7 @@ exports.markAsRead = async (req, res) => {
           readBy: { user: req.user.id, readAt: new Date() }
         }
       },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!notif) {

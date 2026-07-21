@@ -107,21 +107,7 @@ const voucherSchema =
 // INDEXES
 // ========================================
 
-voucherSchema.index({
-  code: 1,
-});
 
-voucherSchema.index({
-  isUsed: 1,
-});
-
-voucherSchema.index({
-  expiryDate: 1,
-});
-
-voucherSchema.index({
-  plan: 1,
-});
 
 
 // ========================================

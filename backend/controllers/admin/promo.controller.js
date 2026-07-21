@@ -56,7 +56,7 @@ exports.updatePromo = async (req, res) => {
       req.params.id,
       req.body,
       {
-        new: true,        // return updated data
+        returnDocument: "after",        // return updated data
         runValidators: true // validate schema
       }
     );

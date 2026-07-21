@@ -6,7 +6,7 @@ import "./Content.css";
 import {
   Eye, Edit2, Trash2, X, Play, Film, Tv,
   Search, Plus, ChevronRight, ChevronLeft, ChevronDown, User, Calendar, Video,
-  Activity, Upload
+  Activity, Upload, ToggleLeft, ToggleRight
 } from "lucide-react";
 
 /* ===================== PAGINATION COMPONENT ===================== */
@@ -112,6 +112,18 @@ export default function Content() {
   });
   const [castFiles, setCastFiles] = useState({}); // { index: File }
 
+  // Category lookup map: slug → { name, color }
+  const [catMap, setCatMap] = useState({});
+  useEffect(() => {
+    API.get("/admin/categories")
+      .then(res => {
+        const map = {};
+        (res.data.categories || []).forEach(c => { map[c.slug] = c; });
+        setCatMap(map);
+      })
+      .catch(console.error);
+  }, []);
+
 
   // Add season/episode forms
   const [showAddEpisodeForm, setShowAddEpisodeForm] = useState(null); // seasonNumber
@@ -121,6 +133,10 @@ export default function Content() {
   const [showAddSeasonForm, setShowAddSeasonForm] = useState(false);
   const [newSeasonNumber, setNewSeasonNumber] = useState("");
   const [addingEpisode, setAddingEpisode] = useState(false);
+
+  const [showEditCatDropdown, setShowEditCatDropdown] = useState(false);
+  const editCatDropdownRef = useRef(null);
+  const PRESET_COLORS = ["#6366f1","#10b981","#f59e0b","#ef4444","#3b82f6","#8b5cf6","#ec4899","#06b6d4","#f97316"];
 
 
   const videoRef = useRef(null);
@@ -161,6 +177,16 @@ export default function Content() {
     };
   }, [contentType, currentPage]);
 
+  // Close edit-modal category dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (editCatDropdownRef.current && !editCatDropdownRef.current.contains(e.target)) {
+        setShowEditCatDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   /* ===================== LOCK LOGIC ===================== */
   const isLocked = (item) => {
@@ -587,6 +613,25 @@ export default function Content() {
     }
   };
 
+  /* ===================== TOGGLE PUBLISH ===================== */
+  const handleTogglePublish = async (item) => {
+    try {
+      const route = contentType === "movies" ? "movies" : "series";
+      const res = await API.patch(`/admin/${route}/${item._id}/toggle-publish`);
+      const updatedItem = res.data.movie || res.data.series;
+
+      // Update local state data
+      setData(prev => prev.map(x => x._id === item._id ? { ...x, isPublished: updatedItem.isPublished } : x));
+
+      // Update searchResults if active
+      if (searchResults) {
+        setSearchResults(prev => prev.map(x => x._id === item._id ? { ...x, isPublished: updatedItem.isPublished } : x));
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to toggle content publish status");
+    }
+  };
+
   const handleEpisodeDelete = async (ep) => {
     if (!window.confirm(`Delete Ep ${ep.episodeNumber}: ${ep.title}?`)) return;
     try {
@@ -719,7 +764,7 @@ export default function Content() {
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>Title</th><th>Genre</th><th>Year</th><th>Rating</th><th>Priority</th><th>Premium</th><th>Status</th><th>Actions</th>
+                      <th>Title</th><th>Category</th><th>Year</th><th>Rating</th><th>Priority</th><th>Premium</th><th>Status</th><th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -742,21 +787,65 @@ export default function Content() {
                             </div>
                           </div>
                         </td>
-                        <td>{Array.isArray(movie.genre) ? movie.genre.join(", ") : movie.genre}</td>
+                        <td>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                            {Array.isArray(movie.category) && movie.category.length > 0
+                              ? movie.category.map(slug => {
+                                  const cat = catMap[slug];
+                                  const color = cat?.color || "#6366f1";
+                                  return (
+                                    <span key={slug} style={{
+                                      display: "inline-block",
+                                      padding: "2px 10px",
+                                      borderRadius: 12,
+                                      background: `${color}22`,
+                                      border: `1px solid ${color}88`,
+                                      color: color,
+                                      fontSize: "0.78rem",
+                                      fontWeight: 600,
+                                      whiteSpace: "nowrap",
+                                    }}>{cat?.name || slug}</span>
+                                  );
+                                })
+                              : <span style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>—</span>}
+                          </div>
+                        </td>
                         <td>{movie.releaseYear}</td>
                         <td>{movie.rating}</td>
                         <td><strong>{movie.priority || 0}</strong></td>
                         <td><span className={`badge ${movie.isPremium ? "badge-active" : "badge-draft"}`}>{movie.isPremium ? "Premium" : "Free"}</span></td>
                         <td>
-                          <span className={`badge ${isLocked(movie) ? "badge-coming" : "badge-pub"}`}>
-                            {isLocked(movie) ? "Coming Soon" : "Published"}
+                          <span className={`badge ${
+                            movie.isPublished === false ? "badge-draft" : isLocked(movie) ? "badge-coming" : "badge-pub"
+                          }`} style={movie.isPublished === false ? { background: "rgba(220, 38, 38, 0.15)", color: "var(--red)" } : {}}>
+                            {movie.isPublished === false ? "Unpublished" : isLocked(movie) ? "Coming Soon" : "Published"}
                           </span>
                         </td>
                         <td>
-                          <div className="tbl-actions">
+                          <div className="tbl-actions" style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                             {/* View always allowed — coming-soon shows details + release date */}
                             <button className="icon-btn view" onClick={() => openView(movie)} title="View">
                               <Eye size={18} />
+                            </button>
+                            <button
+                              className="icon-btn"
+                              onClick={() => handleTogglePublish(movie)}
+                              title={movie.isPublished !== false ? "Unpublish Movie" : "Publish Movie"}
+                              style={{
+                                border: "1px solid var(--border)",
+                                borderRadius: "4px",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                width: "32px",
+                                height: "32px",
+                                color: movie.isPublished !== false ? "#10b981" : "var(--text-muted)",
+                                borderColor: movie.isPublished !== false ? "rgba(16, 185, 129, 0.4)" : "var(--border)",
+                                background: "transparent",
+                                cursor: "pointer"
+                              }}
+                            >
+                              {movie.isPublished !== false ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
                             </button>
                             <button className="icon-btn edit" onClick={() => openEdit(movie)} title="Edit">
                               <Edit2 size={18} />
@@ -794,7 +883,7 @@ export default function Content() {
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>Title</th><th>Genre</th><th>Year</th><th>Rating</th><th>Priority</th><th>Seasons</th><th>Status</th><th>Actions</th>
+                      <th>Title</th><th>Category</th><th>Year</th><th>Rating</th><th>Priority</th><th>Seasons</th><th>Status</th><th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -816,20 +905,64 @@ export default function Content() {
                             </div>
                           </div>
                         </td>
-                        <td>{Array.isArray(series.genre) ? series.genre.join(", ") : series.genre}</td>
+                        <td>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                            {Array.isArray(series.category) && series.category.length > 0
+                              ? series.category.map(slug => {
+                                  const cat = catMap[slug];
+                                  const color = cat?.color || "#6366f1";
+                                  return (
+                                    <span key={slug} style={{
+                                      display: "inline-block",
+                                      padding: "2px 10px",
+                                      borderRadius: 12,
+                                      background: `${color}22`,
+                                      border: `1px solid ${color}88`,
+                                      color: color,
+                                      fontSize: "0.78rem",
+                                      fontWeight: 600,
+                                      whiteSpace: "nowrap",
+                                    }}>{cat?.name || slug}</span>
+                                  );
+                                })
+                              : <span style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>—</span>}
+                          </div>
+                        </td>
                         <td>{series.releaseYear}</td>
                         <td>{series.rating}</td>
                         <td><strong>{series.priority || 0}</strong></td>
                         <td>{series.totalSeasons}</td>
                         <td>
-                          <span className={`badge ${isLocked(series) ? "badge-coming" : "badge-pub"}`}>
-                            {isLocked(series) ? "Coming Soon" : "Published"}
+                          <span className={`badge ${
+                            series.isPublished === false ? "badge-draft" : isLocked(series) ? "badge-coming" : "badge-pub"
+                          }`} style={series.isPublished === false ? { background: "rgba(220, 38, 38, 0.15)", color: "var(--red)" } : {}}>
+                            {series.isPublished === false ? "Unpublished" : isLocked(series) ? "Coming Soon" : "Published"}
                           </span>
                         </td>
                         <td>
-                          <div className="tbl-actions">
+                          <div className="tbl-actions" style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                             <button className="icon-btn view" onClick={() => openView(series)} title="View">
                               <Eye size={18} />
+                            </button>
+                            <button
+                              className="icon-btn"
+                              onClick={() => handleTogglePublish(series)}
+                              title={series.isPublished !== false ? "Unpublish Series" : "Publish Series"}
+                              style={{
+                                border: "1px solid var(--border)",
+                                borderRadius: "4px",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                width: "32px",
+                                height: "32px",
+                                color: series.isPublished !== false ? "#10b981" : "var(--text-muted)",
+                                borderColor: series.isPublished !== false ? "rgba(16, 185, 129, 0.4)" : "var(--border)",
+                                background: "transparent",
+                                cursor: "pointer"
+                              }}
+                            >
+                              {series.isPublished !== false ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
                             </button>
                             <button className="icon-btn edit" onClick={() => openEdit(series)} title="Edit">
                               <Edit2 size={18} />
@@ -840,7 +973,6 @@ export default function Content() {
                             <button className="btn btn-ghost eps-btn" onClick={() => handleSeriesClick(series)}>
                               <Tv size={14} /> Seasons
                             </button>
-
                           </div>
                         </td>
                       </tr>
@@ -1447,20 +1579,119 @@ export default function Content() {
                       </select>
                     </div>
                     <div className="form-row">
+                      <label className="form-label">Status</label>
+                      <select className="form-input" value={editData.isPublished !== false ? "published" : "unpublished"} onChange={e => setEditData(s => ({ ...s, isPublished: e.target.value === "published" }))}>
+                        <option value="published">Published</option>
+                        <option value="unpublished">Unpublished</option>
+                      </select>
+                    </div>
+                    <div className="form-row">
                       <label className="form-label">Coming Soon</label>
                       <select className="form-input" value={editData.isComingSoon ? "yes" : "no"} onChange={e => setEditData(s => ({ ...s, isComingSoon: e.target.value === "yes" }))}>
                         <option value="no">No</option>
                         <option value="yes">Yes</option>
                       </select>
                     </div>
-                    <div className="form-row">
+                                  {/* ── Category Chip Picker (Edit Modal) ── */}
+                    <div className="form-row" style={{ gridColumn: "1 / -1" }}>
                       <label className="form-label">Category</label>
-                      <select className="form-input" value={editData.category?.[0] || ""} onChange={e => setEditData(s => ({ ...s, category: e.target.value ? [e.target.value] : [] }))}>
-                        <option value="">None</option>
-                        <option value="trending">Trending</option>
-                        <option value="top10">Top 10</option>
-                        <option value="recommended">Recommended</option>
-                      </select>
+                      <div
+                        style={{
+                          display: "flex", flexWrap: "wrap", alignItems: "center",
+                          gap: 8, minHeight: 44,
+                          background: "var(--bg3)",
+                          border: "1px solid var(--border)",
+                          borderRadius: 10, padding: "8px 12px",
+                        }}
+                      >
+                        {/* Selected chips */}
+                        {(Array.isArray(editData.category) ? editData.category : []).map(slug => {
+                          const cat = catMap[slug];
+                          const color = cat?.color || "#6366f1";
+                          return (
+                            <span key={slug} style={{
+                              display: "inline-flex", alignItems: "center", gap: 6,
+                              padding: "4px 12px", borderRadius: 20,
+                              background: `${color}22`,
+                              border: `1px solid ${color}88`,
+                              color: color, fontWeight: 600, fontSize: "0.83rem",
+                            }}>
+                              {cat?.name || slug}
+                              <button
+                                type="button"
+                                onClick={() => setEditData(s => ({ ...s, category: s.category.filter(c => c !== slug) }))}
+                                style={{
+                                  background: "none", border: "none", cursor: "pointer",
+                                  color: color, padding: 0, lineHeight: 1,
+                                  fontSize: "1.1rem", opacity: 0.7,
+                                  display: "inline-flex", alignItems: "center",
+                                }}
+                                title="Remove"
+                              >×</button>
+                            </span>
+                          );
+                        })}
+
+                        {/* + Add dropdown */}
+                        <div ref={editCatDropdownRef} style={{ position: "relative" }}>
+                          <button
+                            type="button"
+                            onClick={() => setShowEditCatDropdown(v => !v)}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: 4,
+                              padding: "3px 10px", borderRadius: 20,
+                              background: "var(--bg2)",
+                              border: "1px dashed var(--border)",
+                              cursor: "pointer", color: "var(--text-muted)",
+                              fontSize: "0.82rem", fontWeight: 500,
+                            }}
+                          >+ Add</button>
+
+                          {showEditCatDropdown && (() => {
+                            const selectedSlugs = Array.isArray(editData.category) ? editData.category : [];
+                            const available = Object.values(catMap).filter(c => !selectedSlugs.includes(c.slug));
+                            return (
+                              <div
+                                style={{
+                                  position: "absolute", top: "calc(100% + 6px)", left: 0,
+                                  zIndex: 300, background: "var(--bg2)",
+                                  border: "1px solid var(--border)", borderRadius: 12,
+                                  padding: 8, minWidth: 220,
+                                  boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                                }}
+                              >
+                                {available.length > 0
+                                  ? available.map(cat => (
+                                      <div
+                                        key={cat.slug}
+                                        onClick={() => {
+                                          setEditData(s => ({ ...s, category: [...(Array.isArray(s.category) ? s.category : []), cat.slug] }));
+                                          setShowEditCatDropdown(false);
+                                        }}
+                                        style={{
+                                          display: "flex", alignItems: "center", gap: 8,
+                                          padding: "8px 12px", borderRadius: 8,
+                                          cursor: "pointer", fontSize: "0.88rem",
+                                          transition: "background 0.15s",
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.background = "var(--bg3)"}
+                                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                                      >
+                                        <span style={{ width: 10, height: 10, borderRadius: "50%", background: cat.color, flexShrink: 0 }} />
+                                        {cat.name}
+                                      </div>
+                                    ))
+                                  : (
+                                    <div style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "0.8rem" }}>
+                                      No more categories
+                                    </div>
+                                  )
+                                }
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
                     </div>
                     <div className="form-row">
                       <label className="form-label">Priority (0 = Auto-assign, 1 = top priority)</label>
@@ -1474,13 +1705,13 @@ export default function Content() {
                     </div>
                     {editData.isComingSoon && (
                       <div className="form-row">
-                        <label className="form-label">Release Date</label>
+                        <label className="form-label">Release Date & Time</label>
                         <input
                           className="form-input"
-                          type="date"
+                          type="datetime-local"
                           value={
                             editData.releaseDate && !isNaN(Date.parse(editData.releaseDate))
-                              ? new Date(editData.releaseDate).toISOString().split("T")[0]
+                              ? new Date(editData.releaseDate).toISOString().slice(0, 16)
                               : ""
                           }
                           onChange={e => setEditData(s => ({ ...s, releaseDate: e.target.value }))}

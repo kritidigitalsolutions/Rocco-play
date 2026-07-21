@@ -26,6 +26,9 @@ const {
     deleteUser,
     getRegistrationStats,
     getUserGrowth,
+    createUser,
+    updateUser,
+    toggleBlockUser,
 } = require("../../controllers/admin/user.controller");
 
 
@@ -94,6 +97,29 @@ router.delete(
     "/:id",
     isAdmin,
     deleteUser
+);
+
+// Create user
+router.post(
+    "/",
+    isAdmin,
+    upload.any(),
+    createUser
+);
+
+// Update user
+router.patch(
+    "/:id",
+    isAdmin,
+    upload.any(),
+    updateUser
+);
+
+// Toggle block user
+router.patch(
+    "/:id/toggle-block",
+    isAdmin,
+    toggleBlockUser
 );
 
 

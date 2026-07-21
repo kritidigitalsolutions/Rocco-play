@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 import "./Dashboard.css";
 
@@ -9,6 +9,7 @@ import BasicInfoSection from "../features/content/basic/BasicInfoSection";
 
 import { createContent } from "../features/services/content.service";
 import useContentForm from "../features/hooks/useContentForm";
+import API from "../api/axios";
 
 import {
   Plus,
@@ -46,6 +47,72 @@ export default function AddContent() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadPhase, setUploadPhase] = useState(""); // "main", "episodes", "complete"
   const [currentEpisodeInfo, setCurrentEpisodeInfo] = useState({ current: 0, total: 0 });
+
+  // ── Category State ──────────────────────────
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    API.get("/admin/categories")
+      .then(res => setCategories(res.data.categories || []))
+      .catch(console.error);
+  }, []);
+
+  const handleAddCategory = (slug) => {
+    if (!form.category.includes(slug)) {
+      setForm(f => ({ ...f, category: [...f.category, slug] }));
+    }
+  };
+
+  const handleRemoveCategory = (slug) => {
+    setForm(f => ({ ...f, category: f.category.filter(c => c !== slug) }));
+  };
+
+  const handleCreateCategory = async (name, color = "#6366f1", priority = 1) => {
+    try {
+      const res = await API.post("/admin/categories", { name, color, priority });
+      const newCat = res.data.category;
+      setCategories(prev => [...prev, newCat].sort((a,b) => (a.priority || 1) - (b.priority || 1)));
+      setForm(f => ({ ...f, category: [...f.category, newCat.slug] }));
+      return newCat;
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to create category");
+      return null;
+    }
+  };
+
+  const handleUpdateCategory = async (id, name, color, priority) => {
+    try {
+      const res = await API.patch(`/admin/categories/${id}`, { name, color, priority });
+      const updatedCat = res.data.category;
+      setCategories(prev => prev.map(c => c._id === id ? updatedCat : c).sort((a,b) => (a.priority || 1) - (b.priority || 1)));
+      
+      // If the slug changed, update it in form.category too
+      const oldCat = categories.find(c => c._id === id);
+      if (oldCat && oldCat.slug !== updatedCat.slug) {
+        setForm(f => ({
+          ...f,
+          category: f.category.map(slug => slug === oldCat.slug ? updatedCat.slug : slug)
+        }));
+      }
+      return updatedCat;
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to update category");
+      return null;
+    }
+  };
+
+  const handleDeleteCategory = async (id) => {
+    try {
+      await API.delete(`/admin/categories/${id}`);
+      const deletedCat = categories.find(c => c._id === id);
+      setCategories(prev => prev.filter(c => c._id !== id));
+      if (deletedCat) {
+        setForm(f => ({ ...f, category: f.category.filter(slug => slug !== deletedCat.slug) }));
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to delete category");
+    }
+  };
 
 
 
@@ -338,6 +405,12 @@ const handleSubmit = async (e) => {
         <BasicInfoSection
           form={form}
           ch={ch}
+          categories={categories}
+          onAddCategory={handleAddCategory}
+          onRemoveCategory={handleRemoveCategory}
+          onCreateCategory={handleCreateCategory}
+          onUpdateCategory={handleUpdateCategory}
+          onDeleteCategory={handleDeleteCategory}
         />
 
         <MediaAssetsStep

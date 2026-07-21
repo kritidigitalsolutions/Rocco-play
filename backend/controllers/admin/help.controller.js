@@ -3,13 +3,19 @@ const Help = require("../../models/help.model");
 // ➕ ADD Q&A
 exports.addHelp = async (req, res) => {
   try {
-    const { category, question, answer, supportNumber } = req.body;
+    const { category, question, answer, supportNumber, supportEmail } = req.body;
 
     if (!category || !question || !answer) {
       return res.status(400).json({ message: "All fields required" });
     }
 
-    const help = await Help.create({ category, question, answer, supportNumber });
+    const help = await Help.create({
+      category,
+      question,
+      answer,
+      supportNumber,
+      supportEmail,
+    });
 
     res.status(201).json({
       success: true,

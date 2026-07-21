@@ -47,11 +47,11 @@ exports.completeProfile = async (
   res
 ) => {
   try {
-    const {
-      name,
-      email,
-    } = req.body;
-
+   const {
+    name,
+    email,
+    age,
+} = req.body;
     const user = await User.findById(
       req.user.id
     );
@@ -110,6 +110,16 @@ exports.completeProfile = async (
       user.profileImage =
         req.file.path.replace(/\\/g, "/");
     }
+    if (age !== undefined) {
+    if (age < 1 || age > 120) {
+        return res.status(400).json({
+            success: false,
+            message: "Age must be between 1 and 120",
+        });
+    }
+
+    user.age = Number(age);
+}
 
     user.profileComplete = true;
 
@@ -145,9 +155,10 @@ exports.updateProfile = async (
 ) => {
   try {
     const {
-      name,
-      email,
-    } = req.body;
+    name,
+    email,
+    age,
+} = req.body;
 
     const user = await User.findById(
       req.user.id
@@ -195,6 +206,16 @@ exports.updateProfile = async (
     if (req.file) {
       user.profileImage = req.file.path.replace(/\\/g, "/");
     }
+    if (age !== undefined) {
+    if (age < 1 || age > 120) {
+        return res.status(400).json({
+            success: false,
+            message: "Age must be between 1 and 120",
+        });
+    }
+
+    user.age = Number(age);
+}
 
     await user.save();
 

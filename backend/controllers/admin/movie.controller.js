@@ -149,6 +149,9 @@ console.log({
       isPremium:
         req.body.isPremium === "true",
 
+      isPublished:
+        req.body.isPublished !== "false",
+
       rating: req.body.rating || 0,
 
       cast: sanitizeCast(cast),
@@ -380,6 +383,10 @@ const updateMovie = async (req, res) => {
     movie.isPremium =
       req.body.isPremium === "true";
 
+    if (req.body.isPublished !== undefined) {
+      movie.isPublished = req.body.isPublished === "true";
+    }
+
     movie.category = category;
 
     // ========================================
@@ -532,6 +539,31 @@ const deleteMovie = async (req, res) => {
   }
 };
 
+// ========================================
+// TOGGLE PUBLISH MOVIE
+// ========================================
+const togglePublishMovie = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const movie = await Movie.findById(id);
+    if (!movie) {
+      return res.status(404).json({ success: false, message: "Movie not found" });
+    }
+
+    movie.isPublished = movie.isPublished === undefined ? false : !movie.isPublished;
+    await movie.save();
+
+    return res.json({
+      success: true,
+      message: `Movie ${movie.isPublished ? "published" : "unpublished"} successfully`,
+      isPublished: movie.isPublished,
+      movie
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 
 module.exports = {
   addMovie,
@@ -540,4 +572,5 @@ module.exports = {
   getMovieById,
   updateMovie,
   deleteMovie,
+  togglePublishMovie,
 };

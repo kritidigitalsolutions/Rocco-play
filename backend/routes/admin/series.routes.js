@@ -17,7 +17,7 @@ const {
   updateSeries,
   deleteSeries,
   searchSeries,
-
+  togglePublishSeries,
 } = require(
   "../../controllers/admin/series.controller"
 );
@@ -98,6 +98,12 @@ router.delete(
   "/:id",
   isAdmin,
   deleteSeries
+);
+
+router.patch(
+  "/:id/toggle-publish",
+  isAdmin,
+  togglePublishSeries
 );
 
 

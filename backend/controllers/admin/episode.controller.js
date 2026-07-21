@@ -117,7 +117,7 @@ const updateEpisode = async (req, res) => {
       updateData.thumbnail = req.body.thumbnailUrl;
     }
 
-    const updatedEpisode = await Episode.findByIdAndUpdate(id, updateData, { new: true });
+    const updatedEpisode = await Episode.findByIdAndUpdate(id, updateData, { returnDocument: "after" });
     if (!updatedEpisode) return res.status(404).json({ success: false, message: "Episode not found" });
 
     // Update totalSeasons in case seasonNumber changed

@@ -34,7 +34,7 @@ exports.updatePlan = async (req, res) => {
       req.params.id,
       req.body,
       {
-        new: true,
+        returnDocument: "after",
         runValidators: true,
       }
     );
@@ -101,5 +101,28 @@ exports.getAllPlans = async (req, res) => {
       success: false,
       message: err.message,
     });
+  }
+};
+
+// TOGGLE PLAN STATUS
+exports.togglePlanStatus = async (req, res) => {
+  try {
+    const plan = await Plan.findById(req.params.id);
+
+    if (!plan) {
+      return res.status(404).json({ success: false, message: "Plan not found" });
+    }
+
+    plan.isActive = !plan.isActive;
+    await plan.save();
+
+    res.json({
+      success: true,
+      message: `Plan ${plan.isActive ? "activated" : "deactivated"} successfully`,
+      isActive: plan.isActive,
+      plan,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };

@@ -26,6 +26,62 @@ exports.getHelpByCategory = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// GET PUBLISHED SUPPORT CONTACT NUMBER
+exports.getSupportNumber = async (req, res) => {
+  try {
+    const help = await Help.findOne({
+      isPublished: true,
+      supportNumber: { $exists: true, $ne: "" },
+    })
+      .sort("-updatedAt")
+      .select("supportNumber -_id")
+      .lean();
+
+    if (!help) {
+      return res.status(404).json({
+        success: false,
+        message: "Support contact number is not available",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      contactNumber: help.supportNumber,
+      supportNumber: help.supportNumber,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// GET PUBLISHED SUPPORT EMAIL
+exports.getSupportEmail = async (req, res) => {
+  try {
+    const help = await Help.findOne({
+      isPublished: true,
+      supportEmail: { $exists: true, $ne: "" },
+    })
+      .sort("-updatedAt")
+      .select("supportEmail -_id")
+      .lean();
+
+    if (!help) {
+      return res.status(404).json({
+        success: false,
+        message: "Support email is not available",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      email: help.supportEmail,
+      supportEmail: help.supportEmail,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
 // ========================================
 // GET ALL PUBLISHED HELP DATA
 // ========================================

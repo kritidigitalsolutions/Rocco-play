@@ -2,6 +2,30 @@ const fs = require("fs/promises");
 const https = require("https");
 const path = require("path");
 
+const { fetch: nodeFetch, AbortController: NodeAbortController } = globalThis;
+let fetchImpl = nodeFetch;
+let AbortControllerImpl = NodeAbortController;
+
+if (!fetchImpl || !AbortControllerImpl) {
+  try {
+    const {
+      fetch: undiciFetch,
+      AbortController: UndiciAbortController,
+    } = require("undici");
+
+    fetchImpl = fetchImpl || undiciFetch;
+    AbortControllerImpl = AbortControllerImpl || UndiciAbortController;
+  } catch {
+    // undici is optional when Node 18+ globals are available
+  }
+}
+
+if (!fetchImpl || !AbortControllerImpl) {
+  throw new Error(
+    "Global fetch and AbortController are required. Use Node 18+ or install undici."
+  );
+}
+
 const normalizeBaseUrl = (value) => String(value || "").trim().replace(/\/+$/, "");
 
 const normalizeStorageHost = (value) => {
@@ -72,7 +96,7 @@ const selectCdnUrl = (zone) => {
 };
 
 const discoverConfigFromBunny = async (accountAccessKey) => {
-  const response = await fetch("https://api.bunny.net/storagezone", {
+  const response = await fetchImpl("https://api.bunny.net/storagezone", {
     headers: {
       AccessKey: accountAccessKey,
     },
@@ -203,7 +227,7 @@ const buildPublicUrl = (remotePath) => {
 };
 
 const withUploadTimeout = async (uploadRequest) => {
-  const controller = new AbortController();
+  const controller = new AbortControllerImpl();
   const timeout = setTimeout(() => {
     controller.abort();
   }, 30 * 60 * 1000);
@@ -305,7 +329,7 @@ const uploadBufferToBunny = async ({
     hosts: storageHosts,
     storageZone,
     remotePath: safeRemotePath,
-    requestOptions: (uploadUrl) => withUploadTimeout((signal) => fetch(uploadUrl, {
+    requestOptions: (uploadUrl) => withUploadTimeout((signal) => fetchImpl(uploadUrl, {
       method: "PUT",
       headers: {
         AccessKey: accessKey,
@@ -314,6 +338,7 @@ const uploadBufferToBunny = async ({
       body: buffer,
       signal,
     })),
+
   });
 
   if (!response.ok) {
@@ -435,7 +460,7 @@ const deleteFromBunny = async (remotePathOrUrl) => {
     hosts: storageHosts,
     storageZone,
     remotePath: safeRemotePath,
-    requestOptions: (deleteUrl) => fetch(deleteUrl, {
+    requestOptions: (deleteUrl) => fetchImpl(deleteUrl, {
       method: "DELETE",
       headers: {
         AccessKey: accessKey,

@@ -8,17 +8,17 @@ const Series = require("../models/series.model");
 const getHomeContent = async (req, res) => {
   try {
     // Fetch active movies and series
-    const movies = await Movie.find().sort({ priority: -1, createdAt: -1 }).limit(20).lean();
-    const series = await Series.find().sort({ priority: -1, createdAt: -1 }).limit(20).lean();
+    const movies = await Movie.find({ isPublished: { $ne: false } }).sort({ priority: -1, createdAt: -1 }).limit(20).lean();
+    const series = await Series.find({ isPublished: { $ne: false } }).sort({ priority: -1, createdAt: -1 }).limit(20).lean();
 
     const [
   moviesCount,
   seriesCount,
   seriesData
 ] = await Promise.all([
-  Movie.countDocuments(),
-  Series.countDocuments(),
-  Series.find({}, "totalEpisodes").lean()
+  Movie.countDocuments({ isPublished: { $ne: false } }),
+  Series.countDocuments({ isPublished: { $ne: false } }),
+  Series.find({ isPublished: { $ne: false } }, "totalEpisodes").lean()
 ]);
     const episodesCount = seriesData.reduce((acc, s) => acc + (s.totalEpisodes || 0), 0);
 
@@ -74,7 +74,8 @@ const searchContent = async (req, res) => {
   {
     $text: {
       $search: query
-    }
+    },
+    isPublished: { $ne: false }
   },
   {
     score: {
@@ -99,7 +100,8 @@ const series = await Series.find(
   {
     $text: {
       $search: query
-    }
+    },
+    isPublished: { $ne: false }
   },
   {
     score: {

@@ -107,6 +107,7 @@ const addSeries = async (req, res) => {
       isComingSoon: req.body.isComingSoon === "true",
       releaseDate: normalizeDateInput(req.body.releaseDate),
       isPremium: req.body.isPremium === "true",
+      isPublished: req.body.isPublished !== "false",
       rating: req.body.rating || 0,
       cast: sanitizeCast(cast),
       category,
@@ -223,6 +224,9 @@ const updateSeries = async (req, res) => {
       series.releaseDate = null;
     }
     series.isPremium = req.body.isPremium === "true";
+    if (req.body.isPublished !== undefined) {
+      series.isPublished = req.body.isPublished === "true";
+    }
     series.category = category;
 
     if (req.files?.poster?.[0]) {
@@ -354,6 +358,30 @@ const deleteSeries = async (req, res) => {
   }
 };
 
+// ========================================
+// TOGGLE PUBLISH SERIES
+// ========================================
+const togglePublishSeries = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const series = await Series.findById(id);
+    if (!series) {
+      return res.status(404).json({ success: false, message: "Series not found" });
+    }
+
+    series.isPublished = series.isPublished === undefined ? false : !series.isPublished;
+    await series.save();
+
+    return res.json({
+      success: true,
+      message: `Series ${series.isPublished ? "published" : "unpublished"} successfully`,
+      isPublished: series.isPublished,
+      series
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 
 module.exports = {
@@ -363,5 +391,5 @@ module.exports = {
   updateSeries,
   deleteSeries,
   searchSeries,
+  togglePublishSeries,
 };
-

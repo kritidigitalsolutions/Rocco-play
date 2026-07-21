@@ -30,6 +30,13 @@ const helpSchema = new mongoose.Schema(
       default: ""
     },
 
+    supportEmail: {
+      type: String,
+      default: "",
+      trim: true,
+      lowercase: true
+    },
+
     isPublished: {
       type: Boolean,
       default: true

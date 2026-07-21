@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import API, { API_BASE_URL } from "../api/axios";
-import { Users, RefreshCw, User, CheckCircle, AlertCircle, Search, Loader, Eye, Trash2, X } from "lucide-react";
+import { Users, RefreshCw, User, CheckCircle, AlertCircle, Search, Loader, Eye, Trash2, Ban, X, Plus, Pencil } from "lucide-react";
 import "./Dashboard.css";
 
 export default function UsersPage() {
@@ -8,6 +8,20 @@ export default function UsersPage() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // New state variables for Add/Edit actions
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editUser, setEditUser] = useState(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    role: "USER",
+  });
+  const [profileImageFile, setProfileImageFile] = useState(null);
+  const [formError, setFormError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const getImageUrl = (path) => {
     if (!path) return null;
@@ -36,13 +50,101 @@ export default function UsersPage() {
     } catch { alert("Failed to delete"); }
   };
 
-  // const handleToggleBlock = async (id) => {
-  //   try {
-  //     const res = await API.patch(`/admin/users/${id}/block`);
-  //     setUsers(p => p.map(u => u._id === id ? res.data.user : u));
-  //     if (selected?._id === id) setSelected(res.data.user);
-  //   } catch { alert("Failed to update status"); }
-  // };
+  const handleToggleBlock = async (id) => {
+    const user = users.find(u => u._id === id);
+    const actionText = user.isBlocked ? "unblock" : "block";
+    if (!window.confirm(`Are you sure you want to ${actionText} this user?`)) return;
+    try {
+      const res = await API.patch(`/admin/users/${id}/toggle-block`);
+      setUsers(p => p.map(u => u._id === id ? { ...u, isBlocked: res.data.isBlocked } : u));
+    } catch (err) {
+      alert(err.response?.data?.message || `Failed to ${actionText} user`);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({ name: "", phone: "", email: "", role: "USER" });
+    setProfileImageFile(null);
+    setFormError("");
+  };
+
+  const handleAddSubmit = async (e) => {
+    e.preventDefault();
+    setFormError("");
+    setSubmitting(true);
+
+    const data = new FormData();
+    data.append("name", formData.name);
+    
+    const formattedPhone = formData.phone.startsWith("+91") ? formData.phone : `+91${formData.phone}`;
+    data.append("phone", formattedPhone);
+    data.append("email", formData.email);
+    if (profileImageFile) {
+      data.append("profileImage", profileImageFile);
+    }
+
+    try {
+      await API.post("/admin/users", data, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      setIsAddOpen(false);
+      resetForm();
+      fetchUsers();
+    } catch (err) {
+      setFormError(err.response?.data?.message || "Failed to create user");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEditClick = (user) => {
+    setEditUser(user);
+    let cleanPhone = user.phone || "";
+    if (cleanPhone.startsWith("+91")) {
+      cleanPhone = cleanPhone.slice(3);
+    } else if (cleanPhone.startsWith("91") && cleanPhone.length === 12) {
+      cleanPhone = cleanPhone.slice(2);
+    }
+    setFormData({
+      name: user.name || "",
+      phone: cleanPhone,
+      email: user.email || "",
+      role: user.role || "USER",
+    });
+    setProfileImageFile(null);
+    setFormError("");
+    setIsEditOpen(true);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setFormError("");
+    setSubmitting(true);
+
+    const data = new FormData();
+    data.append("name", formData.name);
+    
+    const formattedPhone = formData.phone.startsWith("+91") ? formData.phone : `+91${formData.phone}`;
+    data.append("phone", formattedPhone);
+    data.append("email", formData.email);
+    if (profileImageFile) {
+      data.append("profileImage", profileImageFile);
+    }
+
+    try {
+      await API.patch(`/admin/users/${editUser._id}`, data, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      setIsEditOpen(false);
+      setEditUser(null);
+      resetForm();
+      fetchUsers();
+    } catch (err) {
+      setFormError(err.response?.data?.message || "Failed to update user");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const filtered = users.filter(u =>
     (u.name?.toLowerCase() || "").includes(search.toLowerCase()) ||
@@ -57,7 +159,14 @@ export default function UsersPage() {
           <h1 className="pg-title"><Users size={28} style={{ display: "inline-block", marginRight: 8 }} /> User Management</h1>
           <p className="pg-sub">View, search, and manage all platform users</p>
         </div>
-        <button className="btn btn-primary" onClick={fetchUsers}><RefreshCw size={16} style={{ display: "inline-block", marginRight: 6 }} /> Refresh</button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button className="btn btn-primary" onClick={() => setIsAddOpen(true)}>
+            <Plus size={16} style={{ display: "inline-block", marginRight: 6 }} /> Add User
+          </button>
+          <button className="btn btn-ghost" onClick={fetchUsers}>
+            <RefreshCw size={16} style={{ display: "inline-block", marginRight: 6 }} /> Refresh
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -127,13 +236,17 @@ export default function UsersPage() {
                     <td style={{ color: "var(--text-soft)" }}>{u.email}</td>
                     <td style={{ color: "var(--text-muted)" }}>{new Date(u.createdAt).toLocaleDateString("en-IN")}</td>
                     <td>
-                      <span className={`badge ${u.isBlocked ? "badge-blocked" : "badge-active"}`}>
-                        {u.isBlocked ? "Blocked" : "Active"}
+                      <span className={`badge ${u.isBlocked ? "badge-blocked" : u.isSubscriber ? "badge-subscriber" : "badge-individual"}`}>
+                        {u.isBlocked ? "Blocked" : u.isSubscriber ? "Subscriber" : "Individual"}
                       </span>
                     </td>
                     <td>
                       <div className="tbl-actions">
                         <button className="icon-btn view" onClick={() => setSelected(u)} title="View"><Eye size={16} /></button>
+                        <button className="icon-btn edit" onClick={() => handleEditClick(u)} title="Edit"><Pencil size={16} /></button>
+                        <button className="icon-btn block-btn" onClick={() => handleToggleBlock(u._id)} title={u.isBlocked ? "Unblock User" : "Block User"}>
+                          <Ban size={16} style={{ color: u.isBlocked ? "var(--green)" : "var(--primary)" }} />
+                        </button>
                         <button className="icon-btn del" onClick={() => handleDelete(u._id)} title="Delete"><Trash2 size={16} /></button>
                       </div>
                     </td>
@@ -174,8 +287,8 @@ export default function UsersPage() {
                       )}
                     </div>
                     <p>{selected.email}</p>
-                    <span className={`badge ${selected.isBlocked ? "badge-blocked" : "badge-active"}`}>
-                      {selected.isBlocked ? "BLOCKED" : "ACTIVE ACCOUNT"}
+                    <span className={`badge ${selected.isBlocked ? "badge-blocked" : selected.isSubscriber ? "badge-subscriber" : "badge-individual"}`}>
+                      {selected.isBlocked ? "BLOCKED" : selected.isSubscriber ? "SUBSCRIBER" : "INDIVIDUAL"}
                     </span>
                   </div>
                 </div>
@@ -202,6 +315,12 @@ export default function UsersPage() {
                   </span>
                 </div>
                 <div className="p-detail-card">
+                  <span className="p-detail-label">Subscription Status</span>
+                  <span className={`p-detail-value ${selected.isSubscriber ? "text-success" : "text-muted"}`}>
+                    {selected.isSubscriber ? "Active Subscriber" : "Individual (Free)"}
+                  </span>
+                </div>
+                <div className="p-detail-card">
                   <span className="p-detail-label">Account ID</span>
                   <span className="p-detail-value mono">{selected._id}</span>
                 </div>
@@ -224,6 +343,123 @@ export default function UsersPage() {
           </div>
         </div>
       )}
+
+      {/* Add User Modal */}
+      {isAddOpen && (
+        <div className="modal-overlay" onClick={() => { setIsAddOpen(false); resetForm(); }}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3><User size={20} style={{ display: "inline-block", marginRight: 8 }} /> Add New User</h3>
+              <button className="modal-close" onClick={() => { setIsAddOpen(false); resetForm(); }}><X size={24} /></button>
+            </div>
+            <form onSubmit={handleAddSubmit}>
+              <div className="modal-body">
+                {formError && (
+                  <div style={{ color: "var(--red)", background: "rgba(239, 68, 68, 0.1)", padding: "10px 14px", borderRadius: 6, fontSize: "0.9rem" }}>
+                    {formError}
+                  </div>
+                )}
+                
+                <div className="form-row">
+                  <label className="form-label">Full Name</label>
+                  <input className="form-input" placeholder="Enter full name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                </div>
+
+                <div className="form-row">
+                  <label className="form-label">Phone Number *</label>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <span style={{ display: "flex", alignItems: "center", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "0 12px", color: "var(--text-soft)", fontSize: "0.9rem", fontWeight: "600" }}>+91</span>
+                    <input className="form-input" style={{ flex: 1 }} type="tel" maxLength="10" placeholder="99999 99999" required value={formData.phone} onChange={e => {
+                      const cleanVal = e.target.value.replace(/\D/g, "").slice(0, 10);
+                      setFormData({ ...formData, phone: cleanVal });
+                    }} />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <label className="form-label">Email Address</label>
+                  <input className="form-input" type="email" placeholder="e.g. user@example.com" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                </div>
+
+
+                <div className="form-row">
+                  <label className="form-label">Profile Image</label>
+                  <input className="form-input" type="file" accept="image/*" onChange={e => setProfileImageFile(e.target.files[0])} />
+                </div>
+              </div>
+              
+              <div className="modal-foot">
+                <button type="button" className="btn btn-ghost" onClick={() => { setIsAddOpen(false); resetForm(); }} disabled={submitting}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                  {submitting ? "Creating..." : "Create User"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {isEditOpen && editUser && (
+        <div className="modal-overlay" onClick={() => { setIsEditOpen(false); setEditUser(null); resetForm(); }}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3><User size={20} style={{ display: "inline-block", marginRight: 8 }} /> Edit User</h3>
+              <button className="modal-close" onClick={() => { setIsEditOpen(false); setEditUser(null); resetForm(); }}><X size={24} /></button>
+            </div>
+            <form onSubmit={handleEditSubmit}>
+              <div className="modal-body">
+                {formError && (
+                  <div style={{ color: "var(--red)", background: "rgba(239, 68, 68, 0.1)", padding: "10px 14px", borderRadius: 6, fontSize: "0.9rem" }}>
+                    {formError}
+                  </div>
+                )}
+                
+                <div className="form-row">
+                  <label className="form-label">Full Name</label>
+                  <input className="form-input" placeholder="Enter full name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                </div>
+
+                <div className="form-row">
+                  <label className="form-label">Phone Number *</label>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <span style={{ display: "flex", alignItems: "center", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "0 12px", color: "var(--text-soft)", fontSize: "0.9rem", fontWeight: "600" }}>+91</span>
+                    <input className="form-input" style={{ flex: 1 }} type="tel" maxLength="10" placeholder="99999 99999" required value={formData.phone} onChange={e => {
+                      const cleanVal = e.target.value.replace(/\D/g, "").slice(0, 10);
+                      setFormData({ ...formData, phone: cleanVal });
+                    }} />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <label className="form-label">Email Address</label>
+                  <input className="form-input" type="email" placeholder="e.g. user@example.com" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                </div>
+
+
+                <div className="form-row">
+                  <label className="form-label">Profile Image</label>
+                  {editUser.profileImage && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 5 }}>
+                      <img src={getImageUrl(editUser.profileImage)} alt="Current Profile" style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover" }} />
+                      <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Current Image</span>
+                    </div>
+                  )}
+                  <input className="form-input" type="file" accept="image/*" onChange={e => setProfileImageFile(e.target.files[0])} />
+                </div>
+              </div>
+              
+              <div className="modal-foot">
+                <button type="button" className="btn btn-ghost" onClick={() => { setIsEditOpen(false); setEditUser(null); resetForm(); }} disabled={submitting}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                  {submitting ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

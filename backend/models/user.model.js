@@ -15,6 +15,13 @@ const userSchema = new mongoose.Schema(
     sparse: true,
 },
 
+age: {
+    type: Number,
+    min: 1,
+    max: 120,
+    default: null,
+},
+
 googleId: {
     type: String,
     sparse: true,
@@ -43,12 +50,6 @@ authProvider: {
             default: false,
         },
 
-        userType: {
-            type: String,
-            enum: ["INDIVIDUAL", "SUBSCRIBERS"],
-            default: "INDIVIDUAL",
-        },
-
         fcmToken: {
             type: String,
             default: null,
@@ -63,6 +64,11 @@ authProvider: {
             type: String,
             enum: ["USER", "ADMIN"],
             default: "USER",
+        },
+
+        isBlocked: {
+            type: Boolean,
+            default: false,
         },
 
         // subscriptions: [

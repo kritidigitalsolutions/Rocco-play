@@ -79,7 +79,7 @@ export default function HelpPage() {
           <button
             className="btn btn-primary"
             onClick={() => {
-              setSelected({ question: "", answer: "", category: "", supportNumber: "", isPublished: true });
+              setSelected({ question: "", answer: "", category: "", supportNumber: "", supportEmail: "", isPublished: true });
               setMode("add");
               setIsAdding(true);
             }}
@@ -145,8 +145,8 @@ export default function HelpPage() {
 
       {(selected || isAdding) && selected && (
         <div className="modal-overlay">
-          <div className="modal-box" style={{ maxWidth: 560 }}>
-            <div className="modal-head">
+          <div className="modal-box" style={{ maxWidth: 560, maxHeight: "calc(100dvh - 40px)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div className="modal-head" style={{ flexShrink: 0 }}>
               <h3>
                 {mode === "view" ? (
                   <>👁️ View FAQ</>
@@ -166,7 +166,7 @@ export default function HelpPage() {
                 <X size={24} />
               </button>
             </div>
-            <div className="modal-body">
+            <div className="modal-body" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
               <div className="form-row">
                 <label className="form-label">Question</label>
                 <input
@@ -193,13 +193,24 @@ export default function HelpPage() {
                 </select>
               </div>
               <div className="form-row">
-                <label className="form-label">Support Number / Contact Info (Optional)</label>
+                <label className="form-label">Support Contact Number (Optional)</label>
                 <input
                   className="form-input"
                   value={selected.supportNumber || ""}
-                  placeholder="e.g. +91 9876543210 or support@mirchi.com"
+                  placeholder="e.g. +91 99670 16566"
                   disabled={mode === "view"}
                   onChange={(e) => setSelected({ ...selected, supportNumber: e.target.value })}
+                />
+              </div>
+              <div className="form-row">
+                <label className="form-label">Support Email (Optional)</label>
+                <input
+                  className="form-input"
+                  type="email"
+                  value={selected.supportEmail || ""}
+                  placeholder="e.g. support@nazarott.in"
+                  disabled={mode === "view"}
+                  onChange={(e) => setSelected({ ...selected, supportEmail: e.target.value })}
                 />
               </div>
               <div className="form-row" style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 8 }}>
@@ -228,7 +239,7 @@ export default function HelpPage() {
               </div>
             </div>
             {(mode === "edit" || mode === "add") && (
-              <div className="modal-foot">
+              <div className="modal-foot" style={{ flexShrink: 0 }}>
                 <button
                   className="btn btn-ghost"
                   onClick={() => {

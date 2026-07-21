@@ -49,7 +49,7 @@ export default function PromoVoucher() {
   const fetchPlans = async () => {
     try {
       const res = await API.get("/admin/plan");
-      setPlans(res.data.plans || []);
+      setPlans((res.data.plans || []).filter(p => p.isActive !== false));
     } catch (err) { console.error(err); }
   };
 

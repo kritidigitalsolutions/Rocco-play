@@ -222,6 +222,16 @@ const userPlanRoutes = require("./routes/user/plan.routes");
 app.use("/api/admin/plan", adminPlanRoutes);
 app.use("/api/plan", userPlanRoutes);
 
+//category routes
+const adminCategoryRoutes = require("./routes/admin/category.routes");
+const userCategoryRoutes = require("./routes/user/category.routes");
+
+const { seedDefaults: seedCategories } = require("./controllers/admin/category.controller");
+app.use("/api/admin/categories", adminCategoryRoutes);
+app.use("/api/categories", userCategoryRoutes);
+// Seed default categories (trending, top10, recommended) on startup
+seedCategories().catch(err => console.error("Category seed error:", err));
+
 //promo routes
 const adminPromoRoutes = require("./routes/admin/promo.routes");
 app.use("/api/admin/promo", adminPromoRoutes);
@@ -252,6 +262,12 @@ const adminNotificationRoutes = require("./routes/admin/notification.routes");
 const userNotificationRoutes = require("./routes/user/notification.routes");
 app.use("/api/admin/notifications", adminNotificationRoutes);
 app.use("/api/notifications", userNotificationRoutes);
+
+//company routes
+const adminCompanyRoutes = require("./routes/admin/companyInfo.routes");
+const userCompanyRoutes = require("./routes/user/companyInfo.routes");
+app.use("/api/admin/companyInfo", adminCompanyRoutes);
+app.use("/api/companyInfo", userCompanyRoutes);
 
 //interactions routes
 const interactionRoutes = require("./routes/user/interation.routes");

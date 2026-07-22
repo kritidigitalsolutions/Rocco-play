@@ -130,6 +130,8 @@ export default function Content() {
   const [newEpisode, setNewEpisode] = useState({ title: "", episodeNumber: "", duration: "", description: "", seasonNumber: "" });
   const [newEpisodeVideo, setNewEpisodeVideo] = useState(null);
   const [newEpisodeThumbnail, setNewEpisodeThumbnail] = useState(null);
+  const [newEpisodeVideoUrl, setNewEpisodeVideoUrl] = useState("");
+  const [newEpisodeThumbnailUrl, setNewEpisodeThumbnailUrl] = useState("");
   const [showAddSeasonForm, setShowAddSeasonForm] = useState(false);
   const [newSeasonNumber, setNewSeasonNumber] = useState("");
   const [addingEpisode, setAddingEpisode] = useState(false);
@@ -314,12 +316,11 @@ export default function Content() {
     }
     setAddingEpisode(true);
     try {
-      let videoUrl = "";
-      let thumbnailUrl = "";
-
+      let videoUrl = newEpisodeVideoUrl || "";
       if (newEpisodeVideo) {
         videoUrl = await uploadToBunny(newEpisodeVideo, "episodes", "videos");
       }
+      let thumbnailUrl = newEpisodeThumbnailUrl || "";
       if (newEpisodeThumbnail) {
         thumbnailUrl = await uploadToBunny(newEpisodeThumbnail, "episodes", "posters");
       }
@@ -343,6 +344,8 @@ export default function Content() {
       setNewSeasonNumber("");
       setNewEpisodeVideo(null);
       setNewEpisodeThumbnail(null);
+      setNewEpisodeVideoUrl("");
+      setNewEpisodeThumbnailUrl("");
       fetchEpisodes(selectedSeries._id);
 
     } catch (err) {
@@ -1071,22 +1074,24 @@ export default function Content() {
                     <input className="form-input" value={newEpisode.duration} onChange={e => setNewEpisode(p => ({ ...p, duration: e.target.value }))} placeholder="e.g. 45m" />
                   </div>
                   <div className="form-row">
-                    <label className="form-label">Episode Video (optional)</label>
+                    <label className="form-label">Episode Video *</label>
                     <div className="file-input-wrapper">
                       <input type="file" accept="video/*" id="new-ep-video-new" className="file-input" onChange={e => setNewEpisodeVideo(e.target.files[0])} />
                       <label htmlFor="new-ep-video-new" className="file-label">
                         {newEpisodeVideo ? `✓ ${newEpisodeVideo.name}` : "Choose Video"}
                       </label>
                     </div>
+                    <input className="form-input" style={{ marginTop: 8 }} placeholder="Or Paste URL" value={newEpisodeVideoUrl} onChange={e => setNewEpisodeVideoUrl(e.target.value)} />
                   </div>
                   <div className="form-row">
-                    <label className="form-label">Episode Thumbnail (optional)</label>
+                    <label className="form-label">Episode Thumbnail </label>
                     <div className="file-input-wrapper">
                       <input type="file" accept="image/*" id="new-ep-thumb-new" className="file-input" onChange={e => setNewEpisodeThumbnail(e.target.files[0])} />
                       <label htmlFor="new-ep-thumb-new" className="file-label">
                         {newEpisodeThumbnail ? `✓ ${newEpisodeThumbnail.name}` : "Choose Thumbnail"}
                       </label>
                     </div>
+                    <input className="form-input" style={{ marginTop: 8 }} placeholder="Or Paste URL" value={newEpisodeThumbnailUrl} onChange={e => setNewEpisodeThumbnailUrl(e.target.value)} />
                   </div>
 
                 </div>
@@ -1098,7 +1103,7 @@ export default function Content() {
                   <button className="btn btn-primary" onClick={() => handleAddEpisode("new-season")} disabled={addingEpisode}>
                     {addingEpisode ? "Adding…" : <><Plus size={14} /> Add Season &amp; Episode</>}
                   </button>
-                  <button className="btn btn-ghost" onClick={() => { setShowAddSeasonForm(false); setShowAddEpisodeForm(null); setNewEpisode({ title: "", episodeNumber: "", duration: "", description: "", seasonNumber: "" }); setNewSeasonNumber(""); setNewEpisodeVideo(null); setNewEpisodeThumbnail(null); }}>
+                  <button className="btn btn-ghost" onClick={() => { setShowAddSeasonForm(false); setShowAddEpisodeForm(null); setNewEpisode({ title: "", episodeNumber: "", duration: "", description: "", seasonNumber: "" }); setNewSeasonNumber(""); setNewEpisodeVideo(null); setNewEpisodeThumbnail(null); setNewEpisodeVideoUrl(""); setNewEpisodeThumbnailUrl(""); }}>
                     Cancel
                   </button>
                 </div>
@@ -1170,18 +1175,20 @@ export default function Content() {
                         <input className="form-input" value={newEpisode.duration} onChange={e => setNewEpisode(p => ({ ...p, duration: e.target.value }))} placeholder="45m" />
                       </div>
                       <div className="form-row">
-                        <label className="form-label">Video (optional)</label>
+                        <label className="form-label">Video *</label>
                         <div className="file-input-wrapper">
                           <input type="file" accept="video/*" id={`ep-video-s${seasonNum}`} className="file-input" onChange={e => setNewEpisodeVideo(e.target.files[0])} />
                           <label htmlFor={`ep-video-s${seasonNum}`} className="file-label">{newEpisodeVideo ? `✓ ${newEpisodeVideo.name}` : "Choose Video"}</label>
                         </div>
+                        <input className="form-input" style={{ marginTop: 8 }} placeholder="Or Paste URL" value={newEpisodeVideoUrl} onChange={e => setNewEpisodeVideoUrl(e.target.value)} />
                       </div>
                       <div className="form-row">
-                        <label className="form-label">Thumbnail (optional)</label>
+                        <label className="form-label">Thumbnail *</label>
                         <div className="file-input-wrapper">
                           <input type="file" accept="image/*" id={`ep-thumb-s${seasonNum}`} className="file-input" onChange={e => setNewEpisodeThumbnail(e.target.files[0])} />
                           <label htmlFor={`ep-thumb-s${seasonNum}`} className="file-label">{newEpisodeThumbnail ? `✓ ${newEpisodeThumbnail.name}` : "Choose Thumbnail"}</label>
                         </div>
+                        <input className="form-input" style={{ marginTop: 8 }} placeholder="Or Paste URL" value={newEpisodeThumbnailUrl} onChange={e => setNewEpisodeThumbnailUrl(e.target.value)} />
                       </div>
                     </div>
                     <div className="form-row">
@@ -1192,7 +1199,7 @@ export default function Content() {
                       <button className="btn btn-primary" onClick={() => handleAddEpisode(seasonNum)} disabled={addingEpisode}>
                         {addingEpisode ? "Adding…" : <><Plus size={14} /> Add Episode</>}
                       </button>
-                      <button className="btn btn-ghost" onClick={() => { setShowAddEpisodeForm(null); setNewEpisode({ title: "", episodeNumber: "", duration: "", description: "", seasonNumber: "" }); setNewEpisodeVideo(null); setNewEpisodeThumbnail(null); }}>
+                      <button className="btn btn-ghost" onClick={() => { setShowAddEpisodeForm(null); setNewEpisode({ title: "", episodeNumber: "", duration: "", description: "", seasonNumber: "" }); setNewEpisodeVideo(null); setNewEpisodeThumbnail(null); setNewEpisodeVideoUrl(""); setNewEpisodeThumbnailUrl(""); }}>
                         Cancel
                       </button>
                     </div>

@@ -22,6 +22,7 @@ const LegalPage = lazy(() => import("./pages/LegalPage"));
 const HelpPage = lazy(() => import("./pages/HelpPage"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Category = lazy(() => import("./pages/Category"));
+const CompanyInfo = lazy(() => import("./pages/CompanyInfo"));
 
 // ── Toast Context ──
 const ToastContext = createContext();
@@ -105,6 +106,7 @@ function App() {
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="legal" element={<LegalPage />} />
             <Route path="help" element={<HelpPage />} />
+            <Route path="company-info" element={<CompanyInfo />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>

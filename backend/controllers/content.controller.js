@@ -1,6 +1,6 @@
 const Movie = require("../models/movie.model");
 const Series = require("../models/series.model");
-
+const Episode = require("../models/episode.model");
 
 // ========================================
 // GET HOME CONTENT (COMBINED)
@@ -10,7 +10,16 @@ const getHomeContent = async (req, res) => {
     // Fetch active movies and series
     const movies = await Movie.find({ isPublished: { $ne: false } }).sort({ priority: -1, createdAt: -1 }).limit(20).lean();
     const series = await Series.find({ isPublished: { $ne: false } }).sort({ priority: -1, createdAt: -1 }).limit(20).lean();
+const seriesIds = series.map(s => s._id);
 
+const allEpisodes = await Episode.find({
+  seriesId: { $in: seriesIds }
+})
+.sort({
+  seasonNumber: 1,
+  episodeNumber: 1
+})
+.lean();
     const [
   moviesCount,
   seriesCount,
@@ -21,7 +30,17 @@ const getHomeContent = async (req, res) => {
   Series.find({ isPublished: { $ne: false } }, "totalEpisodes").lean()
 ]);
     const episodesCount = seriesData.reduce((acc, s) => acc + (s.totalEpisodes || 0), 0);
+ const episodesMap = {};
 
+allEpisodes.forEach(ep => {
+  const id = ep.seriesId.toString();
+
+  if (!episodesMap[id]) {
+    episodesMap[id] = [];
+  }
+
+  episodesMap[id].push(ep);
+});
     // Format and add flags
     const formattedMovies = movies.map((m) => ({
       ...m,
@@ -29,12 +48,37 @@ const getHomeContent = async (req, res) => {
       isTrending: m.category?.includes("trending") || false
     }));
 
-    const formattedSeries = series.map((s) => ({
-      ...s,
-      type: "series",
-      isTrending: s.category?.includes("trending") || false
-    }));
+  const formattedSeries = series.map((s) => {
 
+  const episodes = episodesMap[s._id.toString()] || [];
+
+  const seasons = [];
+
+  episodes.forEach(ep => {
+    let season = seasons.find(
+      se => se.seasonNumber === ep.seasonNumber
+    );
+
+    if (!season) {
+      season = {
+        seasonNumber: ep.seasonNumber,
+        episodes: []
+      };
+
+      seasons.push(season);
+    }
+
+    season.episodes.push(ep);
+  });
+
+  return {
+    ...s,
+    seasons,
+    type: "series",
+    isTrending: s.category?.includes("trending") || false
+  };
+
+});
     // Combine and sort by priority, then date
     const content = [...formattedMovies, ...formattedSeries].sort(
       (a, b) => {

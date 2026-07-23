@@ -505,6 +505,10 @@ exports.createSubscription = async (req, res) => {
 
     const newSub = await Subscription.create(subData);
 
+    await User.findByIdAndUpdate(user, {
+      $push: { subscriptions: newSub._id }
+    });
+
     const populatedSub = await Subscription.findById(newSub._id)
       .populate("user", "name email phone profileImage")
       .populate("plan");

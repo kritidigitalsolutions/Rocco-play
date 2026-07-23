@@ -176,6 +176,10 @@ exports.verifySubscription = async (req, res) => {
         status: "active",
       });
 
+    await User.findByIdAndUpdate(userId, {
+      $push: { subscriptions: subscription._id }
+    });
+
     res.status(200).json({
       success: true,
       subscription,

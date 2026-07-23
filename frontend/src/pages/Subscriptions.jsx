@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import API, { API_BASE_URL } from "../api/axios";
 import { Eye, Trash2, X, User, Ban, Plus, Search } from "lucide-react";
 import "./Subscription.css";
@@ -29,6 +29,25 @@ export default function SubscriptionPage() {
   });
   const [giveError, setGiveError] = useState("");
   const [giving, setGiving] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [planSearchTerm, setPlanSearchTerm] = useState("");
+  const [showPlanDropdown, setShowPlanDropdown] = useState(false);
+  const userDropdownRef = useRef(null);
+  const planDropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
+        setShowUserDropdown(false);
+      }
+      if (planDropdownRef.current && !planDropdownRef.current.contains(event.target)) {
+        setShowPlanDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     fetchSubs();
@@ -46,6 +65,10 @@ export default function SubscriptionPage() {
         paymentId: "",
         subscriptionId: "",
       });
+      setUserSearchTerm("");
+      setShowUserDropdown(false);
+      setPlanSearchTerm("");
+      setShowPlanDropdown(false);
       setGiveError("");
     }
   }, [isGiveOpen]);
@@ -417,40 +440,144 @@ export default function SubscriptionPage() {
                   </div>
                 )}
 
-                <div className="form-row" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <div className="form-row" ref={userDropdownRef} style={{ display: "flex", flexDirection: "column", gap: "6px", position: "relative" }}>
                   <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--text-soft)" }}>Select User *</label>
-                  <select
+                  <input
+                    type="text"
                     className="form-input"
-                    required
+                    placeholder="Search user by name, email, or phone..."
                     style={{ background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", padding: "8px 12px", borderRadius: "var(--radius-sm)", width: "100%" }}
-                    value={giveForm.user}
-                    onChange={(e) => setGiveForm({ ...giveForm, user: e.target.value })}
-                  >
-                    <option value="">-- Choose User --</option>
-                    {usersList.map((u) => (
-                      <option key={u._id} value={u._id}>
-                        {u.name} ({u.email || u.phone || u._id})
-                      </option>
-                    ))}
-                  </select>
+                    value={userSearchTerm}
+                    onChange={(e) => {
+                      setUserSearchTerm(e.target.value);
+                      setShowUserDropdown(true);
+                      if (giveForm.user) setGiveForm({ ...giveForm, user: "" });
+                    }}
+                    onFocus={() => setShowUserDropdown(true)}
+                  />
+                  {showUserDropdown && (
+                    <div style={{
+                      position: "absolute",
+                      top: "100%",
+                      left: 0,
+                      right: 0,
+                      background: "var(--bg3)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius-sm)",
+                      maxHeight: "200px",
+                      overflowY: "auto",
+                      zIndex: 100,
+                      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.5)",
+                      marginTop: "4px"
+                    }}>
+                      {usersList.filter(u => 
+                        !userSearchTerm || 
+                        (u.name && u.name.toLowerCase().includes(userSearchTerm.toLowerCase())) ||
+                        (u.email && u.email.toLowerCase().includes(userSearchTerm.toLowerCase())) ||
+                        (u.phone && String(u.phone).toLowerCase().includes(userSearchTerm.toLowerCase()))
+                      ).map((u) => (
+                        <div 
+                          key={u._id}
+                          style={{ 
+                            padding: "8px 12px", 
+                            cursor: "pointer", 
+                            borderBottom: "1px solid var(--border)",
+                            color: "var(--text)",
+                            fontSize: "0.9rem"
+                          }}
+                          onClick={() => {
+                            setGiveForm({ ...giveForm, user: u._id });
+                            setUserSearchTerm(`${u.name} (${u.email || u.phone || u._id})`);
+                            setShowUserDropdown(false);
+                          }}
+                          onMouseEnter={(e) => e.target.style.background = "var(--bg2)"}
+                          onMouseLeave={(e) => e.target.style.background = "transparent"}
+                        >
+                          {u.name} ({u.email || u.phone || u._id})
+                        </div>
+                      ))}
+                      {usersList.filter(u => 
+                        !userSearchTerm || 
+                        (u.name && u.name.toLowerCase().includes(userSearchTerm.toLowerCase())) ||
+                        (u.email && u.email.toLowerCase().includes(userSearchTerm.toLowerCase())) ||
+                        (u.phone && String(u.phone).toLowerCase().includes(userSearchTerm.toLowerCase()))
+                      ).length === 0 && (
+                        <div style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "0.9rem", fontStyle: "italic" }}>
+                          No users found.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {/* Hidden required input for form validation */}
+                  <input type="hidden" required value={giveForm.user} />
                 </div>
 
-                <div className="form-row" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <div className="form-row" ref={planDropdownRef} style={{ display: "flex", flexDirection: "column", gap: "6px", position: "relative" }}>
                   <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: "600", color: "var(--text-soft)" }}>Select Plan *</label>
-                  <select
+                  <input
+                    type="text"
                     className="form-input"
-                    required
+                    placeholder="Search plan by name..."
                     style={{ background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", padding: "8px 12px", borderRadius: "var(--radius-sm)", width: "100%" }}
-                    value={giveForm.plan}
-                    onChange={(e) => handlePlanChange(e.target.value)}
-                  >
-                    <option value="">-- Choose Plan --</option>
-                    {plansList.map((p) => (
-                      <option key={p._id} value={p._id}>
-                        {p.name} (₹{p.price} - {p.duration} days)
-                      </option>
-                    ))}
-                  </select>
+                    value={planSearchTerm}
+                    onChange={(e) => {
+                      setPlanSearchTerm(e.target.value);
+                      setShowPlanDropdown(true);
+                      if (giveForm.plan) handlePlanChange(""); 
+                    }}
+                    onFocus={() => setShowPlanDropdown(true)}
+                  />
+                  {showPlanDropdown && (
+                    <div style={{
+                      position: "absolute",
+                      top: "100%",
+                      left: 0,
+                      right: 0,
+                      background: "var(--bg3)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius-sm)",
+                      maxHeight: "200px",
+                      overflowY: "auto",
+                      zIndex: 100,
+                      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.5)",
+                      marginTop: "4px"
+                    }}>
+                      {plansList.filter(p => 
+                        !planSearchTerm || 
+                        (p.name && p.name.toLowerCase().includes(planSearchTerm.toLowerCase()))
+                      ).map((p) => (
+                        <div 
+                          key={p._id}
+                          style={{ 
+                            padding: "8px 12px", 
+                            cursor: "pointer", 
+                            borderBottom: "1px solid var(--border)",
+                            color: "var(--text)",
+                            fontSize: "0.9rem"
+                          }}
+                          onClick={() => {
+                            handlePlanChange(p._id);
+                            setPlanSearchTerm(`${p.name} (₹${p.price} - ${p.duration} days)`);
+                            setShowPlanDropdown(false);
+                          }}
+                          onMouseEnter={(e) => e.target.style.background = "var(--bg2)"}
+                          onMouseLeave={(e) => e.target.style.background = "transparent"}
+                        >
+                          {p.name} (₹{p.price} - {p.duration} days)
+                        </div>
+                      ))}
+                      {plansList.filter(p => 
+                        !planSearchTerm || 
+                        (p.name && p.name.toLowerCase().includes(planSearchTerm.toLowerCase()))
+                      ).length === 0 && (
+                        <div style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "0.9rem", fontStyle: "italic" }}>
+                          No plans found.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {/* Hidden required input for form validation */}
+                  <input type="hidden" required value={giveForm.plan} />
                 </div>
 
                 <div className="form-row" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>

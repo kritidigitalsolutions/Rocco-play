@@ -63,8 +63,7 @@ export default function Dashboard() {
 
   const GROWTH = growthData.length ? growthData : [];
 
-  const [contentStats, setContentStats] = useState([]);
-  const PIE = contentStats.length ? contentStats : [];
+  const [contentStats, setContentStats] = useState({ movies: 0, series: 0, total: 0 });
 
   // ✅ CORRECT BACKEND ENDPOINTS
   async function fetchData() {
@@ -91,7 +90,7 @@ export default function Dashboard() {
         API.get("/admin/user/registration-stats"),
       ]);
 
-      setContentStats(sRes.data.data || []);
+      setContentStats(sRes.data.stats || { movies: 0, series: 0, total: 0 });
 
 
 
@@ -128,17 +127,16 @@ export default function Dashboard() {
   const formatCurrency = (value) =>
     `₹${Number(value || 0).toLocaleString("en-IN")}`;
 
-  const moviesCount = contentStats.find(c => c.name === "Movies")?.value || 0;
-  const seriesCount = contentStats.find(c => c.name === "Series")?.value || 0;
+  const moviesCount = contentStats.movies || 0;
+  const seriesCount = contentStats.series || 0;
 
-  const totalContent = moviesCount + seriesCount;
+  const totalContent = contentStats.total || 0;
 
 
-  // const PIE = [
-  //   { name: "Movies", value: movies || 1 },
-  //   { name: "Series", value: series || 1 },
-  //   { name: "Other",  value: other  || 1 },
-  // ];
+  const PIE = [
+    { name: "Movies", value: moviesCount },
+    { name: "Series", value: seriesCount },
+  ];
 
   const activeUsers = Array.isArray(users) ? users.filter(u => !u.isBlocked).length : 0;
 

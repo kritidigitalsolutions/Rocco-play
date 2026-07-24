@@ -3,7 +3,7 @@ const Help = require("../models/help.model");
 //get all 
 exports.getAllHelp = async (req, res) => {
   try {
-    const data = await Help.find().sort("-createdAt");
+    const data = await Help.find({ category: { $ne: "contact-info" } }).sort("-createdAt");
     res.status(200).json({ data });
     } catch (error) {
     res.status(500).json({ message: error.message });
@@ -31,11 +31,10 @@ exports.getHelpByCategory = async (req, res) => {
 exports.getSupportNumber = async (req, res) => {
   try {
     const help = await Help.findOne({
-      isPublished: true,
+      category: "contact-info",
       supportNumber: { $exists: true, $ne: "" },
     })
-      .sort("-updatedAt")
-      .select("supportNumber -_id")
+      .select("supportNumber isHide -_id")
       .lean();
 
     if (!help) {
@@ -49,6 +48,7 @@ exports.getSupportNumber = async (req, res) => {
       success: true,
       contactNumber: help.supportNumber,
       supportNumber: help.supportNumber,
+      isHide: help.isHide || false,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -59,11 +59,10 @@ exports.getSupportNumber = async (req, res) => {
 exports.getSupportEmail = async (req, res) => {
   try {
     const help = await Help.findOne({
-      isPublished: true,
+      category: "contact-info",
       supportEmail: { $exists: true, $ne: "" },
     })
-      .sort("-updatedAt")
-      .select("supportEmail -_id")
+      .select("supportEmail isHide -_id")
       .lean();
 
     if (!help) {
@@ -77,6 +76,7 @@ exports.getSupportEmail = async (req, res) => {
       success: true,
       email: help.supportEmail,
       supportEmail: help.supportEmail,
+      isHide: help.isHide || false,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -91,6 +91,7 @@ exports.getPublishedHelp =
       const helpData =
         await Help.find({
           isPublished: true,
+          category: { $ne: "contact-info" }
         }).sort("-createdAt");
 
       res.status(200).json({

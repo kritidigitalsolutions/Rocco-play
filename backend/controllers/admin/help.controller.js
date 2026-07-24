@@ -30,7 +30,7 @@ exports.addHelp = async (req, res) => {
 // 📥 GET ALL (ADMIN)
 exports.getAllHelp = async (req, res) => {
   try {
-    const data = await Help.find().sort("-createdAt");
+    const data = await Help.find({ category: { $ne: "contact-info" } }).sort("-createdAt");
 
     res.status(200).json({ data });
   } catch (error) {
@@ -79,6 +79,46 @@ exports.toggleHelp = async (req, res) => {
       message: "Toggled",
       help
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 📞 GET CONTACT INFO
+exports.getContactInfo = async (req, res) => {
+  try {
+    let contactInfo = await Help.findOne({ category: "contact-info" });
+    if (!contactInfo) {
+      contactInfo = await Help.create({
+        category: "contact-info",
+        supportNumber: "",
+        supportEmail: "",
+        isHide: false
+      });
+    }
+    res.status(200).json({ data: contactInfo });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 💾 UPDATE CONTACT INFO
+exports.updateContactInfo = async (req, res) => {
+  try {
+    const { supportNumber, supportEmail, isHide } = req.body;
+    let contactInfo = await Help.findOne({ category: "contact-info" });
+    
+    if (!contactInfo) {
+      contactInfo = await Help.create({ category: "contact-info" });
+    }
+
+    contactInfo.supportNumber = supportNumber !== undefined ? supportNumber : contactInfo.supportNumber;
+    contactInfo.supportEmail = supportEmail !== undefined ? supportEmail : contactInfo.supportEmail;
+    contactInfo.isHide = isHide !== undefined ? isHide : contactInfo.isHide;
+
+    await contactInfo.save();
+
+    res.status(200).json({ message: "Contact Info updated", data: contactInfo });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

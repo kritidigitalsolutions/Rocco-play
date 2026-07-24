@@ -10,18 +10,17 @@ const helpSchema = new mongoose.Schema(
         "contact-support",
         "account-help",
         "report-problem",
-        "faq"
+        "faq",
+        "contact-info"
       ]
     },
 
     question: {
-      type: String,
-      required: true
+      type: String
     },
 
     answer: {
-      type: String,
-      required: true
+      type: String
     },
 
     // ADD THIS
@@ -35,6 +34,11 @@ const helpSchema = new mongoose.Schema(
       default: "",
       trim: true,
       lowercase: true
+    },
+
+    isHide: {
+      type: Boolean,
+      default: false
     },
 
     isPublished: {

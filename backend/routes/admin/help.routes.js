@@ -9,10 +9,15 @@ const {
   getAllHelp,
   updateHelp,
   deleteHelp,
-  toggleHelp
+  toggleHelp,
+  getContactInfo,
+  updateContactInfo
 } = require("../../controllers/admin/help.controller");
 
 router.use(isAdmin);
+
+router.get("/contact-info", getContactInfo);
+router.put("/contact-info", updateContactInfo);
 
 router.post("/", addHelp);
 router.get("/", getAllHelp);

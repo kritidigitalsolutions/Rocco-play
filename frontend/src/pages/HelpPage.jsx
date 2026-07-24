@@ -5,13 +5,37 @@ import "./Dashboard.css";
 
 export default function HelpPage() {
   const [help, setHelp] = useState([]);
+  const [contactInfo, setContactInfo] = useState({ supportNumber: "", supportEmail: "", isHide: false });
   const [selected, setSelected] = useState(null);
   const [mode, setMode] = useState("view");
   const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
     fetchHelp();
+    fetchContactInfo();
   }, []);
+
+  const fetchContactInfo = async () => {
+    try {
+      const res = await API.get("/admin/help/contact-info");
+      if (res.data && res.data.data) {
+        setContactInfo(res.data.data);
+      }
+    } catch (error) {
+      console.error("Fetch Contact Info Error:", error);
+    }
+  };
+
+  const handleSaveContactInfo = async () => {
+    try {
+      await API.put("/admin/help/contact-info", contactInfo);
+      alert("Contact Info saved successfully");
+      fetchContactInfo();
+    } catch (error) {
+      console.error(error);
+      alert("Failed to save contact info");
+    }
+  };
 
   const fetchHelp = async () => {
     try {
@@ -79,7 +103,7 @@ export default function HelpPage() {
           <button
             className="btn btn-primary"
             onClick={() => {
-              setSelected({ question: "", answer: "", category: "", supportNumber: "", supportEmail: "", isPublished: true });
+              setSelected({ question: "", answer: "", category: "", isPublished: true });
               setMode("add");
               setIsAdding(true);
             }}
@@ -92,6 +116,51 @@ export default function HelpPage() {
             <HelpCircle size={28} style={{ display: "inline-block", marginRight: 8 }} /> Help Center
           </h1>
           <p className="pg-sub">Manage your platform's FAQ and support articles</p>
+        </div>
+      </div>
+
+      <div className="content-box" style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+          <h3>📞 Global Support Contact Info</h3>
+          <button className="btn btn-primary" onClick={handleSaveContactInfo}>
+            <Save size={16} style={{ marginRight: 6 }} /> Save Contact Info
+          </button>
+        </div>
+        
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 250 }}>
+            <label className="form-label">Support Contact Number</label>
+            <input 
+              className="form-input" 
+              placeholder="+91 99999 99999" 
+              value={contactInfo.supportNumber} 
+              onChange={e => setContactInfo({...contactInfo, supportNumber: e.target.value})} 
+            />
+          </div>
+          
+          <div style={{ flex: 1, minWidth: 250 }}>
+            <label className="form-label">Support Email</label>
+            <input 
+              className="form-input" 
+              type="email" 
+              placeholder="support@example.com" 
+              value={contactInfo.supportEmail} 
+              onChange={e => setContactInfo({...contactInfo, supportEmail: e.target.value})} 
+            />
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 15 }}>
+          <input
+            type="checkbox"
+            id="isHide"
+            checked={contactInfo.isHide === true}
+            style={{ width: 18, height: 18, cursor: "pointer" }}
+            onChange={(e) => setContactInfo({ ...contactInfo, isHide: e.target.checked })}
+          />
+          <label htmlFor="isHide" className="form-label" style={{ margin: 0, cursor: "pointer", color: "var(--red)" }}>
+            Hide Contact Info from Users
+          </label>
         </div>
       </div>
 
@@ -122,11 +191,6 @@ export default function HelpPage() {
               
               <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginTop: 4, marginBottom: 8 }}>
                 {item.category && <span className="badge badge-active">{item.category}</span>}
-                {item.supportNumber && (
-                  <span className="badge badge-pub" style={{ background: "rgba(59, 130, 246, 0.1)", color: "var(--blue)", border: "1px solid rgba(59, 130, 246, 0.2)" }}>
-                    📞 {item.supportNumber}
-                  </span>
-                )}
                 <span
                   className={`badge ${item.isPublished !== false ? "badge-pub" : "badge-draft"}`}
                   style={{ cursor: "pointer" }}
@@ -191,27 +255,6 @@ export default function HelpPage() {
                   <option value="cancel-subscription">Cancel Subscription</option>
                   <option value="report-problem">Report Problem</option>
                 </select>
-              </div>
-              <div className="form-row">
-                <label className="form-label">Support Contact Number (Optional)</label>
-                <input
-                  className="form-input"
-                  value={selected.supportNumber || ""}
-                  placeholder="e.g. +91 99670 16566"
-                  disabled={mode === "view"}
-                  onChange={(e) => setSelected({ ...selected, supportNumber: e.target.value })}
-                />
-              </div>
-              <div className="form-row">
-                <label className="form-label">Support Email (Optional)</label>
-                <input
-                  className="form-input"
-                  type="email"
-                  value={selected.supportEmail || ""}
-                  placeholder="e.g. support@nazarott.in"
-                  disabled={mode === "view"}
-                  onChange={(e) => setSelected({ ...selected, supportEmail: e.target.value })}
-                />
               </div>
               <div className="form-row" style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 8 }}>
                 <input

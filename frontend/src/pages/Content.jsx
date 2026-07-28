@@ -136,8 +136,6 @@ export default function Content() {
   const [newSeasonNumber, setNewSeasonNumber] = useState("");
   const [addingEpisode, setAddingEpisode] = useState(false);
 
-  const [showEditCatDropdown, setShowEditCatDropdown] = useState(false);
-  const editCatDropdownRef = useRef(null);
   const PRESET_COLORS = ["#6366f1","#10b981","#f59e0b","#ef4444","#3b82f6","#8b5cf6","#ec4899","#06b6d4","#f97316"];
 
 
@@ -178,17 +176,6 @@ export default function Content() {
       controller.abort();
     };
   }, [contentType, currentPage]);
-
-  // Close edit-modal category dropdown on outside click
-  useEffect(() => {
-    const handler = (e) => {
-      if (editCatDropdownRef.current && !editCatDropdownRef.current.contains(e.target)) {
-        setShowEditCatDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
 
   /* ===================== LOCK LOGIC ===================== */
   const isLocked = (item) => {
@@ -1599,107 +1586,92 @@ export default function Content() {
                         <option value="yes">Yes</option>
                       </select>
                     </div>
-                                  {/* ── Category Chip Picker (Edit Modal) ── */}
-                    <div className="form-row" style={{ gridColumn: "1 / -1" }}>
-                      <label className="form-label">Category</label>
-                      <div
-                        style={{
-                          display: "flex", flexWrap: "wrap", alignItems: "center",
-                          gap: 8, minHeight: 44,
-                          background: "var(--bg3)",
-                          border: "1px solid var(--border)",
-                          borderRadius: 10, padding: "8px 12px",
-                        }}
-                      >
-                        {/* Selected chips */}
-                        {(Array.isArray(editData.category) ? editData.category : []).map(slug => {
-                          const cat = catMap[slug];
-                          const color = cat?.color || "#6366f1";
-                          return (
-                            <span key={slug} style={{
-                              display: "inline-flex", alignItems: "center", gap: 6,
-                              padding: "4px 12px", borderRadius: 20,
-                              background: `${color}22`,
-                              border: `1px solid ${color}88`,
-                              color: color, fontWeight: 600, fontSize: "0.83rem",
-                            }}>
-                              {cat?.name || slug}
-                              <button
-                                type="button"
-                                onClick={() => setEditData(s => ({ ...s, category: s.category.filter(c => c !== slug) }))}
-                                style={{
-                                  background: "none", border: "none", cursor: "pointer",
-                                  color: color, padding: 0, lineHeight: 1,
-                                  fontSize: "1.1rem", opacity: 0.7,
-                                  display: "inline-flex", alignItems: "center",
-                                }}
-                                title="Remove"
-                              >×</button>
-                            </span>
-                          );
-                        })}
+        {/* ── Category Chip Picker (Edit Modal) ── */}
+        <div className="form-row" style={{ gridColumn: "1 / -1" }}>
+          <label className="form-label" style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+            Selected Categories (Select Multiple)
+          </label>
 
-                        {/* + Add dropdown */}
-                        <div ref={editCatDropdownRef} style={{ position: "relative" }}>
-                          <button
-                            type="button"
-                            onClick={() => setShowEditCatDropdown(v => !v)}
-                            style={{
-                              display: "inline-flex", alignItems: "center", gap: 4,
-                              padding: "3px 10px", borderRadius: 20,
-                              background: "var(--bg2)",
-                              border: "1px dashed var(--border)",
-                              cursor: "pointer", color: "var(--text-muted)",
-                              fontSize: "0.82rem", fontWeight: 500,
-                            }}
-                          >+ Add</button>
-
-                          {showEditCatDropdown && (() => {
-                            const selectedSlugs = Array.isArray(editData.category) ? editData.category : [];
-                            const available = Object.values(catMap).filter(c => !selectedSlugs.includes(c.slug));
-                            return (
-                              <div
-                                style={{
-                                  position: "absolute", top: "calc(100% + 6px)", left: 0,
-                                  zIndex: 300, background: "var(--bg2)",
-                                  border: "1px solid var(--border)", borderRadius: 12,
-                                  padding: 8, minWidth: 220,
-                                  boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-                                }}
-                              >
-                                {available.length > 0
-                                  ? available.map(cat => (
-                                      <div
-                                        key={cat.slug}
-                                        onClick={() => {
-                                          setEditData(s => ({ ...s, category: [...(Array.isArray(s.category) ? s.category : []), cat.slug] }));
-                                          setShowEditCatDropdown(false);
-                                        }}
-                                        style={{
-                                          display: "flex", alignItems: "center", gap: 8,
-                                          padding: "8px 12px", borderRadius: 8,
-                                          cursor: "pointer", fontSize: "0.88rem",
-                                          transition: "background 0.15s",
-                                        }}
-                                        onMouseEnter={e => e.currentTarget.style.background = "var(--bg3)"}
-                                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                                      >
-                                        <span style={{ width: 10, height: 10, borderRadius: "50%", background: cat.color, flexShrink: 0 }} />
-                                        {cat.name}
-                                      </div>
-                                    ))
-                                  : (
-                                    <div style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "0.8rem" }}>
-                                      No more categories
-                                    </div>
-                                  )
-                                }
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    </div>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 10,
+              padding: "4px 0 12px 0",
+            }}
+          >
+            {Object.values(catMap)
+              .sort((a, b) => (a.priority || 1) - (b.priority || 1))
+              .map((cat) => {
+                const selectedSlugs = Array.isArray(editData.category) ? editData.category : [];
+                const isSelected = selectedSlugs.includes(cat.slug);
+                // Use category color or default to orange
+                const colorVal = cat.color || "var(--orange)";
+                const chipBorder = isSelected ? `1px solid ${colorVal}` : "1px solid rgba(255, 255, 255, 0.08)";
+                const textColor = isSelected ? colorVal : "var(--text-soft)";
+                const bg = isSelected ? `${colorVal}15` : "rgba(255, 255, 255, 0.03)";
+                
+                return (
+                  <button
+                    key={cat.slug}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setEditData(s => ({
+                          ...s,
+                          category: (Array.isArray(s.category) ? s.category : []).filter(c => c !== cat.slug)
+                        }));
+                      } else {
+                        setEditData(s => ({
+                          ...s,
+                          category: [...(Array.isArray(s.category) ? s.category : []), cat.slug]
+                        }));
+                      }
+                    }}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      padding: "8px 20px",
+                      borderRadius: 9999,
+                      background: bg,
+                      border: chipBorder,
+                      color: textColor,
+                      fontWeight: 700,
+                      fontSize: "0.8rem",
+                      letterSpacing: "0.5px",
+                      textTransform: "uppercase",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      boxShadow: isSelected ? `0 0 12px ${colorVal}20` : "none",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.2)";
+                        e.currentTarget.style.background = "rgba(255, 255, 255, 0.06)";
+                        e.currentTarget.style.color = "var(--text)";
+                      } else {
+                        e.currentTarget.style.transform = "scale(1.03)";
+                        e.currentTarget.style.boxShadow = `0 0 18px ${colorVal}35`;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.08)";
+                        e.currentTarget.style.background = "rgba(255, 255, 255, 0.03)";
+                        e.currentTarget.style.color = "var(--text-soft)";
+                      } else {
+                        e.currentTarget.style.transform = "scale(1)";
+                        e.currentTarget.style.boxShadow = `0 0 12px ${colorVal}20`;
+                      }
+                    }}
+                  >
+                    {cat.name}
+                  </button>
+                );
+              })}
+          </div>
+        </div>
                     <div className="form-row">
                       <label className="form-label">Priority (0 = Auto-assign, 1 = top priority)</label>
                       <input

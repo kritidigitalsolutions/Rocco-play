@@ -1,4 +1,3 @@
-import { useState, useRef, useEffect } from "react";
 import {
   Star,
   Globe,
@@ -22,21 +21,7 @@ export default function BasicInfoSection({
   onAddCategory,
   onRemoveCategory,
 }) {
-  const [showCatDropdown, setShowCatDropdown] = useState(false);
-  const dropdownRef = useRef(null);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setShowCatDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
   const selectedSlugs   = Array.isArray(form.category) ? form.category : [];
-  const availableCats   = categories.filter(c => !selectedSlugs.includes(c.slug));
 
   return (
     <div className="premium-card">
@@ -166,9 +151,9 @@ export default function BasicInfoSection({
 
         {/* ── Category Chip Picker ────────────────── */}
         <div className="form-row" style={{ gridColumn: "1 / -1" }}>
-          <label className="form-label">
-            <Layers size={14} style={{ marginRight: 4 }} />
-            Category
+          <label className="form-label" style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+            <Layers size={14} />
+            Selected Categories (Select Multiple)
           </label>
 
           <div
@@ -176,131 +161,70 @@ export default function BasicInfoSection({
               display: "flex",
               flexWrap: "wrap",
               alignItems: "center",
-              gap: 8,
-              minHeight: 48,
-              background: "var(--bg3)",
-              border: "1px solid var(--border)",
-              borderRadius: 10,
-              padding: "8px 12px",
+              gap: 10,
+              padding: "4px 0 12px 0",
             }}
           >
-            {/* Selected chips */}
-            {selectedSlugs.map(slug => {
-              const cat = categories.find(c => c.slug === slug);
-              const displayName  = cat?.name  || slug;
-              const chipColor    = cat?.color  || "#6366f1";
+            {categories.map((cat) => {
+              const isSelected = selectedSlugs.includes(cat.slug);
+              // Use category color or default to orange
+              const colorVal = cat.color || "var(--orange)";
+              const chipBorder = isSelected ? `1px solid ${colorVal}` : "1px solid rgba(255, 255, 255, 0.08)";
+              const textColor = isSelected ? colorVal : "var(--text-soft)";
+              const bg = isSelected ? `${colorVal}15` : "rgba(255, 255, 255, 0.03)";
+              
               return (
-                <span
-                  key={slug}
+                <button
+                  key={cat.slug}
+                  type="button"
+                  onClick={() => {
+                    if (isSelected) {
+                      onRemoveCategory?.(cat.slug);
+                    } else {
+                      onAddCategory?.(cat.slug);
+                    }
+                  }}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: 8,
-                    padding: "6px 14px",
-                    borderRadius: 20,
-                    background: `${chipColor}22`,
-                    border: `1px solid ${chipColor}88`,
-                    color: chipColor,
-                    fontWeight: 600,
-                    fontSize: "0.85rem",
-                    letterSpacing: "0.3px",
-                    textShadow: `0 0 8px ${chipColor}66`,
+                    padding: "8px 20px",
+                    borderRadius: 9999,
+                    background: bg,
+                    border: chipBorder,
+                    color: textColor,
+                    fontWeight: 700,
+                    fontSize: "0.8rem",
+                    letterSpacing: "0.5px",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    boxShadow: isSelected ? `0 0 12px ${colorVal}20` : "none",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSelected) {
+                      e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.2)";
+                      e.currentTarget.style.background = "rgba(255, 255, 255, 0.06)";
+                      e.currentTarget.style.color = "var(--text)";
+                    } else {
+                      e.currentTarget.style.transform = "scale(1.03)";
+                      e.currentTarget.style.boxShadow = `0 0 18px ${colorVal}35`;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSelected) {
+                      e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.08)";
+                      e.currentTarget.style.background = "rgba(255, 255, 255, 0.03)";
+                      e.currentTarget.style.color = "var(--text-soft)";
+                    } else {
+                      e.currentTarget.style.transform = "scale(1)";
+                      e.currentTarget.style.boxShadow = `0 0 12px ${colorVal}20`;
+                    }
                   }}
                 >
-                  {displayName}
-                  <button
-                    type="button"
-                    onClick={() => onRemoveCategory?.(slug)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      color: chipColor,
-                      padding: 0,
-                      lineHeight: 1,
-                      fontSize: "1.1rem",
-                      opacity: 0.6,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      transition: "opacity 0.2s",
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.opacity = 1)}
-                    onMouseLeave={(e) => (e.currentTarget.style.opacity = 0.6)}
-                    title="Remove"
-                  >
-                    ×
-                  </button>
-                </span>
+                  {cat.name}
+                </button>
               );
             })}
-
-            {/* + Add button + dropdown */}
-            <div ref={dropdownRef} style={{ position: "relative" }}>
-              <button
-                type="button"
-                onClick={() => setShowCatDropdown(v => !v)}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  padding: "4px 12px", borderRadius: 20,
-                  background: "var(--bg2)",
-                  border: "1px dashed var(--border)",
-                  cursor: "pointer",
-                  color: "var(--text-muted)",
-                  fontSize: "0.82rem",
-                  fontWeight: 500,
-                }}
-              >
-                + Add
-              </button>
-
-              {showCatDropdown && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "calc(100% + 6px)",
-                    left: 0,
-                    zIndex: 200,
-                    background: "var(--bg2)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 12,
-                    padding: 8,
-                    minWidth: 220,
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-                  }}
-                >
-                  {/* Available categories */}
-                  {availableCats.length > 0 ? (
-                    availableCats.map(cat => (
-                      <div
-                        key={cat.slug}
-                        onClick={() => { onAddCategory?.(cat.slug); setShowCatDropdown(false); }}
-                        style={{
-                          display: "flex", alignItems: "center", gap: 8,
-                          padding: "8px 12px", borderRadius: 8,
-                          cursor: "pointer", fontSize: "0.88rem",
-                          transition: "background 0.15s",
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = "var(--bg3)"}
-                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                      >
-                        <span
-                          style={{
-                            width: 10, height: 10, borderRadius: "50%",
-                            background: cat.color, flexShrink: 0,
-                          }}
-                        />
-                        {cat.name}
-                      </div>
-                    ))
-                  ) : (
-                    <div style={{ padding: "8px 12px", color: "var(--text-muted)", fontSize: "0.8rem" }}>
-                      No more categories
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
           </div>
         </div>
 

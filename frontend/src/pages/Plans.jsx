@@ -156,63 +156,81 @@ export default function PlansPage() {
           <h3>{editId ? "Edit Plan" : "Create New Plan"}</h3>
 
           <div className="form-2col">
-            <input
-              className="form-input-styled"
-              name="name"
-              placeholder="Plan Name (Basic, Premium)"
-              value={form.name}
-              onChange={ch}
-              required
-            />
+            <div className="form-row">
+              <label className="form-label">Plan Name</label>
+              <input
+                className="form-input-styled"
+                name="name"
+                placeholder="Plan Name (Basic, Premium)"
+                value={form.name}
+                onChange={ch}
+                required
+              />
+            </div>
 
-            <input
-              className="form-input-styled"
-              name="price"
-              type="number"
-              placeholder="Price (₹)"
-              value={form.price}
-              onChange={ch}
-              required
-            />
+            <div className="form-row">
+              <label className="form-label">Price (₹)</label>
+              <input
+                className="form-input-styled"
+                name="price"
+                type="number"
+                placeholder="Price (₹)"
+                value={form.price}
+                onChange={ch}
+                required
+              />
+            </div>
 
-            <input
-              className="form-input-styled"
-              name="duration"
-              type="number"
-              placeholder="Duration (days)"
-              value={form.duration}
-              onChange={ch}
-              required
-            />
+            <div className="form-row">
+              <label className="form-label">Duration (days)</label>
+              <input
+                className="form-input-styled"
+                name="duration"
+                type="number"
+                placeholder="Duration (days)"
+                value={form.duration}
+                onChange={ch}
+                required
+              />
+            </div>
 
-            <input
-              className="form-input-styled form-full"
-              name="features"
-              placeholder="Features (comma separated)"
-              value={form.features}
-              onChange={ch}
-            />
+            <div className="form-row form-full">
+              <label className="form-label">Features (comma separated)</label>
+              <input
+                className="form-input-styled form-full"
+                name="features"
+                placeholder="Features (comma separated)"
+                value={form.features}
+                onChange={ch}
+              />
+            </div>
 
-            <select
-              className="form-input-styled"
-              name="planType"
-              value={form.planType}
-              onChange={ch}
-            >
-              <option value="monthly">Monthly</option>
-              <option value="quarterly">Quarterly</option>
-              <option value="yearly">Yearly</option>
-              <option value="lifetime">Lifetime</option>
-            </select>
+            <div className="form-row">
+              <label className="form-label">Plan Type</label>
+              <select
+                className="form-input-styled"
+                name="planType"
+                value={form.planType}
+                onChange={ch}
+              >
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="yearly">Yearly</option>
+                <option value="lifetime">Lifetime</option>
+              </select>
+            </div>
 
-            <input
-              className="form-input-styled"
-              name="sortOrder"
-              type="number"
-              placeholder="Sort Order (e.g. 1)"
-              value={form.sortOrder}
-              onChange={ch}
-            />
+            <div className="form-row">
+              <label className="form-label">Sort Order</label>
+              <input
+                className="form-input-styled"
+                name="sortOrder"
+                type="number"
+                placeholder="Sort Order (e.g. 1)"
+                value={form.sortOrder}
+                onChange={ch}
+              />
+            </div>
 
             {/* Recommended Toggle */}
             <label

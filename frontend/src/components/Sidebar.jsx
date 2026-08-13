@@ -32,7 +32,7 @@ export default function Sidebar({ theme, showSidebar, toggleSidebar, closeSideba
         <div className="sidebar-logo">
           <img src="/favicon.png" alt="Logo" />
         </div>
-<div>
+        <div>
           <div className="sidebar-title">Rocco Play</div>
           <div className="sidebar-tag">Admin Panel</div>
         </div>

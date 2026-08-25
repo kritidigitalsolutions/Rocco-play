@@ -23,6 +23,7 @@ const HelpPage = lazy(() => import("./pages/HelpPage"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Category = lazy(() => import("./pages/Category"));
 const CompanyInfo = lazy(() => import("./pages/CompanyInfo"));
+const PaymentGateways = lazy(() => import("./pages/PaymentGateways"));
 
 // ── Toast Context ──
 const ToastContext = createContext();
@@ -107,6 +108,7 @@ function App() {
             <Route path="legal" element={<LegalPage />} />
             <Route path="help" element={<HelpPage />} />
             <Route path="company-info" element={<CompanyInfo />} />
+            <Route path="payment-gateways" element={<PaymentGateways />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>

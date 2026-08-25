@@ -53,11 +53,12 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    // Dynamic pattern matching for development / Vercel preview environments
+    // Dynamic pattern matching for development / Vercel preview environments / Local Wi-Fi IPs
     const isLocalhost = origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:");
+    const isLanIp = /^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(origin);
     const isRoccoPlayDomain = origin.endsWith(".vercel.app") && (origin.includes("roccoplay") || origin.includes("sigma"));
 
-    if (isLocalhost || isRoccoPlayDomain) {
+    if (isLocalhost || isLanIp || isRoccoPlayDomain) {
       return callback(null, true);
     }
 
@@ -273,9 +274,11 @@ app.use("/api/companyInfo", userCompanyRoutes);
 const interactionRoutes = require("./routes/user/interation.routes");
 app.use("/api/interaction", interactionRoutes);
 
-// =========Razor Pay===============
+// ========= Payment Gateways ===============
 const paymentRoutes = require("./routes/user/payment.routes");
+const adminPaymentSettingsRoutes = require("./routes/admin/paymentSettings.routes");
 app.use("/api/payment", paymentRoutes);
+app.use("/api/admin/payment-settings", adminPaymentSettingsRoutes);
 
 // ========================================
 // EXPORT

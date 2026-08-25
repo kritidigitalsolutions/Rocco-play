@@ -5,10 +5,83 @@ const razorpay = require("../config/razorpay");
 const Plan = require("../models/plan.model");
 const Promo = require("../models/promocode.model");
 const Subscription = require("../models/subscription.model");
+const PaymentConfig = require("../models/paymentConfig.model");
 
 const {
   expireSubscriptionIfNeeded,
 } = require("../utils/subscription.helper");
+
+// =====================================================
+// GET ACTIVE PAYMENT GATEWAYS (PUBLIC/USER API)
+// =====================================================
+exports.getActiveGateways = async (req, res) => {
+  try {
+    const config = await PaymentConfig.getConfig();
+
+    let rzpEnabled = Boolean(config.razorpayEnabled && razorpay);
+    let zaakEnabled = Boolean(
+      config.zaakpayEnabled &&
+        process.env.ZAAKPAY_MERCHANT_ID &&
+        process.env.ZAAKPAY_SECRET_KEY
+    );
+    let hdfcEnabled = Boolean(
+      config.hdfcEnabled &&
+        process.env.HDFC_MERCHANT_ID &&
+        process.env.HDFC_MERCHANT_KEY
+    );
+
+    // Strictly enforce only one gateway can be true at a time
+    const activeCount = (rzpEnabled ? 1 : 0) + (zaakEnabled ? 1 : 0) + (hdfcEnabled ? 1 : 0);
+    if (activeCount > 1) {
+      if (config.defaultGateway === "hdfc") {
+        rzpEnabled = false;
+        zaakEnabled = false;
+        hdfcEnabled = true;
+      } else if (config.defaultGateway === "zaakpay") {
+        rzpEnabled = false;
+        zaakEnabled = true;
+        hdfcEnabled = false;
+      } else {
+        rzpEnabled = true;
+        zaakEnabled = false;
+        hdfcEnabled = false;
+      }
+    }
+
+    const defaultGateway = hdfcEnabled ? "hdfc" : zaakEnabled ? "zaakpay" : "razorpay";
+
+    return res.status(200).json({
+      success: true,
+      gateways: {
+        razorpay: {
+          enabled: rzpEnabled,
+          name: "Razorpay",
+          key: rzpEnabled ? process.env.RAZORPAY_KEY_ID : null,
+        },
+        zaakpay: {
+          enabled: zaakEnabled,
+          name: "Zaakpay",
+          mode: config.zaakpayMode || "test",
+        },
+        hdfc: {
+          enabled: hdfcEnabled,
+          name: "HDFC Bank (SmartGateway)",
+          mode: config.hdfcMode || "test",
+          vpa: process.env.HDFC_VPA || "roccoplaywork@hdfcbank",
+          storeName: process.env.HDFC_STORE_NAME || "ROCCOPLAY MEDIA",
+        },
+      },
+      defaultGateway,
+    });
+  } catch (err) {
+    console.error("Get Active Gateways Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
 
 
 // =====================================================
@@ -139,8 +212,16 @@ exports.createOrder = async (
     }
 
     // ========================================
-    // RAZORPAY CONFIG
+    // RAZORPAY CONFIG & ENABLEMENT CHECK
     // ========================================
+
+    const config = await PaymentConfig.getConfig();
+    if (!config.razorpayEnabled) {
+      return res.status(403).json({
+        success: false,
+        message: "Razorpay payment gateway is currently disabled by administrator",
+      });
+    }
 
     if (!razorpay) {
       return res.status(503).json({
@@ -413,6 +494,7 @@ exports.verifyPayment = async (
         user: userId,
         plan: plan._id,
         status: "active",
+        paymentGateway: "razorpay",
 
         paymentId:
           razorpay_payment_id,

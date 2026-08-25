@@ -779,7 +779,13 @@ export default function SubscriptionPage() {
                   <span style={{ fontSize: "0.85rem", color: "var(--text)" }}>{selectedSub.currency || "INR"}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed var(--border)", paddingBottom: "6px" }}>
-                  <span style={{ fontSize: "0.85rem", color: "var(--text-soft)" }}>Payment / Razorpay ID</span>
+                  <span style={{ fontSize: "0.85rem", color: "var(--text-soft)" }}>Payment Gateway</span>
+                  <span style={{ fontSize: "0.85rem", fontWeight: "600", textTransform: "capitalize", color: selectedSub.paymentGateway === "zaakpay" ? "#3b82f6" : "#22c55e" }}>
+                    {selectedSub.paymentGateway || "Razorpay"}
+                  </span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed var(--border)", paddingBottom: "6px" }}>
+                  <span style={{ fontSize: "0.85rem", color: "var(--text-soft)" }}>Transaction / Payment ID</span>
                   <span style={{ fontSize: "0.8rem", color: "var(--text-soft)", fontFamily: "monospace" }}>{selectedSub.paymentId || selectedSub.subscriptionId || "N/A"}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed var(--border)", paddingBottom: "6px" }}>

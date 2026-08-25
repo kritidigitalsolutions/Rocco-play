@@ -109,13 +109,8 @@ const planSchema =
 // ========================================
 
 planSchema.index({
-  isActive: 1,
-});
-
-planSchema.index({
   sortOrder: 1,
 });
-
 
 // ========================================
 // EXPORT

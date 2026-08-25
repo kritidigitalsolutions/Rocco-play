@@ -94,6 +94,16 @@ const subscriptionSchema =
       },
 
       // ========================================
+      // PAYMENT GATEWAY
+      // ========================================
+
+      paymentGateway: {
+        type: String,
+        enum: ["razorpay", "zaakpay", "hdfc", "manual", "voucher"],
+        default: "razorpay",
+      },
+
+      // ========================================
       // AMOUNT
       // ========================================
 

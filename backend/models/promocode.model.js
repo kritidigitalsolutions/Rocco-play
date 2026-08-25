@@ -17,8 +17,6 @@ const promoSchema =
         uppercase: true,
 
         trim: true,
-
-        index: true,
       },
 
       // ========================================
@@ -142,23 +140,6 @@ promoSchema.pre("save", function () {
     );
   }
 });
-
-// ========================================
-// INDEXES
-// ========================================
-
-promoSchema.index({
-  code: 1,
-});
-
-promoSchema.index({
-  isActive: 1,
-});
-
-promoSchema.index({
-  expiryDate: 1,
-});
-
 
 // ========================================
 // EXPORT

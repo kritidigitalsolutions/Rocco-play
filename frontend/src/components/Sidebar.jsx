@@ -1,7 +1,7 @@
 import "./Sidebar.css";
 import { NavLink } from "react-router-dom";
 // import { BarChart3, Users, Plus, Film, FileText, HelpCircle, CreditCard, Settings, LogOut } from "lucide-react";
-import { X, BarChart3, Users, Plus, Film, FileText, HelpCircle, CreditCard, Settings, LogOut, Star, Bell, Layers, Building2, WalletCards } from "lucide-react";
+import { X, BarChart3, Users, Plus, Film, FileText, HelpCircle, CreditCard, Settings, LogOut, Star, Bell, Layers, Building2, WalletCards, Globe, Smartphone } from "lucide-react";
 
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: BarChart3, color: "#e50914" },
@@ -11,7 +11,8 @@ const NAV = [
   { id: "content", label: "Content Library", icon: Film, color: "#f59e0b" },
   { id: "ratings", label: "Ratings", icon: Star, color: "#facc15" },
   { id: "pricing", label: "Subscribed Users", icon: CreditCard, color: "#ec4899" },
-  { id: "plans", label: "Subscription Plans", icon: CreditCard, color: "#ec4899" },
+  { id: "plans", label: "App Plans", icon: Smartphone, color: "#ec4899" },
+  { id: "website-plans", label: "Website Plans", icon: Globe, color: "#38bdf8" },
   { id: "promo", label: "Promo&Voucher", icon: CreditCard, color: "#ec4899" },
   { id: "payment-gateways", label: "Payment Gateways", icon: WalletCards, color: "#10b981" },
   { id: "notifications", label: "Notifications", icon: Bell, color: "#f59e0b" },

@@ -77,7 +77,11 @@ app.use((req, res, next) => {
   return next();
 });
 
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buffer) => {
+    req.rawBody = buffer.toString("utf8");
+  },
+}));
 
 app.use(
   express.urlencoded({

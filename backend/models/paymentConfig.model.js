@@ -14,9 +14,13 @@ const paymentConfigSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    sabpaisaEnabled: {
+      type: Boolean,
+      default: false,
+    },
     defaultGateway: {
       type: String,
-      enum: ["razorpay", "zaakpay", "hdfc"],
+      enum: ["razorpay", "zaakpay", "hdfc", "sabpaisa"],
       default: "razorpay",
     },
     zaakpayMode: {
@@ -41,18 +45,20 @@ paymentConfigSchema.statics.getConfig = async function () {
       razorpayEnabled: true,
       zaakpayEnabled: false,
       hdfcEnabled: false,
+      sabpaisaEnabled: false,
       defaultGateway: "razorpay",
       zaakpayMode: process.env.ZAAKPAY_MODE || "test",
       hdfcMode: process.env.HDFC_MODE || "test",
     });
   } else {
     // Count active gateways
-    const activeCount = (config.razorpayEnabled ? 1 : 0) + (config.zaakpayEnabled ? 1 : 0) + (config.hdfcEnabled ? 1 : 0);
+    const activeCount = (config.razorpayEnabled ? 1 : 0) + (config.zaakpayEnabled ? 1 : 0) + (config.hdfcEnabled ? 1 : 0) + (config.sabpaisaEnabled ? 1 : 0);
     if (activeCount > 1) {
       // Keep only default gateway active
       config.razorpayEnabled = config.defaultGateway === "razorpay";
       config.zaakpayEnabled = config.defaultGateway === "zaakpay";
       config.hdfcEnabled = config.defaultGateway === "hdfc";
+      config.sabpaisaEnabled = config.defaultGateway === "sabpaisa";
       await config.save();
     }
   }

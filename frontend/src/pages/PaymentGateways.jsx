@@ -28,12 +28,15 @@ const PaymentGateways = () => {
     razorpayEnabled: true,
     zaakpayEnabled: false,
     hdfcEnabled: false,
+    sabpaisaEnabled: false,
     defaultGateway: "razorpay",
     zaakpayMode: "test",
     hdfcMode: "test",
     razorpayKeyConfigured: false,
     zaakpayKeyConfigured: false,
     hdfcKeyConfigured: false,
+    sabpaisaKeyConfigured: false,
+    sabpaisaMode: "test",
     hdfcVpa: "roccoplaywork@hdfcbank",
     hdfcStoreName: "ROCCOPLAY MEDIA",
   });
@@ -43,12 +46,15 @@ const PaymentGateways = () => {
     razorpayEnabled: true,
     zaakpayEnabled: false,
     hdfcEnabled: false,
+    sabpaisaEnabled: false,
     defaultGateway: "razorpay",
     zaakpayMode: "test",
     hdfcMode: "test",
     razorpayKeyConfigured: false,
     zaakpayKeyConfigured: false,
     hdfcKeyConfigured: false,
+    sabpaisaKeyConfigured: false,
+    sabpaisaMode: "test",
     hdfcVpa: "roccoplaywork@hdfcbank",
     hdfcStoreName: "ROCCOPLAY MEDIA",
   });
@@ -57,6 +63,7 @@ const PaymentGateways = () => {
   const [savingRzp, setSavingRzp] = useState(false);
   const [savingZaak, setSavingZaak] = useState(false);
   const [savingHdfc, setSavingHdfc] = useState(false);
+  const [savingSabpaisa, setSavingSabpaisa] = useState(false);
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -107,6 +114,7 @@ const PaymentGateways = () => {
         razorpayEnabled: true,
         zaakpayEnabled: false,
         hdfcEnabled: false,
+        sabpaisaEnabled: false,
         defaultGateway: "razorpay",
       }));
     } else {
@@ -125,6 +133,7 @@ const PaymentGateways = () => {
         zaakpayEnabled: true,
         razorpayEnabled: false,
         hdfcEnabled: false,
+        sabpaisaEnabled: false,
         defaultGateway: "zaakpay",
       }));
     } else {
@@ -149,8 +158,20 @@ const PaymentGateways = () => {
       setPgConfig((prev) => ({
         ...prev,
         hdfcEnabled: false,
+        sabpaisaEnabled: false,
       }));
     }
+  };
+
+  const handleToggleSabpaisa = (checked) => {
+    setPgConfig((prev) => checked ? ({
+      ...prev,
+      sabpaisaEnabled: true,
+      razorpayEnabled: false,
+      zaakpayEnabled: false,
+      hdfcEnabled: false,
+      defaultGateway: "sabpaisa",
+    }) : ({ ...prev, sabpaisaEnabled: false }));
   };
 
   // Save Razorpay Gateway specifically
@@ -256,6 +277,28 @@ const PaymentGateways = () => {
     }
   };
 
+  const handleSaveSabpaisa = async () => {
+    setMessage("");
+    setError("");
+    try {
+      setSavingSabpaisa(true);
+      const res = await API.put("/admin/payment-settings", {
+        activeGateway: pgConfig.sabpaisaEnabled ? "sabpaisa" : undefined,
+      });
+      if (res.data?.success) {
+        setMessage(`SabPaisa successfully saved as ${pgConfig.sabpaisaEnabled ? "Enabled (Other PGs Disabled)" : "Disabled"}! ✅`);
+        setSavedConfig({ ...savedConfig, ...res.data.data });
+        setTimeout(() => setMessage(""), 4000);
+        testPublicGatewayApi();
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to save SabPaisa configuration");
+      setTimeout(() => setError(""), 5000);
+    } finally {
+      setSavingSabpaisa(false);
+    }
+  };
+
   // Determine if cards differ from database saved state
   const isRzpChanged = pgConfig.razorpayEnabled !== savedConfig.razorpayEnabled;
   const isZaakChanged =
@@ -264,6 +307,7 @@ const PaymentGateways = () => {
   const isHdfcChanged =
     pgConfig.hdfcEnabled !== savedConfig.hdfcEnabled ||
     pgConfig.hdfcMode !== savedConfig.hdfcMode;
+  const isSabpaisaChanged = pgConfig.sabpaisaEnabled !== savedConfig.sabpaisaEnabled;
 
   const currentActiveGatewayName = pgConfig.razorpayEnabled
     ? "Razorpay"
@@ -271,6 +315,8 @@ const PaymentGateways = () => {
     ? "Zaakpay"
     : pgConfig.hdfcEnabled
     ? "HDFC Bank"
+    : pgConfig.sabpaisaEnabled
+    ? "SabPaisa"
     : "None";
 
   return (
@@ -601,6 +647,42 @@ const PaymentGateways = () => {
                   <XCircle size={16} /> Save as Disabled
                 </>
               )}
+            </button>
+          </div>
+        </div>
+
+        <div className={`pg-gateway-card ${pgConfig.sabpaisaEnabled ? "is-active" : "is-disabled"}`}>
+          <div className="pg-card-top">
+            <div className="pg-brand-wrap">
+              <div className="pg-brand-icon sabpaisa-icon">S</div>
+              <div>
+                <h3 className="pg-brand-name">SabPaisa</h3>
+                <span className="pg-brand-type">Hosted checkout for UPI, cards and net banking</span>
+              </div>
+            </div>
+            <label className="pg-switch-toggle" title="Enable SabPaisa (Disables Others)">
+              <input type="checkbox" checked={pgConfig.sabpaisaEnabled} onChange={(e) => handleToggleSabpaisa(e.target.checked)} />
+              <span className="pg-slider"></span>
+            </label>
+          </div>
+          <div className="pg-badge-row">
+            <span className={`pg-status-pill ${pgConfig.sabpaisaEnabled ? "active" : "disabled"}`}>
+              {pgConfig.sabpaisaEnabled ? "● Active in App & Web" : "○ Disabled (Inactive)"}
+            </span>
+            <span className="pg-env-pill test">Test / Staging</span>
+          </div>
+          <p className="pg-card-text">Backend-created SabPaisa checkout sessions. Subscriptions activate only after signed return and server-side enquiry verification.</p>
+          <div className="pg-uat-box">
+            <div className="pg-uat-title">Server configuration:</div>
+            <div className="pg-uat-grid">
+              <div><strong>Credentials:</strong> {pgConfig.sabpaisaKeyConfigured ? "Configured" : "Missing"}</div>
+              <div><strong>Mode:</strong> {(pgConfig.sabpaisaMode || "test").toUpperCase()}</div>
+            </div>
+          </div>
+          <div className="pg-card-footer">
+            <span className="pg-key-tag"><Key size={14} /> Keys stay in backend .env</span>
+            <button type="button" className={`pg-card-save-btn ${!isSabpaisaChanged ? "is-saved" : pgConfig.sabpaisaEnabled ? "save-enabled" : "save-disabled"}`} onClick={handleSaveSabpaisa} disabled={savingSabpaisa || !isSabpaisaChanged}>
+              {savingSabpaisa ? <><RefreshCw size={15} className="spin" /> Saving...</> : !isSabpaisaChanged ? <><Check size={16} /> Saved!</> : pgConfig.sabpaisaEnabled ? <><Check size={16} /> Save as Enabled</> : <><XCircle size={16} /> Save as Disabled</>}
             </button>
           </div>
         </div>

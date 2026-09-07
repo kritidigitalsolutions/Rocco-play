@@ -20,6 +20,13 @@ const {
   checkPaymentStatus: checkHdfcStatus,
 } = require("../../controllers/hdfc.controller");
 
+const {
+  initiatePayment: initiateSabpaisa,
+  handleReturn: handleSabpaisaReturn,
+  handleWebhook: handleSabpaisaWebhook,
+  checkPaymentStatus: checkSabpaisaStatus,
+} = require("../../controllers/sabpaisa.controller");
+
 // Public / User Gateway Info
 router.get("/gateways", getActiveGateways);
 
@@ -38,5 +45,11 @@ router.post("/hdfc/initiate", isAuth, initiateHdfc);
 router.post("/hdfc/callback", handleHdfcCallback);
 router.get("/hdfc/callback", handleHdfcCallback);
 router.get("/hdfc/status/:orderId", isAuth, checkHdfcStatus);
+
+// ── SabPaisa PG 3.0 Routes ──
+router.post("/sabpaisa/initiate", isAuth, initiateSabpaisa);
+router.get("/sabpaisa/return", handleSabpaisaReturn);
+router.post("/sabpaisa/webhook", handleSabpaisaWebhook);
+router.get("/sabpaisa/status/:orderId", isAuth, checkSabpaisaStatus);
 
 module.exports = router;

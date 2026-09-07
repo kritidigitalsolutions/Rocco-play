@@ -29,26 +29,41 @@ exports.getActiveGateways = async (req, res) => {
         process.env.HDFC_MERCHANT_ID &&
         process.env.HDFC_MERCHANT_KEY
     );
+    let sabpaisaEnabled = Boolean(
+      config.sabpaisaEnabled &&
+        process.env.SABPAISA_API_KEY &&
+        process.env.SABPAISA_SECRET_KEY &&
+        process.env.SABPAISA_MERCHANT_ID &&
+        process.env.SABPAISA_RETURN_URL
+    );
 
     // Strictly enforce only one gateway can be true at a time
-    const activeCount = (rzpEnabled ? 1 : 0) + (zaakEnabled ? 1 : 0) + (hdfcEnabled ? 1 : 0);
+    const activeCount = (rzpEnabled ? 1 : 0) + (zaakEnabled ? 1 : 0) + (hdfcEnabled ? 1 : 0) + (sabpaisaEnabled ? 1 : 0);
     if (activeCount > 1) {
-      if (config.defaultGateway === "hdfc") {
+      if (config.defaultGateway === "sabpaisa") {
+        rzpEnabled = false;
+        zaakEnabled = false;
+        hdfcEnabled = false;
+        sabpaisaEnabled = true;
+      } else if (config.defaultGateway === "hdfc") {
         rzpEnabled = false;
         zaakEnabled = false;
         hdfcEnabled = true;
+        sabpaisaEnabled = false;
       } else if (config.defaultGateway === "zaakpay") {
         rzpEnabled = false;
         zaakEnabled = true;
         hdfcEnabled = false;
+        sabpaisaEnabled = false;
       } else {
         rzpEnabled = true;
         zaakEnabled = false;
         hdfcEnabled = false;
+        sabpaisaEnabled = false;
       }
     }
 
-    const defaultGateway = hdfcEnabled ? "hdfc" : zaakEnabled ? "zaakpay" : "razorpay";
+    const defaultGateway = sabpaisaEnabled ? "sabpaisa" : hdfcEnabled ? "hdfc" : zaakEnabled ? "zaakpay" : "razorpay";
 
     return res.status(200).json({
       success: true,
@@ -69,6 +84,11 @@ exports.getActiveGateways = async (req, res) => {
           mode: config.hdfcMode || "test",
           vpa: process.env.HDFC_VPA || "roccoplaywork@hdfcbank",
           storeName: process.env.HDFC_STORE_NAME || "ROCCOPLAY MEDIA",
+        },
+        sabpaisa: {
+          enabled: sabpaisaEnabled,
+          name: "SabPaisa",
+          mode: process.env.SABPAISA_MODE || "test",
         },
       },
       defaultGateway,
@@ -361,33 +381,6 @@ exports.verifyPayment = async (
     }
 
     // ========================================
-    // CHECK EXISTING SUBSCRIPTION
-    // ========================================
-
-    let existing =
-      await Subscription.findOne({
-        user: userId,
-        status: "active",
-      });
-
-    existing =
-      await expireSubscriptionIfNeeded(
-        existing
-      );
-
-    if (
-      existing &&
-      existing.status ===
-        "active"
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "You already have an active subscription",
-      });
-    }
-
-    // ========================================
     // GET PLAN
     // ========================================
 
@@ -399,6 +392,44 @@ exports.verifyPayment = async (
         success: false,
         message: "Plan not found",
       });
+    }
+
+    const planPlatform = plan.platform || "app";
+
+    // ========================================
+    // CHECK EXISTING SUBSCRIPTION FOR THIS PLATFORM
+    // ========================================
+
+    const platformFilter = [{ platform: planPlatform }];
+    if (planPlatform === "app") {
+      platformFilter.push({ platform: { $exists: false } });
+      platformFilter.push({ platform: null });
+    }
+
+    let existing =
+      await Subscription.findOne({
+        user: userId,
+        status: "active",
+        $or: platformFilter,
+      }).sort({ createdAt: -1 });
+
+    if (existing) {
+      existing =
+        await expireSubscriptionIfNeeded(
+          existing
+        );
+
+      if (
+        existing &&
+        existing.status ===
+          "active"
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            `You already have an active ${planPlatform} subscription`,
+        });
+      }
     }
 
     // ========================================
@@ -458,18 +489,12 @@ exports.verifyPayment = async (
             ) / 100;
 
         } else {
-
-          discount =
-            promo.discountValue;
+          discount = promo.discountValue;
         }
 
-        finalAmount = Math.max(
-          plan.price - discount,
-          0
-        );
+        finalAmount = Math.max(plan.price - discount, 0);
 
         promo.usedCount += 1;
-
         await promo.save();
       }
     }
@@ -477,51 +502,34 @@ exports.verifyPayment = async (
     // ========================================
     // CREATE SUBSCRIPTION
     // ========================================
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + plan.duration);
 
-    const startDate =
-      new Date();
+    const subscription = await Subscription.create({
+      user: userId,
+      plan: plan._id,
+      platform: plan.platform || "app",
+      status: "active",
+      paymentGateway: "razorpay",
+      paymentId: razorpay_payment_id,
+      subscriptionId: razorpay_order_id,
+      amount: finalAmount,
+      startDate,
+      endDate,
+    });
 
-    const endDate =
-      new Date();
-
-    endDate.setUTCDate(
-      endDate.getUTCDate() +
-        plan.duration
-    );
-
-    const subscription =
-      await Subscription.create({
-        user: userId,
-        plan: plan._id,
-        status: "active",
-        paymentGateway: "razorpay",
-
-        paymentId:
-          razorpay_payment_id,
-
-        subscriptionId:
-          razorpay_order_id,
-
-        amount: finalAmount,
-
-        startDate,
-        endDate,
-      });
+    await User.findByIdAndUpdate(userId, {
+      $push: { subscriptions: subscription._id },
+    });
 
     res.status(200).json({
       success: true,
-      message:
-        "Payment verified",
+      message: "Payment verified",
       subscription,
     });
-
   } catch (err) {
-
-    console.error(
-      "Verify Payment Error:",
-      err
-    );
-
+    console.error("Verify Payment Error:", err);
     res.status(500).json({
       success: false,
       message: err.message,

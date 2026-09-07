@@ -35,6 +35,9 @@ const HDFC_CONFIG = {
   get publicKeyPath() {
     return process.env.PUBLIC_KEY_PATH || "./keys/key_056f0ec231c745f899ca852b5c406777.pem";
   },
+  get jwtSecret() {
+    return process.env.HDFC_JWT_SECRET || "default_jwt_secret_change_in_production";
+  },
 };
 
 let juspay = null;
@@ -102,6 +105,14 @@ async function getHdfcOrderStatus(orderId) {
 
   try {
     const response = await juspay.order.status(orderId);
+    
+    try {
+      const logPath = path.join(__dirname, "..", "..", "order_status_jwt_response.log");
+      fs.appendFileSync(logPath, "--- RAW HDFC ORDER STATUS RESPONSE ---\n" + JSON.stringify(response, null, 2) + "\n\n");
+    } catch (logErr) {
+      console.error("Failed to write raw response to log file:", logErr);
+    }
+
     return response;
   } catch (err) {
     console.error("HDFC Order Status Error:", err);

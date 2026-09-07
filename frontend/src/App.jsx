@@ -15,6 +15,7 @@ const AddContent = lazy(() => import("./pages/AddContent"));
 const Content = lazy(() => import("./pages/Content"));
 const RatingsPage = lazy(() => import("./pages/Ratings"));
 const PlansPage = lazy(() => import("./pages/Plans"));
+const WebsitePlansPage = lazy(() => import("./pages/WebsitePlans"));
 const PromoVoucher = lazy(() => import("./pages/PromoVoucher"));
 const SubscriptionPage = lazy(() => import("./pages/Subscriptions"));
 const NotificationsPage = lazy(() => import("./pages/Notifications"));
@@ -102,6 +103,7 @@ function App() {
             <Route path="content" element={<Content />} />
             <Route path="ratings" element={<RatingsPage />} />
             <Route path="plans" element={<PlansPage />} />
+            <Route path="website-plans" element={<WebsitePlansPage />} />
             <Route path="promo" element={<PromoVoucher />} />
             <Route path="pricing" element={<SubscriptionPage />} />
             <Route path="notifications" element={<NotificationsPage />} />

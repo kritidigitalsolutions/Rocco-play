@@ -10,12 +10,15 @@ exports.getPaymentSettings = async (req, res) => {
         razorpayEnabled: config.razorpayEnabled,
         zaakpayEnabled: config.zaakpayEnabled,
         hdfcEnabled: config.hdfcEnabled,
+        sabpaisaEnabled: config.sabpaisaEnabled,
         defaultGateway: config.defaultGateway,
         zaakpayMode: config.zaakpayMode,
         hdfcMode: config.hdfcMode,
         razorpayKeyConfigured: !!process.env.RAZORPAY_KEY_ID,
         zaakpayKeyConfigured: !!(process.env.ZAAKPAY_MERCHANT_ID && process.env.ZAAKPAY_SECRET_KEY),
         hdfcKeyConfigured: !!(process.env.HDFC_MERCHANT_ID && process.env.HDFC_MERCHANT_KEY),
+        sabpaisaKeyConfigured: !!(process.env.SABPAISA_API_KEY && process.env.SABPAISA_SECRET_KEY && process.env.SABPAISA_MERCHANT_ID && process.env.SABPAISA_RETURN_URL),
+        sabpaisaMode: process.env.SABPAISA_MODE || "test",
         hdfcVpa: process.env.HDFC_VPA || "roccoplaywork@hdfcbank",
         hdfcStoreName: process.env.HDFC_STORE_NAME || "ROCCOPLAY MEDIA",
       },
@@ -38,6 +41,7 @@ exports.updatePaymentSettings = async (req, res) => {
       razorpayEnabled,
       zaakpayEnabled,
       hdfcEnabled,
+      sabpaisaEnabled,
       zaakpayMode,
       hdfcMode,
       activeGateway,
@@ -50,34 +54,58 @@ exports.updatePaymentSettings = async (req, res) => {
       updateData.razorpayEnabled = true;
       updateData.zaakpayEnabled = false;
       updateData.hdfcEnabled = false;
+      updateData.sabpaisaEnabled = false;
       updateData.defaultGateway = "razorpay";
     } else if (activeGateway === "zaakpay") {
       updateData.zaakpayEnabled = true;
       updateData.razorpayEnabled = false;
       updateData.hdfcEnabled = false;
+      updateData.sabpaisaEnabled = false;
       updateData.defaultGateway = "zaakpay";
     } else if (activeGateway === "hdfc") {
       updateData.hdfcEnabled = true;
       updateData.razorpayEnabled = false;
       updateData.zaakpayEnabled = false;
+      updateData.sabpaisaEnabled = false;
       updateData.defaultGateway = "hdfc";
+    } else if (activeGateway === "sabpaisa") {
+      if (!(process.env.SABPAISA_API_KEY && process.env.SABPAISA_SECRET_KEY && process.env.SABPAISA_MERCHANT_ID && process.env.SABPAISA_RETURN_URL)) {
+        return res.status(400).json({ success: false, message: "Configure SABPAISA_API_KEY, SABPAISA_SECRET_KEY, SABPAISA_MERCHANT_ID, and SABPAISA_RETURN_URL before enabling SabPaisa" });
+      }
+      updateData.sabpaisaEnabled = true;
+      updateData.razorpayEnabled = false;
+      updateData.zaakpayEnabled = false;
+      updateData.hdfcEnabled = false;
+      updateData.defaultGateway = "sabpaisa";
     }
     // 2. Individual flags (enforce mutual exclusivity)
     else if (razorpayEnabled === true) {
       updateData.razorpayEnabled = true;
       updateData.zaakpayEnabled = false;
       updateData.hdfcEnabled = false;
+      updateData.sabpaisaEnabled = false;
       updateData.defaultGateway = "razorpay";
     } else if (zaakpayEnabled === true) {
       updateData.zaakpayEnabled = true;
       updateData.razorpayEnabled = false;
       updateData.hdfcEnabled = false;
+      updateData.sabpaisaEnabled = false;
       updateData.defaultGateway = "zaakpay";
     } else if (hdfcEnabled === true) {
       updateData.hdfcEnabled = true;
       updateData.razorpayEnabled = false;
       updateData.zaakpayEnabled = false;
+      updateData.sabpaisaEnabled = false;
       updateData.defaultGateway = "hdfc";
+    } else if (sabpaisaEnabled === true) {
+      if (!(process.env.SABPAISA_API_KEY && process.env.SABPAISA_SECRET_KEY && process.env.SABPAISA_MERCHANT_ID && process.env.SABPAISA_RETURN_URL)) {
+        return res.status(400).json({ success: false, message: "Configure SABPAISA_API_KEY, SABPAISA_SECRET_KEY, SABPAISA_MERCHANT_ID, and SABPAISA_RETURN_URL before enabling SabPaisa" });
+      }
+      updateData.sabpaisaEnabled = true;
+      updateData.razorpayEnabled = false;
+      updateData.zaakpayEnabled = false;
+      updateData.hdfcEnabled = false;
+      updateData.defaultGateway = "sabpaisa";
     }
 
     if (zaakpayMode && ["test", "live"].includes(zaakpayMode)) {
@@ -103,6 +131,7 @@ exports.updatePaymentSettings = async (req, res) => {
         razorpayEnabled: config.razorpayEnabled,
         zaakpayEnabled: config.zaakpayEnabled,
         hdfcEnabled: config.hdfcEnabled,
+        sabpaisaEnabled: config.sabpaisaEnabled,
         defaultGateway: config.defaultGateway,
         zaakpayMode: config.zaakpayMode,
         hdfcMode: config.hdfcMode,

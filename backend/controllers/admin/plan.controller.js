@@ -3,14 +3,28 @@ const Plan = require("../../models/plan.model");
 // CREATE PLAN
 exports.createPlan = async (req, res) => {
   try {
-    const { name, price, duration, features, isActive } = req.body;
+    const {
+      name,
+      price,
+      duration,
+      features,
+      isActive,
+      planType,
+      sortOrder,
+      isRecommended,
+      platform,
+    } = req.body;
 
     const plan = await Plan.create({
       name,
       price,
       duration,
       features,
-      isActive,
+      isActive: isActive !== undefined ? isActive : true,
+      planType: planType || "monthly",
+      sortOrder: sortOrder || 0,
+      isRecommended: Boolean(isRecommended),
+      platform: platform === "website" ? "website" : "app",
     });
 
     res.status(201).json({
@@ -18,7 +32,6 @@ exports.createPlan = async (req, res) => {
       message: "Plan created successfully",
       plan,
     });
-
   } catch (err) {
     res.status(500).json({
       success: false,
@@ -51,7 +64,6 @@ exports.updatePlan = async (req, res) => {
       message: "Plan updated successfully",
       plan,
     });
-
   } catch (err) {
     res.status(500).json({
       success: false,
@@ -76,7 +88,6 @@ exports.deletePlan = async (req, res) => {
       success: true,
       message: "Plan deleted successfully",
     });
-
   } catch (err) {
     res.status(500).json({
       success: false,
@@ -88,14 +99,27 @@ exports.deletePlan = async (req, res) => {
 // GET ALL PLANS (ADMIN)
 exports.getAllPlans = async (req, res) => {
   try {
-    const plans = await Plan.find().sort({ createdAt: -1 });
+    const platform = (req.query.platform || "").toLowerCase();
+    const query = {};
+
+    if (platform === "website") {
+      query.platform = "website";
+    } else if (platform === "app") {
+      query.$or = [
+        { platform: "app" },
+        { platform: { $exists: false } },
+        { platform: null },
+      ];
+    }
+
+    const plans = await Plan.find(query).sort({ sortOrder: 1, createdAt: -1 });
 
     res.json({
       success: true,
       count: plans.length,
+      platform: platform || "all",
       plans,
     });
-
   } catch (err) {
     res.status(500).json({
       success: false,

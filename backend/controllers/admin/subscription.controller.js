@@ -6,6 +6,10 @@ const User = require(
   "../../models/user.model"
 );
 
+const Plan = require(
+  "../../models/plan.model"
+);
+
 
 // =====================================================
 // AUTO EXPIRE OLD SUBSCRIPTIONS
@@ -355,7 +359,19 @@ exports.getAllSubscriptions =
         query.status = status;
       }
 
-      // 2. Search Filter (by User name or email)
+      // 2. Platform Filter
+      const platform = (req.query.platform || "").toLowerCase();
+      if (platform === "website") {
+        query.platform = "website";
+      } else if (platform === "app") {
+        query.$or = [
+          { platform: "app" },
+          { platform: { $exists: false } },
+          { platform: null },
+        ];
+      }
+
+      // 3. Search Filter (by User name or email)
       if (search) {
         const users = await User.find({
           $or: [
@@ -486,9 +502,13 @@ exports.createSubscription = async (req, res) => {
       });
     }
 
+    const planDoc = await Plan.findById(plan);
+    const subPlatform = req.body.platform || planDoc?.platform || "app";
+
     const subData = {
       user,
       plan,
+      platform: subPlatform,
       amount: amount || 0,
       currency: currency || "INR",
       startDate: new Date(startDate),

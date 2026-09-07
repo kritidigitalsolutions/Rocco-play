@@ -13,8 +13,6 @@ const planSchema =
         required: true,
 
         trim: true,
-
-        unique: true,
       },
 
       // ========================================
@@ -96,6 +94,16 @@ const planSchema =
 
         default: false,
       },
+
+      // ========================================
+      // PLATFORM (APP / WEBSITE)
+      // ========================================
+      platform: {
+        type: String,
+        enum: ["app", "website"],
+        default: "app",
+        index: true,
+      },
     },
 
     {
@@ -111,6 +119,11 @@ const planSchema =
 planSchema.index({
   sortOrder: 1,
 });
+
+planSchema.index(
+  { name: 1, platform: 1 },
+  { unique: true }
+);
 
 // ========================================
 // EXPORT

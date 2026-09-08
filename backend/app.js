@@ -38,7 +38,8 @@ const defaultAllowed = [
   "https://roccoplay.in",
   "https://www.roccoplay.in",
   "https://roccoplay-admin-panel.vercel.app",
-  "https://roccoplay-sigma.vercel.app"
+  "https://roccoplay-sigma.vercel.app",
+  "https://roccoplayott.netlify.app",
 ];
 
 const allowedOrigins = [...new Set([...frontendUrls, ...adminUrls, ...defaultAllowed])];

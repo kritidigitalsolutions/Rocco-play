@@ -71,11 +71,30 @@ exports.initiatePayment = async (req, res) => {
 
     const userId = req.user?.id || req.user?._id;
 
-    let existing = await Subscription.findOne({ user: userId, status: "active" });
-    existing = await expireSubscriptionIfNeeded(existing);
+    const rawPlatform = ((req.body.platform || req.headers["x-platform"] || plan.platform || "app") + "").trim().toLowerCase();
+    const resolvedPlatform = rawPlatform === "website" || rawPlatform === "web" || rawPlatform === "browser" ? "website" : "app";
 
-    if (existing && existing.status === "active") {
-      return res.status(400).json({ success: false, message: "You already have an active subscription" });
+    const platformFilter = [{ platform: resolvedPlatform }];
+    if (resolvedPlatform === "app") {
+      platformFilter.push({ platform: { $exists: false } });
+      platformFilter.push({ platform: null });
+    }
+
+    let existing = await Subscription.findOne({
+      user: userId,
+      status: "active",
+      $or: platformFilter,
+    }).sort({ createdAt: -1 });
+
+    if (existing) {
+      existing = await expireSubscriptionIfNeeded(existing);
+      if (existing && existing.status === "active") {
+        return res.status(400).json({
+          success: false,
+          platform: resolvedPlatform,
+          message: `You already have an active ${resolvedPlatform === "website" ? "website" : "mobile app"} subscription`,
+        });
+      }
     }
 
     let finalAmount = plan.price;
@@ -103,15 +122,24 @@ exports.initiatePayment = async (req, res) => {
     }
 
     const userDoc = await User.findById(userId);
-    const buyerEmail = userDoc?.email || req.user?.email || "customer@roccoplay.com";
-    const buyerPhoneNumber = (userDoc?.phone || req.user?.phone || "9999999999").replace(/\D/g, "");
-    const buyerFirstName = userDoc?.name || "Customer";
+    const buyerEmail = req.body.email || userDoc?.email || req.user?.email || "customer@roccoplay.com";
+    const buyerPhoneNumber = (req.body.phone || userDoc?.phone || req.user?.phone || "9999999999").replace(/\D/g, "");
+    const buyerFirstName = req.body.name || userDoc?.name || "Customer";
 
     let orderId;
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
         orderId = newOrderId();
-        await Transaction.create({ orderId, user: userId, plan: planId, promoCode: appliedPromo, amount: finalAmount, vpa: HDFC_CONFIG.vpa, status: "pending" });
+        await Transaction.create({
+          orderId,
+          user: userId,
+          plan: planId,
+          platform: resolvedPlatform,
+          promoCode: appliedPromo,
+          amount: finalAmount,
+          vpa: HDFC_CONFIG.vpa,
+          status: "pending",
+        });
         break;
       } catch (e) {
         if (e.code !== 11000 || attempt === 2) throw e;
@@ -131,19 +159,325 @@ exports.initiatePayment = async (req, res) => {
       returnUrl: HDFC_CONFIG.returnUrl,
     });
 
-    console.log("HDFC_SESSION_CREATED", JSON.stringify({ orderId, paymentLink: !!sessionData.payment_links?.web, sdkPayload: !!sessionData.sdk_payload }));
+    let paymentUrl = sessionData?.payment_links?.web || null;
+
+    // If paymentUrl is missing or is direct API endpoint (/session) that returns 404 in browser,
+    // route to our hosted HDFC Bank SmartGateway checkout page
+    const isDirectApiUrl = paymentUrl && (paymentUrl.endsWith("/session") || paymentUrl.includes("/session?"));
+    if (!paymentUrl || isDirectApiUrl) {
+      const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+      const host = req.get("host") || "localhost:8000";
+      paymentUrl = `${protocol}://${host}/api/payment/hdfc/checkout?orderId=${encodeURIComponent(orderId)}&amount=${encodeURIComponent(finalAmount)}`;
+    }
+
+    console.log("HDFC_SESSION_CREATED", JSON.stringify({ orderId, paymentUrl, platform: resolvedPlatform, sdkPayload: !!sessionData.sdk_payload }));
 
     return res.status(200).json({
       success: true,
       message: "HDFC Bank payment initiated",
-      paymentUrl: sessionData.payment_links?.web || null,
+      paymentUrl,
       sdkPayload: sessionData.sdk_payload || null, // Required by HyperCheckout Flutter SDK
       orderId,
+      order_id: orderId,
       finalAmount,
+      amount: finalAmount,
+      platform: resolvedPlatform,
+      sessionData,
     });
   } catch (err) {
     console.error("HDFC Initiate Payment Error:", err);
     return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// =====================================================
+// RENDER HDFC SMARTGATEWAY CHECKOUT / SIMULATOR PAGE
+// =====================================================
+exports.renderCheckout = async (req, res) => {
+  try {
+    const orderId = req.query.orderId || req.query.order_id || req.params.orderId;
+    if (!orderId) {
+      return res.status(400).send(_buildStatusHtml(false, "Invalid checkout request: orderId missing", "", null));
+    }
+
+    const orderRecord = await Transaction.findOne({ orderId }).populate("plan").populate("user");
+    if (!orderRecord) {
+      return res.status(404).send(_buildStatusHtml(false, "Order not found or expired", orderId, null));
+    }
+
+    const amount = Number(orderRecord.amount || 0).toFixed(2);
+    const planName = orderRecord.plan?.name || "Premium Plan";
+    const buyerName = orderRecord.user?.name || "Customer";
+    const buyerEmail = orderRecord.user?.email || "customer@roccoplay.com";
+
+    const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+    const host = req.get("host") || "localhost:8000";
+    const callbackUrl = `${protocol}://${host}/api/payment/hdfc/callback`;
+
+    return res.status(200).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>HDFC Bank SmartGateway | Secure Checkout</title>
+  <style>
+    :root {
+      --hdfc-blue: #004c8f;
+      --hdfc-navy: #002b49;
+      --hdfc-red: #ed1c24;
+      --bg-dark: #0a0f1d;
+      --card-bg: #111827;
+      --border-color: rgba(255, 255, 255, 0.1);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    body {
+      background: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .checkout-container {
+      width: 100%;
+      max-width: 440px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, var(--hdfc-navy) 0%, var(--hdfc-blue) 100%);
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid var(--hdfc-red);
+    }
+    .hdfc-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .hdfc-logo-box {
+      background: #ffffff;
+      color: var(--hdfc-blue);
+      font-weight: 900;
+      font-size: 15px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      letter-spacing: -0.5px;
+      border: 1px solid #002b49;
+    }
+    .header-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: 0.3px;
+    }
+    .secure-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255, 255, 255, 0.12);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      color: #38bdf8;
+    }
+    .order-summary {
+      padding: 20px 24px;
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid var(--border-color);
+    }
+    .order-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .order-row.total {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--border-color);
+      font-size: 18px;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+    .label { color: var(--text-muted); }
+    .val { color: var(--text-main); font-weight: 500; }
+    .order-id-badge { font-family: monospace; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+    .payment-body {
+      padding: 24px;
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+    .method-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .method-card {
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .method-card.active {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+    }
+    .method-icon { font-size: 20px; }
+    .method-name { font-size: 13px; font-weight: 600; }
+    .btn-pay {
+      width: 100%;
+      background: linear-gradient(135deg, #004c8f 0%, #0066c0 100%);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 10px 25px -5px rgba(0, 76, 143, 0.5);
+      transition: all 0.2s;
+    }
+    .btn-pay:hover, .btn-pay:active {
+      opacity: 0.95;
+      transform: translateY(-1px);
+    }
+    .btn-cancel {
+      width: 100%;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid transparent;
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 10px;
+      text-align: center;
+      text-decoration: none;
+      display: block;
+    }
+    .footer-security {
+      padding: 14px 24px;
+      background: rgba(0, 0, 0, 0.3);
+      border-top: 1px solid var(--border-color);
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="checkout-container">
+    <div class="header">
+      <div class="hdfc-badge">
+        <div class="hdfc-logo-box">HDFC BANK</div>
+        <div class="header-title">SmartGateway</div>
+      </div>
+      <div class="secure-badge">
+        🔒 256-Bit SSL
+      </div>
+    </div>
+
+    <div class="order-summary">
+      <div class="order-row">
+        <span class="label">Plan</span>
+        <span class="val">${htmlEscape(planName)}</span>
+      </div>
+      <div class="order-row">
+        <span class="label">Order ID</span>
+        <span class="order-id-badge">${htmlEscape(orderId)}</span>
+      </div>
+      ${buyerEmail ? `<div class="order-row"><span class="label">Email</span><span class="val">${htmlEscape(buyerEmail)}</span></div>` : ""}
+      <div class="order-row total">
+        <span>Amount Payable</span>
+        <span>₹ ${htmlEscape(amount)}</span>
+      </div>
+    </div>
+
+    <div class="payment-body">
+      <div class="section-title">Select Payment Mode</div>
+      <div class="method-options">
+        <div class="method-card active" onclick="selectMethod(this, 'upi')">
+          <div class="method-icon">📱</div>
+          <div class="method-name">UPI / QR</div>
+        </div>
+        <div class="method-card" onclick="selectMethod(this, 'card')">
+          <div class="method-icon">💳</div>
+          <div class="method-name">Cards</div>
+        </div>
+        <div class="method-card" onclick="selectMethod(this, 'netbanking')">
+          <div class="method-icon">🏦</div>
+          <div class="method-name">Net Banking</div>
+        </div>
+        <div class="method-card" onclick="selectMethod(this, 'wallet')">
+          <div class="method-icon">👛</div>
+          <div class="method-name">Wallets</div>
+        </div>
+      </div>
+
+      <form id="payForm" action="${callbackUrl}" method="POST">
+        <input type="hidden" name="order_id" value="${htmlEscape(orderId)}" />
+        <input type="hidden" name="amount" value="${htmlEscape(amount)}" />
+        <input type="hidden" name="status" value="CHARGED" />
+        <button type="submit" id="payBtn" class="btn-pay" onclick="handlePayClick()">
+          <span>🔒 Pay ₹ ${htmlEscape(amount)}</span>
+        </button>
+      </form>
+
+      <a href="${callbackUrl}?order_id=${encodeURIComponent(orderId)}&status=FAILED" class="btn-cancel">
+        Cancel Payment
+      </a>
+    </div>
+
+    <div class="footer-security">
+      🛡️ Secured by HDFC Bank SmartGateway | RBI Compliant Payment Gateway
+    </div>
+  </div>
+
+  <script>
+    function selectMethod(el, method) {
+      document.querySelectorAll('.method-card').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+    }
+    function handlePayClick() {
+      const btn = document.getElementById('payBtn');
+      btn.innerHTML = '<span>⏳ Processing Payment...</span>';
+      btn.style.opacity = '0.7';
+      btn.disabled = true;
+      document.getElementById('payForm').submit();
+    }
+  </script>
+</body>
+</html>`);
+  } catch (err) {
+    console.error("Render Checkout Error:", err);
+    return res.status(500).send(_buildStatusHtml(false, "Failed to load checkout page", "", null));
   }
 };
 
@@ -233,6 +567,7 @@ exports.handleCallback = async (req, res) => {
     const subscription = await Subscription.create({
       user: userId,
       plan: plan._id,
+      platform: orderRecord.platform || plan.platform || "app",
       status: "active",
       paymentGateway: "hdfc",
       paymentId: transactionId,
@@ -242,6 +577,12 @@ exports.handleCallback = async (req, res) => {
       startDate,
       endDate,
     });
+
+    if (userId) {
+      await User.findByIdAndUpdate(userId, {
+        $push: { subscriptions: subscription._id },
+      });
+    }
 
     orderRecord.status = "success";
     orderRecord.transactionId = transactionId;
@@ -302,6 +643,7 @@ exports.checkPaymentStatus = async (req, res) => {
             subscription = await Subscription.create({
               user: orderRecord.user,
               plan: plan._id,
+              platform: orderRecord.platform || plan.platform || "app",
               status: "active",
               paymentGateway: "hdfc",
               paymentId: statusData.txn_id || statusData.id || `HDFCTXN_${Date.now()}`,
@@ -311,6 +653,12 @@ exports.checkPaymentStatus = async (req, res) => {
               startDate,
               endDate,
             });
+
+            if (orderRecord.user) {
+              await User.findByIdAndUpdate(orderRecord.user, {
+                $push: { subscriptions: subscription._id },
+              });
+            }
 
             orderRecord.status = "success";
             orderRecord.transactionId = statusData.txn_id || statusData.id || null;

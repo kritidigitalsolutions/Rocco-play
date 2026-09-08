@@ -1,14 +1,10 @@
 const Voucher = require("../models/voucher.model");
-
-const Subscription = require(
-  "../models/subscription.model"
-);
+const Subscription = require("../models/subscription.model");
+const User = require("../models/user.model");
 
 const {
   expireSubscriptionIfNeeded,
-} = require(
-  "../utils/subscription.helper"
-);
+} = require("../utils/subscription.helper");
 
 
 // =====================================================
@@ -20,7 +16,7 @@ exports.redeemVoucher = async (
 ) => {
   try {
 
-    const userId = req.user.id;
+    const userId = req.user?.id || req.user?._id;
 
     const { code } = req.body;
 
@@ -37,6 +33,13 @@ exports.redeemVoucher = async (
       return res.status(400).json({
         success: false,
         message: "Invalid voucher",
+      });
+    }
+
+    if (!voucher.plan) {
+      return res.status(404).json({
+        success: false,
+        message: "Plan associated with voucher not found",
       });
     }
 
@@ -59,30 +62,41 @@ exports.redeemVoucher = async (
       });
     }
 
+    const planPlatform = voucher.plan.platform || "app";
+
     // ========================================
-    // CHECK EXISTING SUBSCRIPTION
+    // CHECK EXISTING SUBSCRIPTION FOR THIS PLATFORM
     // ========================================
+
+    const platformFilter = [{ platform: planPlatform }];
+    if (planPlatform === "app") {
+      platformFilter.push({ platform: { $exists: false } });
+      platformFilter.push({ platform: null });
+    }
 
     let existing =
       await Subscription.findOne({
         user: userId,
         status: "active",
-      });
+        $or: platformFilter,
+      }).sort({ createdAt: -1 });
 
-    existing =
-      await expireSubscriptionIfNeeded(
-        existing
-      );
+    if (existing) {
+      existing =
+        await expireSubscriptionIfNeeded(
+          existing
+        );
 
-    if (
-      existing &&
-      existing.status === "active"
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "You already have an active subscription",
-      });
+      if (
+        existing &&
+        existing.status === "active"
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            `You already have an active ${planPlatform} subscription`,
+        });
+      }
     }
 
     // ========================================
@@ -97,22 +111,27 @@ exports.redeemVoucher = async (
 
     endDate.setUTCDate(
       endDate.getUTCDate() +
-        voucher.validityDays
+        (voucher.validityDays || voucher.plan.duration || 30)
     );
 
     const subscription =
       await Subscription.create({
         user: userId,
-
         plan: voucher.plan._id,
-
+        platform: planPlatform,
+        paymentGateway: "voucher",
         amount: 0,
-
+        currency: "INR",
         startDate,
         endDate,
-
         status: "active",
       });
+
+    if (userId) {
+      await User.findByIdAndUpdate(userId, {
+        $push: { subscriptions: subscription._id },
+      });
+    }
 
     // ========================================
     // UPDATE VOUCHER

@@ -16,6 +16,7 @@ const {
 
 const {
   initiatePayment: initiateHdfc,
+  renderCheckout: renderHdfcCheckout,
   handleCallback: handleHdfcCallback,
   checkPaymentStatus: checkHdfcStatus,
 } = require("../../controllers/hdfc.controller");
@@ -42,6 +43,7 @@ router.get("/zaakpay/status/:orderId", isAuth, checkZaakpayStatus);
 
 // ── HDFC Bank Routes ──
 router.post("/hdfc/initiate", isAuth, initiateHdfc);
+router.get("/hdfc/checkout", renderHdfcCheckout);
 router.post("/hdfc/callback", handleHdfcCallback);
 router.get("/hdfc/callback", handleHdfcCallback);
 router.get("/hdfc/status/:orderId", isAuth, checkHdfcStatus);
@@ -49,7 +51,11 @@ router.get("/hdfc/status/:orderId", isAuth, checkHdfcStatus);
 // ── SabPaisa PG 3.0 Routes ──
 router.post("/sabpaisa/initiate", isAuth, initiateSabpaisa);
 router.get("/sabpaisa/return", handleSabpaisaReturn);
+router.post("/sabpaisa/return", handleSabpaisaReturn);
 router.post("/sabpaisa/webhook", handleSabpaisaWebhook);
 router.get("/sabpaisa/status/:orderId", isAuth, checkSabpaisaStatus);
 
 module.exports = router;
+
+
+

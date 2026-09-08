@@ -45,15 +45,16 @@ exports.verifySubscription = async (req, res) => {
       });
     }
 
-    const planPlatform = plan.platform || "app";
+    const rawPlatform = ((req.body.platform || req.headers["x-platform"] || plan.platform || "app") + "").trim().toLowerCase();
+    const resolvedPlatform = rawPlatform === "website" || rawPlatform === "web" || rawPlatform === "browser" ? "website" : "app";
 
     // ========================================
     // CHECK EXISTING SUBSCRIPTION FOR THIS PLATFORM
     // ========================================
     const platformFilter = [
-      { platform: planPlatform },
+      { platform: resolvedPlatform },
     ];
-    if (planPlatform === "app") {
+    if (resolvedPlatform === "app") {
       platformFilter.push({ platform: { $exists: false } });
       platformFilter.push({ platform: null });
     }
@@ -70,7 +71,8 @@ exports.verifySubscription = async (req, res) => {
       if (existing && existing.status === "active") {
         return res.status(400).json({
           success: false,
-          message: `Already have an active ${planPlatform} subscription`,
+          platform: resolvedPlatform,
+          message: `Already have an active ${resolvedPlatform === "website" ? "website" : "mobile app"} subscription`,
         });
       }
     }
@@ -138,7 +140,7 @@ exports.verifySubscription = async (req, res) => {
     const subscription = await Subscription.create({
       user: userId,
       plan: plan._id,
-      platform: planPlatform,
+      platform: resolvedPlatform,
       amount: finalAmount,
       startDate,
       endDate,

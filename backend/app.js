@@ -32,9 +32,11 @@ const adminUrls = process.env.ADMIN_URL
   : [];
 
 const defaultAllowed = [
-process.env.FRONTEND_URL,
-  "http://localhost:5173",
+  process.env.FRONTEND_URL,
   "http://localhost:5174",
+  "https://admin.roccoplay.in",
+  "https://roccoplay.in",
+  "https://www.roccoplay.in",
   "https://roccoplay-admin-panel.vercel.app",
   "https://roccoplay-sigma.vercel.app"
 ];

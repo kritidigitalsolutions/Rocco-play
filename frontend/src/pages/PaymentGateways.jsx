@@ -2,23 +2,20 @@ import React, { useState, useEffect } from "react";
 import API from "../api/axios";
 import {
   CreditCard,
-  ShieldCheck,
   CheckCircle,
   AlertCircle,
   Zap,
   Globe,
   Settings2,
   RefreshCw,
-  ExternalLink,
-  Lock,
-  Layers,
   Key,
   Server,
   Save,
   Check,
   XCircle,
   Building2,
-  QrCode
+  QrCode,
+  Layers
 } from "lucide-react";
 import "./PaymentGateways.css";
 
@@ -60,6 +57,7 @@ const PaymentGateways = () => {
   });
 
   const [loading, setLoading] = useState(true);
+  const [savingAll, setSavingAll] = useState(false);
   const [savingRzp, setSavingRzp] = useState(false);
   const [savingZaak, setSavingZaak] = useState(false);
   const [savingHdfc, setSavingHdfc] = useState(false);
@@ -106,72 +104,63 @@ const PaymentGateways = () => {
     fetchSettings();
   }, []);
 
-  // Toggle Razorpay ON (automatically turns Zaakpay and HDFC OFF)
+  // Independent Toggle Handlers (Multiple gateways can be enabled together)
   const handleToggleRazorpay = (checked) => {
-    if (checked) {
-      setPgConfig((prev) => ({
-        ...prev,
-        razorpayEnabled: true,
-        zaakpayEnabled: false,
-        hdfcEnabled: false,
-        sabpaisaEnabled: false,
-        defaultGateway: "razorpay",
-      }));
-    } else {
-      setPgConfig((prev) => ({
-        ...prev,
-        razorpayEnabled: false,
-      }));
-    }
+    setPgConfig((prev) => ({
+      ...prev,
+      razorpayEnabled: checked,
+    }));
   };
 
-  // Toggle Zaakpay ON (automatically turns Razorpay and HDFC OFF)
   const handleToggleZaakpay = (checked) => {
-    if (checked) {
-      setPgConfig((prev) => ({
-        ...prev,
-        zaakpayEnabled: true,
-        razorpayEnabled: false,
-        hdfcEnabled: false,
-        sabpaisaEnabled: false,
-        defaultGateway: "zaakpay",
-      }));
-    } else {
-      setPgConfig((prev) => ({
-        ...prev,
-        zaakpayEnabled: false,
-      }));
-    }
+    setPgConfig((prev) => ({
+      ...prev,
+      zaakpayEnabled: checked,
+    }));
   };
 
-  // Toggle HDFC ON (automatically turns Razorpay and Zaakpay OFF)
   const handleToggleHdfc = (checked) => {
-    if (checked) {
-      setPgConfig((prev) => ({
-        ...prev,
-        hdfcEnabled: true,
-        razorpayEnabled: false,
-        zaakpayEnabled: false,
-        defaultGateway: "hdfc",
-      }));
-    } else {
-      setPgConfig((prev) => ({
-        ...prev,
-        hdfcEnabled: false,
-        sabpaisaEnabled: false,
-      }));
-    }
+    setPgConfig((prev) => ({
+      ...prev,
+      hdfcEnabled: checked,
+    }));
   };
 
   const handleToggleSabpaisa = (checked) => {
-    setPgConfig((prev) => checked ? ({
+    setPgConfig((prev) => ({
       ...prev,
-      sabpaisaEnabled: true,
-      razorpayEnabled: false,
-      zaakpayEnabled: false,
-      hdfcEnabled: false,
-      defaultGateway: "sabpaisa",
-    }) : ({ ...prev, sabpaisaEnabled: false }));
+      sabpaisaEnabled: checked,
+    }));
+  };
+
+  // Save All Settings in One Click
+  const handleSaveAll = async () => {
+    setMessage("");
+    setError("");
+    try {
+      setSavingAll(true);
+      const res = await API.put("/admin/payment-settings", {
+        razorpayEnabled: pgConfig.razorpayEnabled,
+        zaakpayEnabled: pgConfig.zaakpayEnabled,
+        hdfcEnabled: pgConfig.hdfcEnabled,
+        sabpaisaEnabled: pgConfig.sabpaisaEnabled,
+        defaultGateway: pgConfig.defaultGateway,
+        zaakpayMode: pgConfig.zaakpayMode,
+        hdfcMode: pgConfig.hdfcMode,
+      });
+      if (res.data?.success) {
+        setMessage("All payment gateway settings saved successfully! ✅");
+        setSavedConfig({ ...pgConfig, ...res.data.data });
+        setTimeout(() => setMessage(""), 4000);
+        testPublicGatewayApi();
+      }
+    } catch (err) {
+      console.error("Save All error:", err);
+      setError(err.response?.data?.message || "Failed to save configuration");
+      setTimeout(() => setError(""), 5000);
+    } finally {
+      setSavingAll(false);
+    }
   };
 
   // Save Razorpay Gateway specifically
@@ -182,19 +171,14 @@ const PaymentGateways = () => {
       setSavingRzp(true);
       const res = await API.put("/admin/payment-settings", {
         razorpayEnabled: pgConfig.razorpayEnabled,
-        zaakpayEnabled: false,
-        hdfcEnabled: false,
       });
       if (res.data?.success) {
-        const stateLabel = pgConfig.razorpayEnabled ? "Enabled (Other PGs Disabled)" : "Disabled";
+        const stateLabel = pgConfig.razorpayEnabled ? "Enabled" : "Disabled";
         setMessage(`Razorpay successfully saved as ${stateLabel}! ✅`);
-        setSavedConfig({
-          ...savedConfig,
+        setSavedConfig((prev) => ({
+          ...prev,
           razorpayEnabled: pgConfig.razorpayEnabled,
-          zaakpayEnabled: false,
-          hdfcEnabled: false,
-          defaultGateway: "razorpay",
-        });
+        }));
         setTimeout(() => setMessage(""), 4000);
         testPublicGatewayApi();
       }
@@ -215,21 +199,16 @@ const PaymentGateways = () => {
       setSavingZaak(true);
       const res = await API.put("/admin/payment-settings", {
         zaakpayEnabled: pgConfig.zaakpayEnabled,
-        razorpayEnabled: false,
-        hdfcEnabled: false,
         zaakpayMode: pgConfig.zaakpayMode,
       });
       if (res.data?.success) {
-        const stateLabel = pgConfig.zaakpayEnabled ? "Enabled (Other PGs Disabled)" : "Disabled";
+        const stateLabel = pgConfig.zaakpayEnabled ? "Enabled" : "Disabled";
         setMessage(`Zaakpay successfully saved as ${stateLabel} (Mode: ${pgConfig.zaakpayMode.toUpperCase()})! ✅`);
-        setSavedConfig({
-          ...savedConfig,
+        setSavedConfig((prev) => ({
+          ...prev,
           zaakpayEnabled: pgConfig.zaakpayEnabled,
-          razorpayEnabled: false,
-          hdfcEnabled: false,
           zaakpayMode: pgConfig.zaakpayMode,
-          defaultGateway: "zaakpay",
-        });
+        }));
         setTimeout(() => setMessage(""), 4000);
         testPublicGatewayApi();
       }
@@ -250,21 +229,16 @@ const PaymentGateways = () => {
       setSavingHdfc(true);
       const res = await API.put("/admin/payment-settings", {
         hdfcEnabled: pgConfig.hdfcEnabled,
-        razorpayEnabled: false,
-        zaakpayEnabled: false,
         hdfcMode: pgConfig.hdfcMode,
       });
       if (res.data?.success) {
-        const stateLabel = pgConfig.hdfcEnabled ? "Enabled (Other PGs Disabled)" : "Disabled";
+        const stateLabel = pgConfig.hdfcEnabled ? "Enabled" : "Disabled";
         setMessage(`HDFC Bank Gateway successfully saved as ${stateLabel} (Mode: ${pgConfig.hdfcMode.toUpperCase()})! ✅`);
-        setSavedConfig({
-          ...savedConfig,
+        setSavedConfig((prev) => ({
+          ...prev,
           hdfcEnabled: pgConfig.hdfcEnabled,
-          razorpayEnabled: false,
-          zaakpayEnabled: false,
           hdfcMode: pgConfig.hdfcMode,
-          defaultGateway: "hdfc",
-        });
+        }));
         setTimeout(() => setMessage(""), 4000);
         testPublicGatewayApi();
       }
@@ -277,17 +251,21 @@ const PaymentGateways = () => {
     }
   };
 
+  // Save SabPaisa Gateway specifically
   const handleSaveSabpaisa = async () => {
     setMessage("");
     setError("");
     try {
       setSavingSabpaisa(true);
       const res = await API.put("/admin/payment-settings", {
-        activeGateway: pgConfig.sabpaisaEnabled ? "sabpaisa" : undefined,
+        sabpaisaEnabled: pgConfig.sabpaisaEnabled,
       });
       if (res.data?.success) {
-        setMessage(`SabPaisa successfully saved as ${pgConfig.sabpaisaEnabled ? "Enabled (Other PGs Disabled)" : "Disabled"}! ✅`);
-        setSavedConfig({ ...savedConfig, ...res.data.data });
+        setMessage(`SabPaisa successfully saved as ${pgConfig.sabpaisaEnabled ? "Enabled" : "Disabled"}! ✅`);
+        setSavedConfig((prev) => ({
+          ...prev,
+          sabpaisaEnabled: pgConfig.sabpaisaEnabled,
+        }));
         setTimeout(() => setMessage(""), 4000);
         testPublicGatewayApi();
       }
@@ -299,7 +277,7 @@ const PaymentGateways = () => {
     }
   };
 
-  // Determine if cards differ from database saved state
+  // Determine if individual cards or global config differ from database saved state
   const isRzpChanged = pgConfig.razorpayEnabled !== savedConfig.razorpayEnabled;
   const isZaakChanged =
     pgConfig.zaakpayEnabled !== savedConfig.zaakpayEnabled ||
@@ -308,16 +286,21 @@ const PaymentGateways = () => {
     pgConfig.hdfcEnabled !== savedConfig.hdfcEnabled ||
     pgConfig.hdfcMode !== savedConfig.hdfcMode;
   const isSabpaisaChanged = pgConfig.sabpaisaEnabled !== savedConfig.sabpaisaEnabled;
+  const isDefaultGatewayChanged = pgConfig.defaultGateway !== savedConfig.defaultGateway;
 
-  const currentActiveGatewayName = pgConfig.razorpayEnabled
-    ? "Razorpay"
-    : pgConfig.zaakpayEnabled
-    ? "Zaakpay"
-    : pgConfig.hdfcEnabled
-    ? "HDFC Bank"
-    : pgConfig.sabpaisaEnabled
-    ? "SabPaisa"
-    : "None";
+  const isAnyChanged = isRzpChanged || isZaakChanged || isHdfcChanged || isSabpaisaChanged || isDefaultGatewayChanged;
+
+  // Active gateways list calculation
+  const activeGatewaysList = [];
+  if (pgConfig.razorpayEnabled) activeGatewaysList.push("Razorpay");
+  if (pgConfig.zaakpayEnabled) activeGatewaysList.push("Zaakpay");
+  if (pgConfig.hdfcEnabled) activeGatewaysList.push("HDFC Bank");
+  if (pgConfig.sabpaisaEnabled) activeGatewaysList.push("SabPaisa");
+
+  const activeGatewaysCountText =
+    activeGatewaysList.length > 0
+      ? `${activeGatewaysList.length} Active (${activeGatewaysList.join(", ")})`
+      : "None Active";
 
   return (
     <div className="page-section payment-gateways-page">
@@ -328,7 +311,7 @@ const PaymentGateways = () => {
             <CreditCard size={28} /> Payment Gateways
           </h1>
           <p className="pg-subtitle">
-            Configure Razorpay, Zaakpay, and HDFC Bank. Only one payment gateway is active at a time.
+            Configure Razorpay, Zaakpay, HDFC Bank, and SabPaisa. You can enable multiple gateways simultaneously.
           </p>
         </div>
 
@@ -341,6 +324,28 @@ const PaymentGateways = () => {
             title="Refresh Settings"
           >
             <RefreshCw size={16} className={loading ? "spin" : ""} /> Refresh
+          </button>
+
+          <button
+            type="button"
+            className={`pg-primary-btn ${!isAnyChanged ? "is-saved" : ""}`}
+            onClick={handleSaveAll}
+            disabled={savingAll || !isAnyChanged}
+            title="Save all changes at once"
+          >
+            {savingAll ? (
+              <>
+                <RefreshCw size={16} className="spin" /> Saving All...
+              </>
+            ) : !isAnyChanged ? (
+              <>
+                <Check size={16} /> All Saved!
+              </>
+            ) : (
+              <>
+                <Save size={16} /> Save All Changes
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -367,28 +372,28 @@ const PaymentGateways = () => {
             <Zap size={22} />
           </div>
           <div>
-            <div className="pg-stat-val">{currentActiveGatewayName}</div>
-            <div className="pg-stat-lbl">Active Payment Gateway</div>
+            <div className="pg-stat-val" style={{ fontSize: "1rem" }}>{activeGatewaysCountText}</div>
+            <div className="pg-stat-lbl">Active Payment Gateways</div>
           </div>
         </div>
 
         <div className="pg-stat-card">
           <div className="pg-stat-icon-wrap" style={{ background: "rgba(59, 130, 246, 0.15)", color: "#3b82f6" }}>
-            <Server size={22} />
+            <Layers size={22} />
           </div>
           <div>
-            <div className="pg-stat-val">Single Active</div>
-            <div className="pg-stat-lbl">Exclusive Active Mode</div>
+            <div className="pg-stat-val" style={{ textTransform: "capitalize" }}>{pgConfig.defaultGateway || "Razorpay"}</div>
+            <div className="pg-stat-lbl">Default / Preferred Gateway</div>
           </div>
         </div>
 
         <div className="pg-stat-card">
           <div className="pg-stat-icon-wrap" style={{ background: "rgba(245, 158, 11, 0.15)", color: "#f59e0b" }}>
-            <Building2 size={22} />
+            <Server size={22} />
           </div>
           <div>
-            <div className="pg-stat-val">3 Gateways</div>
-            <div className="pg-stat-lbl">Razorpay • Zaakpay • HDFC</div>
+            <div className="pg-stat-val">Multi-Gateway Enabled</div>
+            <div className="pg-stat-lbl">Flexible Active Mode</div>
           </div>
         </div>
       </div>
@@ -406,7 +411,7 @@ const PaymentGateways = () => {
               </div>
             </div>
 
-            <label className="pg-switch-toggle" title="Enable Razorpay (Disables Others)">
+            <label className="pg-switch-toggle" title="Toggle Razorpay">
               <input
                 type="checkbox"
                 checked={pgConfig.razorpayEnabled}
@@ -418,7 +423,7 @@ const PaymentGateways = () => {
 
           <div className="pg-badge-row">
             <span className={`pg-status-pill ${pgConfig.razorpayEnabled ? "active" : "disabled"}`}>
-              {pgConfig.razorpayEnabled ? "● Active in App & Web" : "○ Disabled (Inactive)"}
+              {pgConfig.razorpayEnabled ? "● Enabled" : "○ Disabled"}
             </span>
             <span className="pg-env-pill rzp">Live Mode</span>
           </div>
@@ -478,7 +483,7 @@ const PaymentGateways = () => {
               </div>
             </div>
 
-            <label className="pg-switch-toggle" title="Enable Zaakpay (Disables Others)">
+            <label className="pg-switch-toggle" title="Toggle Zaakpay">
               <input
                 type="checkbox"
                 checked={pgConfig.zaakpayEnabled}
@@ -490,7 +495,7 @@ const PaymentGateways = () => {
 
           <div className="pg-badge-row">
             <span className={`pg-status-pill ${pgConfig.zaakpayEnabled ? "active" : "disabled"}`}>
-              {pgConfig.zaakpayEnabled ? "● Active in App & Web" : "○ Disabled (Inactive)"}
+              {pgConfig.zaakpayEnabled ? "● Enabled" : "○ Disabled"}
             </span>
             <span className={`pg-env-pill ${pgConfig.zaakpayMode === "live" ? "live" : "test"}`}>
               {pgConfig.zaakpayMode === "live" ? "Live Gateway" : "UAT / Staging"}
@@ -570,7 +575,7 @@ const PaymentGateways = () => {
               </div>
             </div>
 
-            <label className="pg-switch-toggle" title="Enable HDFC Bank (Disables Others)">
+            <label className="pg-switch-toggle" title="Toggle HDFC Bank">
               <input
                 type="checkbox"
                 checked={pgConfig.hdfcEnabled}
@@ -582,7 +587,7 @@ const PaymentGateways = () => {
 
           <div className="pg-badge-row">
             <span className={`pg-status-pill ${pgConfig.hdfcEnabled ? "active" : "disabled"}`}>
-              {pgConfig.hdfcEnabled ? "● Active in App & Web" : "○ Disabled (Inactive)"}
+              {pgConfig.hdfcEnabled ? "● Enabled" : "○ Disabled"}
             </span>
             <span className={`pg-env-pill ${pgConfig.hdfcMode === "live" ? "live" : "test"}`}>
               {pgConfig.hdfcMode === "live" ? "Live Gateway" : "UAT / Staging"}
@@ -651,6 +656,7 @@ const PaymentGateways = () => {
           </div>
         </div>
 
+        {/* ── SABPAISA CARD ── */}
         <div className={`pg-gateway-card ${pgConfig.sabpaisaEnabled ? "is-active" : "is-disabled"}`}>
           <div className="pg-card-top">
             <div className="pg-brand-wrap">
@@ -660,14 +666,14 @@ const PaymentGateways = () => {
                 <span className="pg-brand-type">Hosted checkout for UPI, cards and net banking</span>
               </div>
             </div>
-            <label className="pg-switch-toggle" title="Enable SabPaisa (Disables Others)">
+            <label className="pg-switch-toggle" title="Toggle SabPaisa">
               <input type="checkbox" checked={pgConfig.sabpaisaEnabled} onChange={(e) => handleToggleSabpaisa(e.target.checked)} />
               <span className="pg-slider"></span>
             </label>
           </div>
           <div className="pg-badge-row">
             <span className={`pg-status-pill ${pgConfig.sabpaisaEnabled ? "active" : "disabled"}`}>
-              {pgConfig.sabpaisaEnabled ? "● Active in App & Web" : "○ Disabled (Inactive)"}
+              {pgConfig.sabpaisaEnabled ? "● Enabled" : "○ Disabled"}
             </span>
             <span className="pg-env-pill test">Test / Staging</span>
           </div>
@@ -688,10 +694,63 @@ const PaymentGateways = () => {
         </div>
       </div>
 
+      {/* Global Routing & Default Gateway Settings */}
+      <div className="pg-settings-card" style={{ marginBottom: "24px" }}>
+        <div className="pg-settings-card-head">
+          <Settings2 size={22} className="pg-accent-icon" />
+          <div>
+            <h3>Default / Primary Payment Gateway</h3>
+            <p>Select which gateway should be chosen by default when multiple gateways are enabled for users.</p>
+          </div>
+        </div>
+
+        <div className="pg-routing-form">
+          <div className="pg-setting-field" style={{ maxWidth: "400px" }}>
+            <label className="pg-field-label">Preferred Default Gateway</label>
+            <select
+              value={pgConfig.defaultGateway || "razorpay"}
+              onChange={(e) => setPgConfig({ ...pgConfig, defaultGateway: e.target.value })}
+              className="pg-select-input"
+            >
+              <option value="razorpay">Razorpay {pgConfig.razorpayEnabled ? "(Enabled)" : "(Disabled)"}</option>
+              <option value="zaakpay">Zaakpay {pgConfig.zaakpayEnabled ? "(Enabled)" : "(Disabled)"}</option>
+              <option value="hdfc">HDFC Bank {pgConfig.hdfcEnabled ? "(Enabled)" : "(Disabled)"}</option>
+              <option value="sabpaisa">SabPaisa {pgConfig.sabpaisaEnabled ? "(Enabled)" : "(Disabled)"}</option>
+            </select>
+            <span className="pg-field-hint">
+              Apps will prioritize this gateway if multiple gateways are active.
+            </span>
+          </div>
+
+          <div className="pg-actions-bar">
+            <button
+              type="button"
+              className={`pg-primary-btn ${!isAnyChanged ? "is-saved" : ""}`}
+              onClick={handleSaveAll}
+              disabled={savingAll || !isAnyChanged}
+            >
+              {savingAll ? (
+                <>
+                  <RefreshCw size={16} className="spin" /> Saving Settings...
+                </>
+              ) : !isAnyChanged ? (
+                <>
+                  <Check size={16} /> Settings Saved
+                </>
+              ) : (
+                <>
+                  <Save size={16} /> Save Default Gateway & All Changes
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Public Gateway API Inspector */}
       <div className="pg-settings-card">
         <div className="pg-settings-card-head">
-          <Settings2 size={22} className="pg-accent-icon" />
+          <Globe size={22} className="pg-accent-icon" />
           <div>
             <h3>Active Gateway Inspector (Live App Status)</h3>
             <p>Test the live JSON response that mobile and web apps receive from the server.</p>

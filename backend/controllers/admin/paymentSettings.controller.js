@@ -34,7 +34,7 @@ exports.getPaymentSettings = async (req, res) => {
 };
 
 // PUT /api/admin/payment-settings
-// ONLY ONE PAYMENT GATEWAY IS ACTIVE AT A TIME (Mutually Exclusive among Razorpay, Zaakpay & HDFC)
+// Multiple payment gateways can be enabled simultaneously
 exports.updatePaymentSettings = async (req, res) => {
   try {
     const {
@@ -42,6 +42,7 @@ exports.updatePaymentSettings = async (req, res) => {
       zaakpayEnabled,
       hdfcEnabled,
       sabpaisaEnabled,
+      defaultGateway,
       zaakpayMode,
       hdfcMode,
       activeGateway,
@@ -49,63 +50,34 @@ exports.updatePaymentSettings = async (req, res) => {
 
     const updateData = {};
 
-    // 1. Direct active gateway selection
-    if (activeGateway === "razorpay") {
-      updateData.razorpayEnabled = true;
-      updateData.zaakpayEnabled = false;
-      updateData.hdfcEnabled = false;
-      updateData.sabpaisaEnabled = false;
-      updateData.defaultGateway = "razorpay";
-    } else if (activeGateway === "zaakpay") {
-      updateData.zaakpayEnabled = true;
-      updateData.razorpayEnabled = false;
-      updateData.hdfcEnabled = false;
-      updateData.sabpaisaEnabled = false;
-      updateData.defaultGateway = "zaakpay";
-    } else if (activeGateway === "hdfc") {
-      updateData.hdfcEnabled = true;
-      updateData.razorpayEnabled = false;
-      updateData.zaakpayEnabled = false;
-      updateData.sabpaisaEnabled = false;
-      updateData.defaultGateway = "hdfc";
-    } else if (activeGateway === "sabpaisa") {
-      if (!(process.env.SABPAISA_API_KEY && process.env.SABPAISA_SECRET_KEY && process.env.SABPAISA_MERCHANT_ID && process.env.SABPAISA_RETURN_URL)) {
-        return res.status(400).json({ success: false, message: "Configure SABPAISA_API_KEY, SABPAISA_SECRET_KEY, SABPAISA_MERCHANT_ID, and SABPAISA_RETURN_URL before enabling SabPaisa" });
-      }
-      updateData.sabpaisaEnabled = true;
-      updateData.razorpayEnabled = false;
-      updateData.zaakpayEnabled = false;
-      updateData.hdfcEnabled = false;
-      updateData.defaultGateway = "sabpaisa";
+    // 1. Direct gateway boolean toggles (Independent)
+    if (razorpayEnabled !== undefined) {
+      updateData.razorpayEnabled = Boolean(razorpayEnabled);
     }
-    // 2. Individual flags (enforce mutual exclusivity)
-    else if (razorpayEnabled === true) {
-      updateData.razorpayEnabled = true;
-      updateData.zaakpayEnabled = false;
-      updateData.hdfcEnabled = false;
-      updateData.sabpaisaEnabled = false;
-      updateData.defaultGateway = "razorpay";
-    } else if (zaakpayEnabled === true) {
-      updateData.zaakpayEnabled = true;
-      updateData.razorpayEnabled = false;
-      updateData.hdfcEnabled = false;
-      updateData.sabpaisaEnabled = false;
-      updateData.defaultGateway = "zaakpay";
-    } else if (hdfcEnabled === true) {
-      updateData.hdfcEnabled = true;
-      updateData.razorpayEnabled = false;
-      updateData.zaakpayEnabled = false;
-      updateData.sabpaisaEnabled = false;
-      updateData.defaultGateway = "hdfc";
-    } else if (sabpaisaEnabled === true) {
-      if (!(process.env.SABPAISA_API_KEY && process.env.SABPAISA_SECRET_KEY && process.env.SABPAISA_MERCHANT_ID && process.env.SABPAISA_RETURN_URL)) {
+    if (zaakpayEnabled !== undefined) {
+      updateData.zaakpayEnabled = Boolean(zaakpayEnabled);
+    }
+    if (hdfcEnabled !== undefined) {
+      updateData.hdfcEnabled = Boolean(hdfcEnabled);
+    }
+    if (sabpaisaEnabled !== undefined) {
+      if (sabpaisaEnabled && !(process.env.SABPAISA_API_KEY && process.env.SABPAISA_SECRET_KEY && process.env.SABPAISA_MERCHANT_ID && process.env.SABPAISA_RETURN_URL)) {
         return res.status(400).json({ success: false, message: "Configure SABPAISA_API_KEY, SABPAISA_SECRET_KEY, SABPAISA_MERCHANT_ID, and SABPAISA_RETURN_URL before enabling SabPaisa" });
       }
-      updateData.sabpaisaEnabled = true;
-      updateData.razorpayEnabled = false;
-      updateData.zaakpayEnabled = false;
-      updateData.hdfcEnabled = false;
-      updateData.defaultGateway = "sabpaisa";
+      updateData.sabpaisaEnabled = Boolean(sabpaisaEnabled);
+    }
+
+    // Backwards compatibility for single activeGateway parameter if sent
+    if (activeGateway && ["razorpay", "zaakpay", "hdfc", "sabpaisa"].includes(activeGateway)) {
+      if (activeGateway === "sabpaisa" && !(process.env.SABPAISA_API_KEY && process.env.SABPAISA_SECRET_KEY && process.env.SABPAISA_MERCHANT_ID && process.env.SABPAISA_RETURN_URL)) {
+        return res.status(400).json({ success: false, message: "Configure SabPaisa credentials first" });
+      }
+      updateData[`${activeGateway}Enabled`] = true;
+      updateData.defaultGateway = activeGateway;
+    }
+
+    if (defaultGateway && ["razorpay", "zaakpay", "hdfc", "sabpaisa"].includes(defaultGateway)) {
+      updateData.defaultGateway = defaultGateway;
     }
 
     if (zaakpayMode && ["test", "live"].includes(zaakpayMode)) {
@@ -135,6 +107,13 @@ exports.updatePaymentSettings = async (req, res) => {
         defaultGateway: config.defaultGateway,
         zaakpayMode: config.zaakpayMode,
         hdfcMode: config.hdfcMode,
+        razorpayKeyConfigured: !!process.env.RAZORPAY_KEY_ID,
+        zaakpayKeyConfigured: !!(process.env.ZAAKPAY_MERCHANT_ID && process.env.ZAAKPAY_SECRET_KEY),
+        hdfcKeyConfigured: !!(process.env.HDFC_MERCHANT_ID && process.env.HDFC_MERCHANT_KEY),
+        sabpaisaKeyConfigured: !!(process.env.SABPAISA_API_KEY && process.env.SABPAISA_SECRET_KEY && process.env.SABPAISA_MERCHANT_ID && process.env.SABPAISA_RETURN_URL),
+        sabpaisaMode: process.env.SABPAISA_MODE || "test",
+        hdfcVpa: process.env.HDFC_VPA || "roccoplaywork@hdfcbank",
+        hdfcStoreName: process.env.HDFC_STORE_NAME || "ROCCOPLAY MEDIA",
       },
     });
   } catch (error) {

@@ -45,11 +45,30 @@ exports.initiatePayment = async (req, res) => {
 
     const userId = req.user?.id || req.user?._id;
 
-    let existing = await Subscription.findOne({ user: userId, status: "active" });
-    existing = await expireSubscriptionIfNeeded(existing);
+    const rawPlatform = ((req.body.platform || req.headers["x-platform"] || plan.platform || "app") + "").trim().toLowerCase();
+    const resolvedPlatform = rawPlatform === "website" || rawPlatform === "web" || rawPlatform === "browser" ? "website" : "app";
 
-    if (existing && existing.status === "active") {
-      return res.status(400).json({ success: false, message: "You already have an active subscription" });
+    const platformFilter = [{ platform: resolvedPlatform }];
+    if (resolvedPlatform === "app") {
+      platformFilter.push({ platform: { $exists: false } });
+      platformFilter.push({ platform: null });
+    }
+
+    let existing = await Subscription.findOne({
+      user: userId,
+      status: "active",
+      $or: platformFilter,
+    }).sort({ createdAt: -1 });
+
+    if (existing) {
+      existing = await expireSubscriptionIfNeeded(existing);
+      if (existing && existing.status === "active") {
+        return res.status(400).json({
+          success: false,
+          platform: resolvedPlatform,
+          message: `You already have an active ${resolvedPlatform === "website" ? "website" : "mobile app"} subscription`,
+        });
+      }
     }
 
     let finalAmount = plan.price;
@@ -77,9 +96,9 @@ exports.initiatePayment = async (req, res) => {
     }
 
     const userDoc = await User.findById(userId);
-    const buyerEmail = userDoc?.email || req.user?.email || "customer@roccoplay.com";
-    const buyerPhoneNumber = (userDoc?.phone || req.user?.phone || "9999999999").replace(/\D/g, "");
-    const buyerFirstName = userDoc?.name || "Customer";
+    const buyerEmail = req.body.email || userDoc?.email || req.user?.email || "customer@roccoplay.com";
+    const buyerPhoneNumber = (req.body.phone || userDoc?.phone || req.user?.phone || "9999999999").replace(/\D/g, "");
+    const buyerFirstName = req.body.name || userDoc?.name || "Customer";
 
     const orderId = `ZP${Date.now()}${Math.floor(1000 + Math.random() * 9000)}`;
     const amountInPaise = Math.round(finalAmount * 100);
@@ -89,6 +108,7 @@ exports.initiatePayment = async (req, res) => {
       orderId,
       user: userId,
       plan: planId,
+      platform: resolvedPlatform,
       promoCode: appliedPromo,
       amount: finalAmount,
       status: "initiated",
@@ -119,6 +139,7 @@ exports.initiatePayment = async (req, res) => {
       params: postParams,
       orderId,
       finalAmount,
+      platform: resolvedPlatform,
     });
   } catch (err) {
     console.error("Zaakpay Initiate Payment Error:", err);
@@ -241,6 +262,7 @@ exports.handleCallback = async (req, res) => {
     const subscription = await Subscription.create({
       user: userId,
       plan: plan._id,
+      platform: orderRecord.platform || plan.platform || "app",
       status: "active",
       paymentGateway: "zaakpay",
       paymentId: transactionId,
@@ -250,6 +272,12 @@ exports.handleCallback = async (req, res) => {
       startDate,
       endDate,
     });
+
+    if (userId) {
+      await User.findByIdAndUpdate(userId, {
+        $push: { subscriptions: subscription._id },
+      });
+    }
 
     orderRecord.status = "completed";
     await orderRecord.save();
@@ -299,6 +327,7 @@ exports.checkPaymentStatus = async (req, res) => {
             subscription = await Subscription.create({
               user: orderRecord.user,
               plan: plan._id,
+              platform: orderRecord.platform || plan.platform || "app",
               status: "active",
               paymentGateway: "zaakpay",
               paymentId: `ZPTXN_${Date.now()}`,
@@ -308,6 +337,12 @@ exports.checkPaymentStatus = async (req, res) => {
               startDate,
               endDate,
             });
+
+            if (orderRecord.user) {
+              await User.findByIdAndUpdate(orderRecord.user, {
+                $push: { subscriptions: subscription._id },
+              });
+            }
 
             orderRecord.status = "completed";
             await orderRecord.save();

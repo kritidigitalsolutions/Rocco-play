@@ -6,6 +6,7 @@ const Plan = require("../models/plan.model");
 const Promo = require("../models/promocode.model");
 const Subscription = require("../models/subscription.model");
 const PaymentConfig = require("../models/paymentConfig.model");
+const User = require("../models/user.model");
 
 const {
   expireSubscriptionIfNeeded,
@@ -37,33 +38,16 @@ exports.getActiveGateways = async (req, res) => {
         process.env.SABPAISA_RETURN_URL
     );
 
-    // Strictly enforce only one gateway can be true at a time
-    const activeCount = (rzpEnabled ? 1 : 0) + (zaakEnabled ? 1 : 0) + (hdfcEnabled ? 1 : 0) + (sabpaisaEnabled ? 1 : 0);
-    if (activeCount > 1) {
-      if (config.defaultGateway === "sabpaisa") {
-        rzpEnabled = false;
-        zaakEnabled = false;
-        hdfcEnabled = false;
-        sabpaisaEnabled = true;
-      } else if (config.defaultGateway === "hdfc") {
-        rzpEnabled = false;
-        zaakEnabled = false;
-        hdfcEnabled = true;
-        sabpaisaEnabled = false;
-      } else if (config.defaultGateway === "zaakpay") {
-        rzpEnabled = false;
-        zaakEnabled = true;
-        hdfcEnabled = false;
-        sabpaisaEnabled = false;
-      } else {
-        rzpEnabled = true;
-        zaakEnabled = false;
-        hdfcEnabled = false;
-        sabpaisaEnabled = false;
-      }
-    }
+    // Default gateway selection (or fallback to first enabled gateway)
+    let defaultGateway = config.defaultGateway;
+    if (defaultGateway === "razorpay" && !rzpEnabled) defaultGateway = null;
+    if (defaultGateway === "zaakpay" && !zaakEnabled) defaultGateway = null;
+    if (defaultGateway === "hdfc" && !hdfcEnabled) defaultGateway = null;
+    if (defaultGateway === "sabpaisa" && !sabpaisaEnabled) defaultGateway = null;
 
-    const defaultGateway = sabpaisaEnabled ? "sabpaisa" : hdfcEnabled ? "hdfc" : zaakEnabled ? "zaakpay" : "razorpay";
+    if (!defaultGateway) {
+      defaultGateway = rzpEnabled ? "razorpay" : zaakEnabled ? "zaakpay" : hdfcEnabled ? "hdfc" : sabpaisaEnabled ? "sabpaisa" : "razorpay";
+    }
 
     return res.status(200).json({
       success: true,
@@ -231,6 +215,35 @@ exports.createOrder = async (
       appliedPromo = promo.code;
     }
 
+    const userId = req.user?.id || req.user?._id;
+    const rawPlatform = ((req.body.platform || req.headers["x-platform"] || plan.platform || "app") + "").trim().toLowerCase();
+    const resolvedPlatform = rawPlatform === "website" || rawPlatform === "web" || rawPlatform === "browser" ? "website" : "app";
+
+    // Check existing active subscription for this platform before creating order
+    const platformFilter = [{ platform: resolvedPlatform }];
+    if (resolvedPlatform === "app") {
+      platformFilter.push({ platform: { $exists: false } });
+      platformFilter.push({ platform: null });
+    }
+
+    let existing = await Subscription.findOne({
+      user: userId,
+      status: "active",
+      $or: platformFilter,
+    }).sort({ createdAt: -1 });
+
+    if (existing) {
+      existing = await expireSubscriptionIfNeeded(existing);
+
+      if (existing && existing.status === "active") {
+        return res.status(400).json({
+          success: false,
+          platform: resolvedPlatform,
+          message: `You already have an active ${resolvedPlatform === "website" ? "website" : "mobile app"} subscription`,
+        });
+      }
+    }
+
     // ========================================
     // RAZORPAY CONFIG & ENABLEMENT CHECK
     // ========================================
@@ -255,17 +268,18 @@ exports.createOrder = async (
     // CREATE ORDER
     // ========================================
 
+    const amountInPaise = Math.round(finalAmount * 100);
+
     const order =
       await razorpay.orders.create({
-        amount:
-          finalAmount * 100,
+        amount: amountInPaise,
         currency: "INR",
         receipt:
           "rcpt_" + Date.now(),
 
         notes: {
-          planId,
-          userId: req.user.id,
+          planId: String(planId),
+          userId: String(userId),
           promoCode:
             appliedPromo || "",
         },
@@ -358,7 +372,7 @@ exports.verifyPayment = async (
       });
     }
 
-    const userId = req.user.id;
+    const userId = req.user?.id || req.user?._id;
 
     // ========================================
     // PREVENT DUPLICATE PAYMENT
@@ -394,14 +408,15 @@ exports.verifyPayment = async (
       });
     }
 
-    const planPlatform = plan.platform || "app";
+    const rawPlatform = ((req.body.platform || req.headers["x-platform"] || plan.platform || "app") + "").trim().toLowerCase();
+    const resolvedPlatform = rawPlatform === "website" || rawPlatform === "web" || rawPlatform === "browser" ? "website" : "app";
 
     // ========================================
-    // CHECK EXISTING SUBSCRIPTION FOR THIS PLATFORM
+    // EXPIRE PREVIOUS ACTIVE SUBSCRIPTION FOR PLATFORM
     // ========================================
 
-    const platformFilter = [{ platform: planPlatform }];
-    if (planPlatform === "app") {
+    const platformFilter = [{ platform: resolvedPlatform }];
+    if (resolvedPlatform === "app") {
       platformFilter.push({ platform: { $exists: false } });
       platformFilter.push({ platform: null });
     }
@@ -424,41 +439,32 @@ exports.verifyPayment = async (
         existing.status ===
           "active"
       ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            `You already have an active ${planPlatform} subscription`,
-        });
+        existing.status = "expired";
+        await existing.save();
       }
     }
 
     // ========================================
-    // RAZORPAY CHECK
+    // RAZORPAY CHECK & FETCH ORDER DETAILS
     // ========================================
 
-    if (!razorpay) {
-      return res.status(503).json({
-        success: false,
-        message:
-          "Payment gateway not configured",
-      });
+    let finalAmount = plan.price;
+    let appliedCode = "";
+
+    if (razorpay) {
+      try {
+        const orderDetails =
+          await razorpay.orders.fetch(
+            razorpay_order_id
+          );
+
+        appliedCode =
+          orderDetails?.notes
+            ?.promoCode || "";
+      } catch (orderFetchErr) {
+        console.warn("Razorpay order fetch note:", orderFetchErr.message);
+      }
     }
-
-    // ========================================
-    // FETCH ORDER DETAILS
-    // ========================================
-
-    const orderDetails =
-      await razorpay.orders.fetch(
-        razorpay_order_id
-      );
-
-    let finalAmount =
-      plan.price;
-
-    const appliedCode =
-      orderDetails.notes
-        ?.promoCode || "";
 
     // ========================================
     // APPLY PROMO
@@ -504,24 +510,27 @@ exports.verifyPayment = async (
     // ========================================
     const startDate = new Date();
     const endDate = new Date();
-    endDate.setDate(endDate.getDate() + plan.duration);
+    endDate.setDate(endDate.getDate() + (plan.duration || 30));
 
     const subscription = await Subscription.create({
       user: userId,
       plan: plan._id,
-      platform: plan.platform || "app",
+      platform: resolvedPlatform,
       status: "active",
       paymentGateway: "razorpay",
       paymentId: razorpay_payment_id,
       subscriptionId: razorpay_order_id,
       amount: finalAmount,
+      currency: "INR",
       startDate,
       endDate,
     });
 
-    await User.findByIdAndUpdate(userId, {
-      $push: { subscriptions: subscription._id },
-    });
+    if (userId) {
+      await User.findByIdAndUpdate(userId, {
+        $push: { subscriptions: subscription._id },
+      });
+    }
 
     res.status(200).json({
       success: true,

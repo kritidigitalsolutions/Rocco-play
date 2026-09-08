@@ -55,7 +55,7 @@ async function fulfil(order, transactionId) {
   const subscription = await Subscription.create({
     user: order.user,
     plan: plan._id,
-    platform: plan.platform || "app",
+    platform: order.platform || plan.platform || "app",
     status: "active",
     paymentGateway: "sabpaisa",
     paymentId: transactionId,
@@ -94,9 +94,12 @@ exports.initiatePayment = async (req, res) => {
     const plan = await Plan.findById(req.body.planId);
     if (!plan?.isActive) return res.status(404).json({ success: false, message: "Plan not found or inactive" });
     const userId = req.user.id || req.user._id;
-    const planPlatform = plan.platform || "app";
-    const platformFilter = [{ platform: planPlatform }];
-    if (planPlatform === "app") {
+
+    const rawPlatform = ((req.body.platform || req.headers["x-platform"] || plan.platform || "app") + "").trim().toLowerCase();
+    const resolvedPlatform = rawPlatform === "website" || rawPlatform === "web" || rawPlatform === "browser" ? "website" : "app";
+
+    const platformFilter = [{ platform: resolvedPlatform }];
+    if (resolvedPlatform === "app") {
       platformFilter.push({ platform: { $exists: false } });
       platformFilter.push({ platform: null });
     }
@@ -110,7 +113,8 @@ exports.initiatePayment = async (req, res) => {
     if (active?.status === "active") {
       return res.status(400).json({
         success: false,
-        message: `You already have an active ${planPlatform} subscription`,
+        platform: resolvedPlatform,
+        message: `You already have an active ${resolvedPlatform === "website" ? "website" : "mobile app"} subscription`,
       });
     }
     const { amount, appliedPromo } = await calculateAmount(plan, req.body.promoCode);
@@ -179,10 +183,10 @@ exports.initiatePayment = async (req, res) => {
     });
     const session = response.data?.data || response.data;
     if (!session?.checkoutUrl) throw new Error("SabPaisa did not return a checkout URL");
-    await SabpaisaOrder.create({ orderId, user: userId, plan: plan._id, promoCode: appliedPromo, amount });
+    await SabpaisaOrder.create({ orderId, user: userId, plan: plan._id, platform: resolvedPlatform, promoCode: appliedPromo, amount });
     const checkoutUrl = new URL(session.checkoutUrl);
     if (session.clientSecret) checkoutUrl.searchParams.set("clientSecret", session.clientSecret);
-    return res.status(200).json({ success: true, orderId, finalAmount: amount, checkoutUrl: checkoutUrl.toString() });
+    return res.status(200).json({ success: true, orderId, finalAmount: amount, platform: resolvedPlatform, checkoutUrl: checkoutUrl.toString() });
   } catch (error) {
     console.error("SabPaisa initiate error:", error.response?.data || error.message);
     return res.status(error.response?.status || 500).json({ success: false, message: error.response?.data?.message || error.message || "Unable to initiate SabPaisa payment" });

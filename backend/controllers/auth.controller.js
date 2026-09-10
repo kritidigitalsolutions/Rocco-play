@@ -10,17 +10,11 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const axios = require("axios");
 
-const DUMMY_OTP_PHONE = "+919999999999";
-const DUMMY_OTP_CODE = "123456";
-
-const isDummyOtpPhone = (phone) =>
-  phone === DUMMY_OTP_PHONE;
-
 // ========================================
 // FORMAT INDIAN PHONE
 // ========================================
 const formatIndianPhone = (phone) => {
-  const cleaned = String(phone).replace(
+  const cleaned = String(phone || "").replace(
     /\D/g,
     ""
   );
@@ -36,7 +30,21 @@ const formatIndianPhone = (phone) => {
     return "+" + cleaned;
   }
 
-  return phone;
+  return phone || "";
+};
+
+const DUMMY_OTP_CODE = "123456";
+
+// 15 Dedicated Test Accounts for Bank Auditing & Testing (+ Master Dummy Phone)
+const DUMMY_OTP_PHONES = new Set([
+  "+919999999999",
+  ...Array.from({ length: 15 }, (_, i) => `+9199999000${String(i + 1).padStart(2, "0")}`),
+]);
+
+const isDummyOtpPhone = (phone) => {
+  if (!phone) return false;
+  const formatted = formatIndianPhone(phone);
+  return DUMMY_OTP_PHONES.has(formatted) || DUMMY_OTP_PHONES.has(phone);
 };
 // ========================================
 // SEND SMS
@@ -189,6 +197,8 @@ exports.sendOTP = async (req, res) => {
           $setOnInsert: {
             phone: normalizedPhone,
             role: "USER",
+            profileComplete: true,
+            name: "HDFC Test User",
           },
         },
         { upsert: true }
@@ -364,6 +374,8 @@ exports.verifyOtp = async (req, res) => {
       user = await User.create({
         phone: normalizedPhone,
         role: "USER",
+        profileComplete: isDummyOtp ? true : false,
+        name: isDummyOtp ? "HDFC Test User" : "User",
       });
     }
 

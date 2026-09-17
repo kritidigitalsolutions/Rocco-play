@@ -4,9 +4,9 @@ const SABPAISA_CONFIG = {
   get apiKey() { return process.env.SABPAISA_API_KEY; },
   get secretKey() { return process.env.SABPAISA_SECRET_KEY; },
   get merchantId() { return process.env.SABPAISA_MERCHANT_ID; },
-  get mode() { return process.env.SABPAISA_MODE || "test"; },
+  get mode() { return (process.env.SABPAISA_MODE || "test").trim().toLowerCase(); },
   get baseUrl() {
-    return process.env.SABPAISA_BASE_URL || (this.mode === "live"
+    return process.env.SABPAISA_BASE_URL || (this.mode === "live" || this.mode === "production"
       ? "https://merchant-api.sabpaisa.in"
       : "https://staging-sb-merchant-api.sabpaisa.in");
   },

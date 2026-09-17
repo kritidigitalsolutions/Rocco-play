@@ -34,12 +34,14 @@ const adminUrls = process.env.ADMIN_URL
 const defaultAllowed = [
   process.env.FRONTEND_URL,
   "http://localhost:5174",
+  "http://localhost:3000",
   "https://admin.roccoplay.in",
   "https://roccoplay.in",
   "https://www.roccoplay.in",
   "https://roccoplay-admin-panel.vercel.app",
   "https://roccoplay-sigma.vercel.app",
   "https://roccoplayott.netlify.app",
+  "https://slategrey-okapi-210768.hostingersite.com"
 ];
 
 const allowedOrigins = [...new Set([...frontendUrls, ...adminUrls, ...defaultAllowed])];

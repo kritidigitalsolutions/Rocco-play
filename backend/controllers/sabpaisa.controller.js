@@ -30,7 +30,14 @@ async function enquiry(orderId) {
   const response = await axios.post(
     `${SABPAISA_CONFIG.baseUrl}/api/v2/payments/enquiry`,
     { clientCode: SABPAISA_CONFIG.merchantId, merchantTxnId: orderId },
-    { headers: { "X-Api-Key": SABPAISA_CONFIG.apiKey, "Content-Type": "application/json" }, timeout: 15000 }
+    {
+      headers: {
+        "X-Api-Key": SABPAISA_CONFIG.apiKey,
+        "X-Merchant-Id": SABPAISA_CONFIG.merchantId,
+        "Content-Type": "application/json",
+      },
+      timeout: 15000,
+    }
   );
   return response.data?.data || response.data;
 }
@@ -178,7 +185,11 @@ exports.initiatePayment = async (req, res) => {
     };
     payload.checksum = createChecksum(payload);
     const response = await axios.post(`${SABPAISA_CONFIG.baseUrl}/api/v2/payments`, payload, {
-      headers: { "X-Api-Key": SABPAISA_CONFIG.apiKey, "Content-Type": "application/json" },
+      headers: {
+        "X-Api-Key": SABPAISA_CONFIG.apiKey,
+        "X-Merchant-Id": SABPAISA_CONFIG.merchantId,
+        "Content-Type": "application/json",
+      },
       timeout: 15000,
     });
     const session = response.data?.data || response.data;

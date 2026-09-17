@@ -130,7 +130,10 @@ exports.initiatePayment = async (req, res) => {
     const checksum = calculateChecksum(postParams, ZAAKPAY_CONFIG.secretKey);
     postParams.checksum = checksum;
 
-    const paymentUrl = config.zaakpayMode === "live" ? ZAAKPAY_CONFIG.liveUrl : ZAAKPAY_CONFIG.testUrl;
+    const paymentUrl =
+      config.zaakpayMode === "live" || ZAAKPAY_CONFIG.mode === "live"
+        ? ZAAKPAY_CONFIG.liveUrl
+        : ZAAKPAY_CONFIG.testUrl;
 
     return res.status(200).json({
       success: true,

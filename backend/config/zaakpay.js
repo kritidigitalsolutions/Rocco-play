@@ -7,8 +7,17 @@ const ZAAKPAY_CONFIG = {
   get secretKey() {
     return process.env.ZAAKPAY_SECRET_KEY;
   },
+  get apiKey() {
+    return process.env.ZAAKPAY_API_KEY;
+  },
+  get keyId() {
+    return process.env.ZAAKPAY_KEY_ID;
+  },
+  get encryptionKey() {
+    return process.env.ZAAKPAY_ENCRYPTION_KEY;
+  },
   get mode() {
-    return process.env.ZAAKPAY_MODE || "test";
+    return (process.env.ZAAKPAY_MODE || "test").trim().toLowerCase();
   },
   get testUrl() {
     return process.env.ZAAKPAY_TEST_URL || "https://zaakstaging.zaakpay.com/api/paymentTransact/V13";
@@ -17,7 +26,7 @@ const ZAAKPAY_CONFIG = {
     return process.env.ZAAKPAY_LIVE_URL || "https://api.zaakpay.com/api/paymentTransact/V13";
   },
   get returnUrl() {
-    return process.env.ZAAKPAY_RETURN_URL || "http://192.168.1.21:8000/api/payment/zaakpay/callback";
+    return process.env.ZAAKPAY_RETURN_URL || "https://api.roccoplay.in/api/payment/zaakpay/callback";
   },  
 };
 

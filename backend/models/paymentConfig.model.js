@@ -33,6 +33,11 @@ const paymentConfigSchema = new mongoose.Schema(
       enum: ["test", "live"],
       default: "test",
     },
+    sabpaisaMode: {
+      type: String,
+      enum: ["test", "live"],
+      default: "test",
+    },
   },
   { timestamps: true }
 );
@@ -49,6 +54,7 @@ paymentConfigSchema.statics.getConfig = async function () {
       defaultGateway: "razorpay",
       zaakpayMode: process.env.ZAAKPAY_MODE || "test",
       hdfcMode: process.env.HDFC_MODE || "test",
+      sabpaisaMode: process.env.SABPAISA_MODE || "test",
     });
   }
   return config;

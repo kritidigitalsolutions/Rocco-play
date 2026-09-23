@@ -3,13 +3,17 @@ const AdminOtp = require("../../models/admin.otp.model");
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
+const getTransporter = () => {
+  const user = (process.env.EMAIL_USER || process.env.EMAIL || "").trim();
+  const pass = (process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD || "").trim();
+  return {
+    transporter: nodemailer.createTransport({
+      service: "gmail",
+      auth: { user, pass }
+    }),
+    from: user
+  };
+};
 
 const generateOtp = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
@@ -60,8 +64,9 @@ exports.sendPasswordOtp = async (req, res) => {
       expiresAt: new Date(Date.now() + 5 * 60 * 1000)
     });
 
+    const { transporter, from } = getTransporter();
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from,
       to: admin.email,
       subject: "Password Change OTP",
       html: `<h3>Your OTP is ${otp}</h3><p>Valid for 5 minutes.</p>`
@@ -191,8 +196,9 @@ exports.sendEmailOtp = async (req, res) => {
       expiresAt: new Date(Date.now() + 5 * 60 * 1000)
     });
 
+    const { transporter, from } = getTransporter();
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from,
       to: oldEmail.toLowerCase(),
       subject: "Email Change OTP",
       html: `<h3>Your OTP is ${otp}</h3><p>Valid for 5 minutes.</p>`

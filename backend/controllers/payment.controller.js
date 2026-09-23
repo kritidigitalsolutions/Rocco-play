@@ -72,7 +72,7 @@ exports.getActiveGateways = async (req, res) => {
         sabpaisa: {
           enabled: sabpaisaEnabled,
           name: "SabPaisa",
-          mode: process.env.SABPAISA_MODE || "test",
+          mode: config.sabpaisaMode || process.env.SABPAISA_MODE || "test",
         },
       },
       defaultGateway,

@@ -218,6 +218,23 @@ Response (200 OK):
    - Key ID: rzp_live_TLgeS3wdKz2zzf
    - Key Secret: gz1fKXRfTlVZfGALLhgGpwUF
 
+4. SabPaisa PG 3.0 Environments & Credentials:
+   - Staging (Sandbox Test):
+     - Environment Base URL: https://staging-sb-merchant-api.sabpaisa.in
+     - Merchant ID / Client Code: SQUA102
+     - API Key (X-Api-Key): sp_itOrld7Rm0SGjkqg_VSEXBtZXqi8T26-pMPfpUCxUQo
+     - Secret Key (checksum): sec_lLao-1-yDLmV81YjExxgR00a8o7FgJ8-HLSJj9Od4hY
+     - Webhook Secret: sec_lLao-1-yDLmV81YjExxgR00a8o7FgJ8-HLSJj9Od4hY
+     - Purpose: End-to-end integration testing, moves no real money.
+   - Production (Live):
+     - Environment Base URL: https://merchant-api.sabpaisa.in
+     - Merchant ID / Client Code: XOZO1
+     - API Key: sp_QLooVxhHqOIHCqH8VLuvbisrLf2HQ5e-RdgvMvlmZTo
+     - Secret Key: sec_tL-3M__o2RJlw6gmPcn2t40FYQzzg0g9sSpIFcU7lFM
+     - Webhook Secret: sec_tL-3M__o2RJlw6gmPcn2t40FYQzzg0g9sSpIFcU7lFM
+     - Return URL: https://api.roccoplay.in/api/payment/sabpaisa/return
+
+
 ================================================================================
 5. COMPLETE FLUTTER MOBILE IMPLEMENTATION
 ================================================================================
@@ -234,6 +251,8 @@ class PaymentGatewaysModel {
   final bool hdfcEnabled;
   final String hdfcMode;
   final String? hdfcVpa;
+  final bool sabpaisaEnabled;
+  final String sabpaisaMode;
   final String defaultGateway;
 
   PaymentGatewaysModel({
@@ -244,6 +263,8 @@ class PaymentGatewaysModel {
     required this.hdfcEnabled,
     required this.hdfcMode,
     this.hdfcVpa,
+    required this.sabpaisaEnabled,
+    required this.sabpaisaMode,
     required this.defaultGateway,
   });
 
@@ -252,6 +273,7 @@ class PaymentGatewaysModel {
     final rzp = gateways['razorpay'] ?? {};
     final zaak = gateways['zaakpay'] ?? {};
     final hdfc = gateways['hdfc'] ?? {};
+    final sab = gateways['sabpaisa'] ?? {};
 
     return PaymentGatewaysModel(
       razorpayEnabled: rzp['enabled'] == true,
@@ -261,6 +283,8 @@ class PaymentGatewaysModel {
       hdfcEnabled: hdfc['enabled'] == true,
       hdfcMode: hdfc['mode'] ?? 'test',
       hdfcVpa: hdfc['vpa'],
+      sabpaisaEnabled: sab['enabled'] == true,
+      sabpaisaMode: sab['mode'] ?? 'test',
       defaultGateway: json['defaultGateway'] ?? 'razorpay',
     );
   }
@@ -269,6 +293,7 @@ class PaymentGatewaysModel {
     if (razorpayEnabled) return "razorpay";
     if (zaakpayEnabled) return "zaakpay";
     if (hdfcEnabled) return "hdfc";
+    if (sabpaisaEnabled) return "sabpaisa";
     return "none";
   }
 }
@@ -360,6 +385,37 @@ class PaymentService {
     if (res.statusCode != 200) return false;
     final data = jsonDecode(res.body);
     return data['status'] == 'active';
+  }
+
+  // 5. SabPaisa PG 3.0 APIs (Staging Sandbox & Production Live)
+  // Returns: { success, orderId, finalAmount, checkoutUrl, mode }
+  // Open checkoutUrl directly in In-App WebView or External Browser
+  static Future<Map<String, dynamic>?> initiateSabpaisaPayment({
+    required String token,
+    required String planId,
+    String? name,
+    String? email,
+    String? phone,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/sabpaisa/initiate'),
+      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+      body: jsonEncode({
+        'planId': planId,
+        if (name != null) 'name': name,
+        if (email != null) 'email': email,
+        if (phone != null) 'phone': phone,
+      }),
+    );
+    if (res.statusCode == 200) return jsonDecode(res.body);
+    throw Exception(jsonDecode(res.body)['message'] ?? 'Failed to initiate SabPaisa payment');
+  }
+
+  static Future<bool> checkSabpaisaStatus(String token, String orderId) async {
+    final res = await http.get(Uri.parse('$baseUrl/sabpaisa/status/$orderId'), headers: {'Authorization': 'Bearer $token'});
+    if (res.statusCode != 200) return false;
+    final data = jsonDecode(res.body);
+    return data['status'] == 'active' || data['status'] == 'completed';
   }
 }
 

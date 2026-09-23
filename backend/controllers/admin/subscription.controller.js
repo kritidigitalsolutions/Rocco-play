@@ -101,7 +101,10 @@ exports.getSubscriptionStats =
       const [
         totalUsers,
         activeSubscriptionUsers,
+        activeSubscriptionCount,
         expiredSubscriptionCount,
+        cancelledSubscriptionCount,
+        totalSubscriptionsCount,
       ] = await Promise.all([
         User.countDocuments(),
 
@@ -116,8 +119,21 @@ exports.getSubscriptionStats =
         ),
 
         Subscription.countDocuments({
+          status: "active",
+          endDate: {
+            $gte: now,
+          },
+        }),
+
+        Subscription.countDocuments({
           status: "expired",
         }),
+
+        Subscription.countDocuments({
+          status: "cancelled",
+        }),
+
+        Subscription.countDocuments(),
       ]);
 
       const totalSubscribedUsers =
@@ -135,11 +151,11 @@ exports.getSubscriptionStats =
 
         data: {
           totalSubscribedUsers,
-
           totalNotSubscribedUsers,
-
-          expirySubscriptionCount:
-            expiredSubscriptionCount,
+          activeSubscriptionCount,
+          expirySubscriptionCount: expiredSubscriptionCount,
+          cancelledSubscriptionCount,
+          totalSubscriptionsCount,
         },
       });
 
@@ -371,12 +387,25 @@ exports.getAllSubscriptions =
         ];
       }
 
-      // 3. Search Filter (by User name or email)
+      // 3. Plan Filter
+      const planId = req.query.plan;
+      if (planId && planId !== "all") {
+        query.plan = planId;
+      }
+
+      // 4. Payment Gateway Filter
+      const gateway = (req.query.gateway || "").toLowerCase();
+      if (gateway && gateway !== "all") {
+        query.paymentGateway = gateway;
+      }
+
+      // 5. Search Filter (by User name, email, or phone)
       if (search) {
         const users = await User.find({
           $or: [
             { name: { $regex: search, $options: "i" } },
             { email: { $regex: search, $options: "i" } },
+            { phone: { $regex: search, $options: "i" } },
           ]
         }).select("_id");
 
@@ -386,6 +415,9 @@ exports.getAllSubscriptions =
 
       const total = await Subscription.countDocuments(query);
 
+      const sortBy = req.query.sortBy || "createdAt";
+      const sortOrder = req.query.sortOrder === "asc" ? 1 : -1;
+
       const subscriptions =
         await Subscription.find(query)
           .populate(
@@ -394,7 +426,7 @@ exports.getAllSubscriptions =
           )
           .populate("plan")
           .sort({
-            createdAt: -1,
+            [sortBy]: sortOrder,
           })
           .skip(skip)
           .limit(limit);

@@ -10,7 +10,10 @@ import {
   CheckCircle,
   AlertCircle,
   ExternalLink,
-  Info
+  Info,
+  Smartphone,
+  EyeOff,
+  LayoutTemplate
 } from "lucide-react";
 import "./Dashboard.css";
 import "./CompanyInfo.css";
@@ -20,6 +23,8 @@ export default function CompanyInfo() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
+    companyName: "",
+    appName: "",
     addressLine1: "",
     addressLine2: "",
     city: "",
@@ -45,6 +50,8 @@ export default function CompanyInfo() {
       if (res.data && res.data.data) {
         const info = res.data.data;
         setForm({
+          companyName: info.companyName || "",
+          appName: info.appName || "",
           addressLine1: info.addressLine1 || "",
           addressLine2: info.addressLine2 || "",
           city: info.city || "",
@@ -94,6 +101,8 @@ export default function CompanyInfo() {
         if (res.data.data) {
           const info = res.data.data;
           setForm({
+            companyName: info.companyName || "",
+            appName: info.appName || "",
             addressLine1: info.addressLine1 || "",
             addressLine2: info.addressLine2 || "",
             city: info.city || "",
@@ -175,20 +184,59 @@ export default function CompanyInfo() {
         <div className="company-card">
           <div>
             <h3>
-              <Building2 size={20} style={{ color: "var(--primary)" }} /> Address & Contact Info
+              <Building2 size={20} style={{ color: "var(--primary)" }} /> Company & App Information
             </h3>
             <p className="company-card-subtitle">
-              Fill in your business details. This will be visible on client portals when published.
+              Manage your company and application details. Company & App names will be displayed in the user app footer.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="company-form">
+            {/* Company Name & App Name Row */}
+            <div className="form-group-row">
+              <div className="form-group">
+                <label className="form-label">
+                  <Building2 size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: "4px" }} />
+                  Company Name
+                </label>
+                <input
+                  type="text"
+                  name="companyName"
+                  placeholder="e.g. Rocco Play Media Pvt. Ltd."
+                  value={form.companyName}
+                  onChange={handleChange}
+                  className="form-input-styled"
+                  disabled={saving}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  <Smartphone size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: "4px" }} />
+                  App Name
+                </label>
+                <input
+                  type="text"
+                  name="appName"
+                  placeholder="e.g. Rocco Play"
+                  value={form.appName}
+                  onChange={handleChange}
+                  className="form-input-styled"
+                  disabled={saving}
+                />
+              </div>
+            </div>
+
+            <div className="form-divider-label">
+              <span>Office Address Details</span>
+            </div>
+
             <div className="form-group">
               <label className="form-label">Address Line 1</label>
               <input
                 type="text"
                 name="addressLine1"
-                placeholder="Street address, P.O. box, company name"
+                placeholder="Street address, P.O. box, building name"
                 value={form.addressLine1}
                 onChange={handleChange}
                 className="form-input-styled"
@@ -283,7 +331,7 @@ export default function CompanyInfo() {
               <div className="status-info">
                 <span className="status-title">Publish Information</span>
                 <span className="status-desc">
-                  Toggle whether this information is public on the application.
+                  When turned OFF, only address details are hidden. Company & App names remain visible in the app footer.
                 </span>
               </div>
               <label className="switch-control">
@@ -320,57 +368,79 @@ export default function CompanyInfo() {
                 <span className="pulse-dot" /> Published
               </span>
             ) : (
-              <span className="badge-draft">Draft Mode</span>
+              <span className="badge-draft">
+                <EyeOff size={13} /> Address Hidden (Draft)
+              </span>
             )}
           </div>
 
           <div className="preview-content">
-            <h2 className="preview-title">Rocco Play Inc.</h2>
+            <div>
+              <h2 className="preview-title">{form.appName || "Rocco Play"}</h2>
+              {form.companyName && (
+                <div className="preview-company-subtitle">
+                  {form.companyName}
+                </div>
+              )}
+            </div>
 
-            {hasDetails ? (
-              <>
-                {(form.addressLine1 || form.addressLine2) && (
-                  <div className="preview-item">
-                    <MapPin className="preview-item-icon" size={18} />
-                    <div>
-                      {form.addressLine1 && <div className="preview-item-text">{form.addressLine1}</div>}
-                      {form.addressLine2 && <div className="preview-item-text">{form.addressLine2}</div>}
-                      {(form.city || form.state || form.postalCode) && (
-                        <div className="preview-item-sub">
-                          {[form.city, form.state, form.postalCode].filter(Boolean).join(", ")}
-                        </div>
-                      )}
-                      {form.country && <div className="preview-item-sub">{form.country}</div>}
+            {/* Address Details Section */}
+            {form.status === "published" ? (
+              hasDetails ? (
+                <>
+                  {(form.addressLine1 || form.addressLine2) && (
+                    <div className="preview-item">
+                      <MapPin className="preview-item-icon" size={18} />
+                      <div>
+                        {form.addressLine1 && <div className="preview-item-text">{form.addressLine1}</div>}
+                        {form.addressLine2 && <div className="preview-item-text">{form.addressLine2}</div>}
+                        {(form.city || form.state || form.postalCode) && (
+                          <div className="preview-item-sub">
+                            {[form.city, form.state, form.postalCode].filter(Boolean).join(", ")}
+                          </div>
+                        )}
+                        {form.country && <div className="preview-item-sub">{form.country}</div>}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {form.googleMapUrl && (
-                  <div className="preview-item">
-                    <Globe className="preview-item-icon" size={18} />
-                    <div>
-                      <div className="preview-item-text">Location Coordinates</div>
-                      <a
-                        href={form.googleMapUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="preview-map-link"
-                      >
-                        Open in Google Maps <ExternalLink size={12} />
-                      </a>
+                  {form.googleMapUrl && (
+                    <div className="preview-item">
+                      <Globe className="preview-item-icon" size={18} />
+                      <div>
+                        <div className="preview-item-text">Location Coordinates</div>
+                        <a
+                          href={form.googleMapUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="preview-map-link"
+                        >
+                          Open in Google Maps <ExternalLink size={12} />
+                        </a>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </>
+                  )}
+                </>
+              ) : (
+                <div style={{ color: "var(--text-muted)", fontSize: "0.88rem", textAlign: "center", padding: "12px 0" }}>
+                  Enter company address on the left to see full preview.
+                </div>
+              )
             ) : (
-              <div style={{ color: "var(--text-muted)", fontSize: "0.9rem", textAlign: "center", padding: "20px 0" }}>
-                Enter company details on the left to see the live app preview format.
+              <div className="preview-address-hidden-notice">
+                <EyeOff size={16} />
+                <div>
+                  <strong>Address is hidden from users</strong>
+                  <div style={{ fontSize: "0.78rem", color: "var(--text-soft)", marginTop: "2px" }}>
+                    Enable &quot;Publish Information&quot; to display address and map link on user app.
+                  </div>
+                </div>
               </div>
             )}
           </div>
 
           {/* Interactive Map Visual */}
-          {form.googleMapUrl ? (
+          {form.status === "published" && form.googleMapUrl ? (
             <a
               href={form.googleMapUrl}
               target="_blank"
@@ -386,7 +456,7 @@ export default function CompanyInfo() {
                 <div className="preview-map-sub">Click to load directions on external map</div>
               </div>
             </a>
-          ) : (
+          ) : form.status === "published" ? (
             <div className="preview-map-box">
               <Compass className="preview-map-icon" size={32} />
               <div>
@@ -394,7 +464,28 @@ export default function CompanyInfo() {
                 <div className="preview-map-sub">Provide a Google Maps URL to enable GPS navigation</div>
               </div>
             </div>
-          )}
+          ) : null}
+
+          {/* User App Footer Preview Card */}
+          <div className="preview-footer-mockup">
+            <div className="preview-footer-header">
+              <LayoutTemplate size={14} />
+              <span>User App Footer Output</span>
+            </div>
+            <div className="preview-footer-body">
+              <div className="preview-footer-app-name">
+                {form.appName || "Rocco Play"}
+              </div>
+              <div className="preview-footer-copyright">
+                © {new Date().getFullYear()} {form.companyName || form.appName || "Rocco Play Media"}. All rights reserved.
+              </div>
+              {form.status === "published" && (form.city || form.country) && (
+                <div className="preview-footer-location">
+                  <MapPin size={11} /> {[form.city, form.country].filter(Boolean).join(", ")}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

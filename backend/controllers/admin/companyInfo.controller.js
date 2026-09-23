@@ -21,6 +21,8 @@ const getCompanyInfo = async (req, res) => {
 const saveCompanyInfo = async (req, res) => {
   try {
     const {
+      companyName,
+      appName,
       addressLine1,
       addressLine2,
       city,
@@ -35,6 +37,8 @@ const saveCompanyInfo = async (req, res) => {
 
     if (!companyInfo) {
       companyInfo = await CompanyInfo.create({
+        companyName,
+        appName,
         addressLine1,
         addressLine2,
         city,
@@ -54,6 +58,8 @@ const saveCompanyInfo = async (req, res) => {
       });
     }
 
+    if (companyName !== undefined) companyInfo.companyName = companyName;
+    if (appName !== undefined) companyInfo.appName = appName;
     companyInfo.addressLine1 = addressLine1;
     companyInfo.addressLine2 = addressLine2;
     companyInfo.city = city;

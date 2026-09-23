@@ -8,6 +8,7 @@ const sabpaisaOrderSchema = new mongoose.Schema(
     platform: { type: String, enum: ["app", "website"], default: "app", index: true },
     promoCode: { type: String, default: null },
     amount: { type: Number, required: true },
+    mode: { type: String, enum: ["test", "live"], default: "test" },
     status: { type: String, enum: ["initiated", "completed", "failed"], default: "initiated" },
     sabpaisaTransactionId: { type: String, default: null, index: true },
   },

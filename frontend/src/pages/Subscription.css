@@ -1,56 +1,458 @@
+/* ==========================================================================
+   ROCCO PLAY — SUBSCRIBED USERS & MONITORING PAGE
+   ========================================================================== */
+
 .subscription-page {
-  padding: 10px;
+  padding: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: pageIn 0.35s ease-out;
+}
+
+/* ── Top Monitoring Stats Grid ── */
+.subs-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px;
+}
+
+.subs-stat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.subs-stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  border-radius: 4px 0 0 4px;
+}
+
+.subs-stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+/* Card Themes */
+.subs-stat-card.c-blue::before { background: var(--blue, #3b82f6); }
+.subs-stat-card.c-blue:hover { border-color: rgba(59, 130, 246, 0.4); }
+
+.subs-stat-card.c-pink::before { background: #ec4899; }
+.subs-stat-card.c-pink:hover { border-color: rgba(236, 72, 153, 0.4); }
+
+.subs-stat-card.c-green::before { background: var(--green, #10b981); }
+.subs-stat-card.c-green:hover { border-color: rgba(16, 185, 129, 0.4); }
+
+.subs-stat-card.c-orange::before { background: var(--orange, #f59e0b); }
+.subs-stat-card.c-orange:hover { border-color: rgba(245, 158, 11, 0.4); }
+
+.subs-stat-card.c-purple::before { background: #8b5cf6; }
+.subs-stat-card.c-purple:hover { border-color: rgba(139, 92, 246, 0.4); }
+
+.subs-stat-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.subs-stat-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+}
+
+.subs-stat-icon-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.c-blue .subs-stat-icon-wrap { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+.c-pink .subs-stat-icon-wrap { background: rgba(236, 72, 153, 0.15); color: #ec4899; }
+.c-green .subs-stat-icon-wrap { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.c-orange .subs-stat-icon-wrap { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.c-purple .subs-stat-icon-wrap { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
+
+.subs-stat-val {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.subs-stat-sub {
+  font-size: 0.8rem;
+  color: var(--text-soft);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ── Filter Controls Bar ── */
+.subs-filter-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.subs-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.subs-search-box {
+  position: relative;
+  flex: 1;
+  min-width: 240px;
+}
+
+.subs-search-box input {
+  width: 100%;
+  padding: 10px 14px 10px 42px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.subs-search-box input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.15);
+}
+
+.subs-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.subs-filter-select {
+  padding: 10px 14px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.88rem;
+  cursor: pointer;
+  min-width: 130px;
+  transition: border-color 0.2s;
+}
+
+.subs-filter-select:focus {
+  border-color: var(--primary);
+}
+
+.subs-filter-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-reset-filters {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-soft);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-reset-filters:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+.btn-refresh-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-soft);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-refresh-stats:hover {
+  border-color: var(--primary);
+  color: var(--text);
+}
+
+.btn-refresh-stats.spinning svg {
+  animation: spin 0.8s linear infinite;
+}
+
+/* ── Table Styling ── */
+.subs-table-container {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
 }
 
 .subscription-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 20px;
+  text-align: left;
 }
 
-/* Header */
 .subscription-table thead {
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--border);
 }
 
 .subscription-table th {
-  text-align: left;
-  padding: 12px;
-  font-size: 0.9rem;
+  padding: 14px 16px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
   color: var(--text-muted);
 }
 
-/* Rows */
 .subscription-table td {
-  padding: 12px;
-  border-top: 1px solid var(--border);
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
   font-size: 0.9rem;
+  vertical-align: middle;
 }
 
-/* Hover effect */
-.subscription-table tr:hover {
-  background: rgba(255,255,255,0.03);
+.subscription-table tbody tr {
+  transition: background 0.2s;
 }
 
-/* Plan styling */
-.plan {
-  text-transform: capitalize;
+.subscription-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
 }
 
-/* Status */
-.status {
-  padding: 4px 10px;
-  border-radius: 20px;
+/* User cell */
+.sub-user-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sub-user-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.sub-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sub-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sub-user-name {
+  font-weight: 700;
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.sub-user-email {
+  font-size: 0.8rem;
+  color: var(--text-soft);
+}
+
+.sub-user-phone {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+/* Badges */
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 12px;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.3px;
 }
 
-.status.active {
-  background: rgba(16,185,129,0.15);
+.badge-pill.status-active {
+  background: rgba(16, 185, 129, 0.15);
   color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
-.status.expired {
-  background: rgba(239,68,68,0.15);
+.badge-pill.status-expired {
+  background: rgba(239, 68, 68, 0.15);
   color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-pill.status-cancelled {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-pill.platform-app {
+  background: rgba(236, 72, 153, 0.12);
+  color: #ec4899;
+  border: 1px solid rgba(236, 72, 153, 0.25);
+}
+
+.badge-pill.platform-website {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.badge-pill.gateway-hdfc {
+  background: rgba(0, 76, 143, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(0, 76, 143, 0.4);
+}
+
+.badge-pill.gateway-razorpay {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-pill.gateway-zaakpay {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.badge-pill.gateway-manual {
+  background: rgba(100, 116, 139, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+/* Validity Cell */
+.validity-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.validity-date {
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.validity-sub {
+  font-size: 0.75rem;
+  color: var(--text-soft);
+}
+
+/* Action buttons */
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.icon-btn.view:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.icon-btn.cancel:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.icon-btn.del:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+/* Empty State */
+.table-empty-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.table-empty-state svg {
+  color: var(--text-soft);
+  opacity: 0.5;
+}
+
+/* Pagination */
+.subs-pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-top: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.01);
 }

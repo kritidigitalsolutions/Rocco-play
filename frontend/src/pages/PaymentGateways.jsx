@@ -147,6 +147,7 @@ const PaymentGateways = () => {
         defaultGateway: pgConfig.defaultGateway,
         zaakpayMode: pgConfig.zaakpayMode,
         hdfcMode: pgConfig.hdfcMode,
+        sabpaisaMode: pgConfig.sabpaisaMode,
       });
       if (res.data?.success) {
         setMessage("All payment gateway settings saved successfully! ✅");
@@ -259,12 +260,16 @@ const PaymentGateways = () => {
       setSavingSabpaisa(true);
       const res = await API.put("/admin/payment-settings", {
         sabpaisaEnabled: pgConfig.sabpaisaEnabled,
+        sabpaisaMode: pgConfig.sabpaisaMode,
       });
       if (res.data?.success) {
-        setMessage(`SabPaisa successfully saved as ${pgConfig.sabpaisaEnabled ? "Enabled" : "Disabled"}! ✅`);
+        const stateLabel = pgConfig.sabpaisaEnabled ? "Enabled" : "Disabled";
+        const modeLabel = (pgConfig.sabpaisaMode || "test").toUpperCase();
+        setMessage(`SabPaisa successfully saved as ${stateLabel} (Mode: ${modeLabel})! ✅`);
         setSavedConfig((prev) => ({
           ...prev,
           sabpaisaEnabled: pgConfig.sabpaisaEnabled,
+          sabpaisaMode: pgConfig.sabpaisaMode,
         }));
         setTimeout(() => setMessage(""), 4000);
         testPublicGatewayApi();
@@ -285,7 +290,9 @@ const PaymentGateways = () => {
   const isHdfcChanged =
     pgConfig.hdfcEnabled !== savedConfig.hdfcEnabled ||
     pgConfig.hdfcMode !== savedConfig.hdfcMode;
-  const isSabpaisaChanged = pgConfig.sabpaisaEnabled !== savedConfig.sabpaisaEnabled;
+  const isSabpaisaChanged =
+    pgConfig.sabpaisaEnabled !== savedConfig.sabpaisaEnabled ||
+    pgConfig.sabpaisaMode !== savedConfig.sabpaisaMode;
   const isDefaultGatewayChanged = pgConfig.defaultGateway !== savedConfig.defaultGateway;
 
   const isAnyChanged = isRzpChanged || isZaakChanged || isHdfcChanged || isSabpaisaChanged || isDefaultGatewayChanged;
@@ -663,7 +670,7 @@ const PaymentGateways = () => {
               <div className="pg-brand-icon sabpaisa-icon">S</div>
               <div>
                 <h3 className="pg-brand-name">SabPaisa</h3>
-                <span className="pg-brand-type">Hosted checkout for UPI, cards and net banking</span>
+                <span className="pg-brand-type">PG 3.0 Hosted Checkout (Cards, UPI & NetBanking)</span>
               </div>
             </div>
             <label className="pg-switch-toggle" title="Toggle SabPaisa">
@@ -675,20 +682,75 @@ const PaymentGateways = () => {
             <span className={`pg-status-pill ${pgConfig.sabpaisaEnabled ? "active" : "disabled"}`}>
               {pgConfig.sabpaisaEnabled ? "● Enabled" : "○ Disabled"}
             </span>
-            <span className="pg-env-pill test">Test / Staging</span>
+            <span className={`pg-env-pill ${pgConfig.sabpaisaMode === "live" ? "live" : "test"}`}>
+              {pgConfig.sabpaisaMode === "live" ? "Live Gateway" : "UAT / Staging"}
+            </span>
           </div>
-          <p className="pg-card-text">Backend-created SabPaisa checkout sessions. Subscriptions activate only after signed return and server-side enquiry verification.</p>
-          <div className="pg-uat-box">
-            <div className="pg-uat-title">Server configuration:</div>
-            <div className="pg-uat-grid">
-              <div><strong>Credentials:</strong> {pgConfig.sabpaisaKeyConfigured ? "Configured" : "Missing"}</div>
-              <div><strong>Mode:</strong> {(pgConfig.sabpaisaMode || "test").toUpperCase()}</div>
+          <p className="pg-card-text">
+            Backend-created SabPaisa checkout sessions. Subscriptions activate only after signed return and server-side enquiry verification.
+          </p>
+
+          <div className="pg-setting-field">
+            <label className="pg-field-label">Environment Mode</label>
+            <select
+              value={pgConfig.sabpaisaMode || "test"}
+              onChange={(e) => {
+                setPgConfig({ ...pgConfig, sabpaisaMode: e.target.value });
+              }}
+              className="pg-select-input"
+            >
+              <option value="test">🧪 Test / Staging (UAT Sandbox)</option>
+              <option value="live">🚀 Live / Production Gateway</option>
+            </select>
+          </div>
+
+          {pgConfig.sabpaisaMode === "live" ? (
+            <div className="pg-uat-box" style={{ background: "rgba(168, 85, 247, 0.12)", borderColor: "rgba(168, 85, 247, 0.3)" }}>
+              <div className="pg-uat-title" style={{ color: "#d8b4fe" }}>Production Live Environment:</div>
+              <div className="pg-uat-grid">
+                <div><strong>Client Code:</strong> {pgConfig.sabpaisaMerchantId || "XOZO1"}</div>
+                <div><strong>Base URL:</strong> merchant-api.sabpaisa.in</div>
+                <div><strong>Credentials:</strong> {pgConfig.sabpaisaKeyConfigured ? "Configured in .env" : "Missing in .env"}</div>
+                <div><strong>Transactions:</strong> Real Money</div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="pg-uat-box" style={{ background: "rgba(245, 158, 11, 0.12)", borderColor: "rgba(245, 158, 11, 0.3)" }}>
+              <div className="pg-uat-title" style={{ color: "#fcd34d" }}>Sandbox Test Credentials (Moves No Real Money):</div>
+              <div className="pg-uat-grid">
+                <div><strong>Client Code:</strong> SQUA102</div>
+                <div><strong>API Key:</strong> sp_itOrld7Rm...</div>
+                <div><strong>Secret Key:</strong> sec_lLao-1-y...</div>
+                <div><strong>Base URL:</strong> staging-sb-merchant-api.sabpaisa.in</div>
+              </div>
+            </div>
+          )}
+
           <div className="pg-card-footer">
             <span className="pg-key-tag"><Key size={14} /> Keys stay in backend .env</span>
-            <button type="button" className={`pg-card-save-btn ${!isSabpaisaChanged ? "is-saved" : pgConfig.sabpaisaEnabled ? "save-enabled" : "save-disabled"}`} onClick={handleSaveSabpaisa} disabled={savingSabpaisa || !isSabpaisaChanged}>
-              {savingSabpaisa ? <><RefreshCw size={15} className="spin" /> Saving...</> : !isSabpaisaChanged ? <><Check size={16} /> Saved!</> : pgConfig.sabpaisaEnabled ? <><Check size={16} /> Save as Enabled</> : <><XCircle size={16} /> Save as Disabled</>}
+            <button
+              type="button"
+              className={`pg-card-save-btn ${!isSabpaisaChanged ? "is-saved" : pgConfig.sabpaisaEnabled ? "save-enabled" : "save-disabled"}`}
+              onClick={handleSaveSabpaisa}
+              disabled={savingSabpaisa || !isSabpaisaChanged}
+            >
+              {savingSabpaisa ? (
+                <>
+                  <RefreshCw size={15} className="spin" /> Saving...
+                </>
+              ) : !isSabpaisaChanged ? (
+                <>
+                  <Check size={16} /> Saved!
+                </>
+              ) : pgConfig.sabpaisaEnabled ? (
+                <>
+                  <Check size={16} /> Save as Enabled
+                </>
+              ) : (
+                <>
+                  <XCircle size={16} /> Save as Disabled
+                </>
+              )}
             </button>
           </div>
         </div>

@@ -2,6 +2,16 @@ const mongoose = require("mongoose");
 
 const companyInfoSchema = new mongoose.Schema(
   {
+    companyName: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    appName: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     addressLine1: {
       type: String,
       trim: true,

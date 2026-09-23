@@ -1,9 +1,13 @@
 const PaymentConfig = require("../../models/paymentConfig.model");
+const { isSabpaisaConfigured, getSabpaisaConfig } = require("../../config/sabpaisa");
 
 // GET /api/admin/payment-settings
 exports.getPaymentSettings = async (req, res) => {
   try {
     const config = await PaymentConfig.getConfig();
+    const sabpaisaMode = config.sabpaisaMode || process.env.SABPAISA_MODE || "test";
+    const sabpaisaCfg = getSabpaisaConfig(sabpaisaMode);
+
     return res.status(200).json({
       success: true,
       data: {
@@ -14,11 +18,13 @@ exports.getPaymentSettings = async (req, res) => {
         defaultGateway: config.defaultGateway,
         zaakpayMode: config.zaakpayMode,
         hdfcMode: config.hdfcMode,
+        sabpaisaMode: sabpaisaMode,
         razorpayKeyConfigured: !!process.env.RAZORPAY_KEY_ID,
         zaakpayKeyConfigured: !!(process.env.ZAAKPAY_MERCHANT_ID && process.env.ZAAKPAY_SECRET_KEY),
         hdfcKeyConfigured: !!(process.env.HDFC_MERCHANT_ID && process.env.HDFC_MERCHANT_KEY),
-        sabpaisaKeyConfigured: !!(process.env.SABPAISA_API_KEY && process.env.SABPAISA_SECRET_KEY && process.env.SABPAISA_MERCHANT_ID && process.env.SABPAISA_RETURN_URL),
-        sabpaisaMode: process.env.SABPAISA_MODE || "test",
+        sabpaisaKeyConfigured: isSabpaisaConfigured(sabpaisaMode),
+        sabpaisaMerchantId: sabpaisaCfg.merchantId,
+        sabpaisaBaseUrl: sabpaisaCfg.baseUrl,
         hdfcVpa: process.env.HDFC_VPA || "roccoplaywork@hdfcbank",
         hdfcStoreName: process.env.HDFC_STORE_NAME || "ROCCOPLAY MEDIA",
       },
@@ -45,8 +51,14 @@ exports.updatePaymentSettings = async (req, res) => {
       defaultGateway,
       zaakpayMode,
       hdfcMode,
+      sabpaisaMode,
       activeGateway,
     } = req.body;
+
+    const currentConfig = await PaymentConfig.getConfig();
+    const targetSabpaisaMode = (sabpaisaMode && ["test", "live"].includes(sabpaisaMode))
+      ? sabpaisaMode
+      : (currentConfig.sabpaisaMode || "test");
 
     const updateData = {};
 
@@ -61,15 +73,18 @@ exports.updatePaymentSettings = async (req, res) => {
       updateData.hdfcEnabled = Boolean(hdfcEnabled);
     }
     if (sabpaisaEnabled !== undefined) {
-      if (sabpaisaEnabled && !(process.env.SABPAISA_API_KEY && process.env.SABPAISA_SECRET_KEY && process.env.SABPAISA_MERCHANT_ID && process.env.SABPAISA_RETURN_URL)) {
-        return res.status(400).json({ success: false, message: "Configure SABPAISA_API_KEY, SABPAISA_SECRET_KEY, SABPAISA_MERCHANT_ID, and SABPAISA_RETURN_URL before enabling SabPaisa" });
+      if (sabpaisaEnabled && !isSabpaisaConfigured(targetSabpaisaMode)) {
+        return res.status(400).json({
+          success: false,
+          message: `Configure SabPaisa credentials for ${targetSabpaisaMode} mode before enabling`,
+        });
       }
       updateData.sabpaisaEnabled = Boolean(sabpaisaEnabled);
     }
 
     // Backwards compatibility for single activeGateway parameter if sent
     if (activeGateway && ["razorpay", "zaakpay", "hdfc", "sabpaisa"].includes(activeGateway)) {
-      if (activeGateway === "sabpaisa" && !(process.env.SABPAISA_API_KEY && process.env.SABPAISA_SECRET_KEY && process.env.SABPAISA_MERCHANT_ID && process.env.SABPAISA_RETURN_URL)) {
+      if (activeGateway === "sabpaisa" && !isSabpaisaConfigured(targetSabpaisaMode)) {
         return res.status(400).json({ success: false, message: "Configure SabPaisa credentials first" });
       }
       updateData[`${activeGateway}Enabled`] = true;
@@ -86,6 +101,9 @@ exports.updatePaymentSettings = async (req, res) => {
     if (hdfcMode && ["test", "live"].includes(hdfcMode)) {
       updateData.hdfcMode = hdfcMode;
     }
+    if (sabpaisaMode && ["test", "live"].includes(sabpaisaMode)) {
+      updateData.sabpaisaMode = sabpaisaMode;
+    }
 
     let config = await PaymentConfig.findOne();
     if (!config) {
@@ -95,6 +113,9 @@ exports.updatePaymentSettings = async (req, res) => {
     }
 
     await config.save();
+
+    const activeSabMode = config.sabpaisaMode || "test";
+    const activeSabCfg = getSabpaisaConfig(activeSabMode);
 
     return res.status(200).json({
       success: true,
@@ -107,11 +128,13 @@ exports.updatePaymentSettings = async (req, res) => {
         defaultGateway: config.defaultGateway,
         zaakpayMode: config.zaakpayMode,
         hdfcMode: config.hdfcMode,
+        sabpaisaMode: activeSabMode,
         razorpayKeyConfigured: !!process.env.RAZORPAY_KEY_ID,
         zaakpayKeyConfigured: !!(process.env.ZAAKPAY_MERCHANT_ID && process.env.ZAAKPAY_SECRET_KEY),
         hdfcKeyConfigured: !!(process.env.HDFC_MERCHANT_ID && process.env.HDFC_MERCHANT_KEY),
-        sabpaisaKeyConfigured: !!(process.env.SABPAISA_API_KEY && process.env.SABPAISA_SECRET_KEY && process.env.SABPAISA_MERCHANT_ID && process.env.SABPAISA_RETURN_URL),
-        sabpaisaMode: process.env.SABPAISA_MODE || "test",
+        sabpaisaKeyConfigured: isSabpaisaConfigured(activeSabMode),
+        sabpaisaMerchantId: activeSabCfg.merchantId,
+        sabpaisaBaseUrl: activeSabCfg.baseUrl,
         hdfcVpa: process.env.HDFC_VPA || "roccoplaywork@hdfcbank",
         hdfcStoreName: process.env.HDFC_STORE_NAME || "ROCCOPLAY MEDIA",
       },

@@ -4,6 +4,7 @@ const {
   calculateResponseChecksum,
   verifyChecksum,
   getTransactUrl,
+  queryZaakpayOrderStatus,
 } = require("../config/zaakpay");
 const ZaakpayOrder = require("../models/zaakpayOrder.model");
 
@@ -184,8 +185,26 @@ exports.handleCallback = async (req, res) => {
       if (isTestMode) {
         console.warn("⚠️ Zaakpay Test Mode: Checksum mismatch ignored for sandbox testing.");
       } else {
-        console.error("❌ Zaakpay Live Mode: Invalid Checksum Received!");
-        return res.status(400).send(_buildStatusHtml(false, "Checksum verification failed", orderId));
+        // Fallback: verify directly with Zaakpay official Server-to-Server status API
+        console.warn(`⚠️ Zaakpay Live Mode: Callback checksum mismatch for order ${orderId}. Verifying via Status API...`);
+        try {
+          const liveCheck = await queryZaakpayOrderStatus(orderId, true);
+          const orderInfo = liveCheck?.data?.orders?.[0];
+          const st = String(orderInfo?.txnStatus ?? "");
+          const rc = String(orderInfo?.responseCode ?? "");
+          const rd = String(orderInfo?.responseDescription ?? "").toLowerCase();
+          if (st === "0" || rc === "228" || rc === "100" || rd.includes("captured") || rd.includes("success")) {
+            console.log("✅ Zaakpay Status API confirmed transaction is captured!");
+            isChecksumValid = true;
+          }
+        } catch (apiErr) {
+          console.error("Zaakpay Status API fallback error:", apiErr.message);
+        }
+
+        if (!isChecksumValid) {
+          console.error("❌ Zaakpay Live Mode: Invalid Checksum and Status API did not confirm capture!");
+          return res.status(400).send(_buildStatusHtml(false, "Checksum verification failed", orderId));
+        }
       }
     }
 
@@ -212,11 +231,15 @@ exports.handleCallback = async (req, res) => {
     const effectiveOrderId = orderRecord.orderId || orderId;
     const { user: userId, plan: planId, promoCode } = orderRecord;
 
-    // 3. Determine Transaction Success
+    // 3. Determine Transaction Success (Zaakpay codes: 100=Success, 228=Captured, txnStatus 0=Captured)
     const isSuccess =
       String(responseCode) === "100" ||
+      String(responseCode) === "228" ||
+      String(rawData.txnStatus) === "0" ||
+      String(normalized["txnstatus"]) === "0" ||
       String(rawData.result) === "true" ||
       String(normalized["result"]) === "true" ||
+      String(responseDescription).toLowerCase().includes("captured") ||
       String(responseDescription).toLowerCase().includes("success") ||
       isTestMode; // In test sandbox, visiting callback implies completion
 
@@ -246,7 +269,29 @@ exports.handleCallback = async (req, res) => {
       return res.status(200).send(_buildStatusHtml(true, "Payment successful", effectiveOrderId));
     }
 
-    // 6. Update Promo usage
+    // 6. Expire previous active subscription for this platform
+    const resolvedPlatform = orderRecord.platform || plan.platform || "app";
+    const platformFilter = [{ platform: resolvedPlatform }];
+    if (resolvedPlatform === "app") {
+      platformFilter.push({ platform: { $exists: false } });
+      platformFilter.push({ platform: null });
+    }
+
+    let existingSubForPlatform = await Subscription.findOne({
+      user: userId,
+      status: "active",
+      $or: platformFilter,
+    }).sort({ createdAt: -1 });
+
+    if (existingSubForPlatform) {
+      existingSubForPlatform = await expireSubscriptionIfNeeded(existingSubForPlatform);
+      if (existingSubForPlatform && existingSubForPlatform.status === "active") {
+        existingSubForPlatform.status = "expired";
+        await existingSubForPlatform.save();
+      }
+    }
+
+    // 7. Update Promo usage
     if (promoCode) {
       const promo = await Promo.findOne({ code: promoCode.toUpperCase(), isActive: true });
       if (promo) {
@@ -255,7 +300,7 @@ exports.handleCallback = async (req, res) => {
       }
     }
 
-    // 7. Create Active Subscription
+    // 8. Create Active Subscription
     const startDate = new Date();
     const endDate = new Date();
     endDate.setUTCDate(endDate.getUTCDate() + (plan.duration || 30));
@@ -265,7 +310,7 @@ exports.handleCallback = async (req, res) => {
     const subscription = await Subscription.create({
       user: userId,
       plan: plan._id,
-      platform: orderRecord.platform || plan.platform || "app",
+      platform: resolvedPlatform,
       status: "active",
       paymentGateway: "zaakpay",
       paymentId: transactionId,
@@ -278,7 +323,7 @@ exports.handleCallback = async (req, res) => {
 
     if (userId) {
       await User.findByIdAndUpdate(userId, {
-        $push: { subscriptions: subscription._id },
+        $addToSet: { subscriptions: subscription._id },
       });
     }
 
@@ -309,65 +354,184 @@ exports.checkPaymentStatus = async (req, res) => {
     // 1. Look for active subscription in Subscription collection
     let subscription = await Subscription.findOne({
       $or: [{ subscriptionId: orderId }, { paymentId: orderId }],
-    }).populate("plan", "name duration price");
+      status: "active",
+    }).populate("plan", "name duration price platform");
 
-    // 2. If not found yet, check ZaakpayOrder
-    if (!subscription) {
-      const orderRecord = await ZaakpayOrder.findOne({ orderId });
-
-      if (orderRecord) {
-        const config = await PaymentConfig.getConfig();
-        const isTestMode = (config?.zaakpayMode || process.env.ZAAKPAY_MODE || "test") === "test";
-
-        // Auto-fulfill in test mode if client reached verification
-        if (isTestMode || orderRecord.status === "completed") {
-          const plan = await Plan.findById(orderRecord.plan);
-          if (plan) {
-            const startDate = new Date();
-            const endDate = new Date();
-            endDate.setUTCDate(endDate.getUTCDate() + (plan.duration || 30));
-
-            subscription = await Subscription.create({
-              user: orderRecord.user,
-              plan: plan._id,
-              platform: orderRecord.platform || plan.platform || "app",
-              status: "active",
-              paymentGateway: "zaakpay",
-              paymentId: `ZPTXN_${Date.now()}`,
-              subscriptionId: orderId,
-              amount: orderRecord.amount || plan.price,
-              currency: "INR",
-              startDate,
-              endDate,
-            });
-
-            if (orderRecord.user) {
-              await User.findByIdAndUpdate(orderRecord.user, {
-                $push: { subscriptions: subscription._id },
-              });
-            }
-
-            orderRecord.status = "completed";
-            await orderRecord.save();
-
-            subscription = await Subscription.findById(subscription._id).populate("plan", "name duration price");
-            console.log("✅ Auto-fulfilled Zaakpay Subscription for Order:", orderId);
-          }
-        }
-      }
-    }
-
-    if (!subscription) {
-      return res.status(404).json({
-        success: false,
-        message: "No subscription found for this order ID yet",
+    if (subscription) {
+      return res.status(200).json({
+        success: true,
+        status: subscription.status,
+        subscription,
       });
     }
 
+    // 2. Look for ZaakpayOrder
+    const orderRecord = await ZaakpayOrder.findOne({ orderId });
+    if (!orderRecord) {
+      return res.status(404).json({
+        success: false,
+        message: "Zaakpay order not found for this order ID",
+      });
+    }
+
+    const config = await PaymentConfig.getConfig();
+    const isLive = (config?.zaakpayMode || process.env.ZAAKPAY_MODE || "test") === "live" || ZAAKPAY_CONFIG.mode === "live";
+    const isTestMode = !isLive;
+
+    let zaakpayStatus = null;
+    let isCaptured = false;
+    let isFailed = false;
+    let txnId = `ZPTXN_${Date.now()}`;
+    let verifiedAmount = orderRecord.amount;
+    let responseDesc = "";
+
+    // 3. Query Official Zaakpay Check Transaction Status API (Server-to-Server)
+    try {
+      zaakpayStatus = await queryZaakpayOrderStatus(orderId, isLive);
+      console.log(`Zaakpay Status API Response for ${orderId}:`, JSON.stringify(zaakpayStatus));
+
+      const orderInfo = zaakpayStatus?.data?.orders?.[0];
+      const orderDetail = orderInfo?.orderDetail;
+      const txnStatus = String(orderInfo?.txnStatus ?? "");
+      const responseCode = String(orderInfo?.responseCode ?? "");
+      responseDesc = String(orderInfo?.responseDescription ?? "");
+
+      if (orderDetail?.txnId) {
+        txnId = orderDetail.txnId;
+      } else if (orderInfo?.bankRefNum && orderInfo.bankRefNum !== "NA") {
+        txnId = `ZPTXN_${orderInfo.bankRefNum}`;
+      }
+
+      if (orderDetail?.amount) {
+        verifiedAmount = Number(orderDetail.amount) / 100;
+      }
+
+      // Zaakpay returns: txnStatus "0" = captured/success, responseCode "228" or "100" = captured
+      isCaptured =
+        txnStatus === "0" ||
+        responseCode === "228" ||
+        responseCode === "100" ||
+        responseDesc.toLowerCase().includes("captured") ||
+        responseDesc.toLowerCase().includes("success") ||
+        (zaakpayStatus?.message?.code === "100" && orderInfo?.userAccountDebited === true);
+
+      // txnStatus "1" = cancelled, responseCode "213" = cancelled
+      isFailed =
+        txnStatus === "1" ||
+        responseCode === "213" ||
+        responseDesc.toLowerCase().includes("cancelled") ||
+        responseDesc.toLowerCase().includes("failed");
+    } catch (apiErr) {
+      console.error(`Zaakpay Status API Query Error for ${orderId}:`, apiErr.message);
+    }
+
+    // Auto-fulfill if orderRecord already completed or in sandbox test mode
+    if (orderRecord.status === "completed") {
+      isCaptured = true;
+    } else if (isTestMode && !isFailed) {
+      isCaptured = true;
+    }
+
+    // 4. If payment is captured, activate Subscription
+    if (isCaptured) {
+      const plan = await Plan.findById(orderRecord.plan);
+      if (!plan) {
+        return res.status(404).json({ success: false, message: "Associated plan not found" });
+      }
+
+      const resolvedPlatform = orderRecord.platform || plan.platform || "app";
+
+      // Expire previous active subscription for this platform
+      const platformFilter = [{ platform: resolvedPlatform }];
+      if (resolvedPlatform === "app") {
+        platformFilter.push({ platform: { $exists: false } });
+        platformFilter.push({ platform: null });
+      }
+
+      let existing = await Subscription.findOne({
+        user: orderRecord.user,
+        status: "active",
+        $or: platformFilter,
+      }).sort({ createdAt: -1 });
+
+      if (existing) {
+        existing = await expireSubscriptionIfNeeded(existing);
+        if (existing && existing.status === "active") {
+          existing.status = "expired";
+          await existing.save();
+        }
+      }
+
+      // Check if subscription was created in the meantime (prevent duplicate)
+      subscription = await Subscription.findOne({
+        $or: [{ subscriptionId: orderId }, { paymentId: txnId }],
+      }).populate("plan", "name duration price platform");
+
+      if (!subscription) {
+        const startDate = new Date();
+        const endDate = new Date();
+        endDate.setUTCDate(endDate.getUTCDate() + (plan.duration || 30));
+
+        subscription = await Subscription.create({
+          user: orderRecord.user,
+          plan: plan._id,
+          platform: resolvedPlatform,
+          status: "active",
+          paymentGateway: "zaakpay",
+          paymentId: txnId,
+          subscriptionId: orderId,
+          amount: verifiedAmount || orderRecord.amount || plan.price,
+          currency: "INR",
+          startDate,
+          endDate,
+        });
+
+        if (orderRecord.user) {
+          await User.findByIdAndUpdate(orderRecord.user, {
+            $addToSet: { subscriptions: subscription._id },
+          });
+        }
+
+        if (orderRecord.promoCode) {
+          const promo = await Promo.findOne({ code: orderRecord.promoCode.toUpperCase(), isActive: true });
+          if (promo) {
+            promo.usedCount = (promo.usedCount || 0) + 1;
+            await promo.save();
+          }
+        }
+
+        subscription = await Subscription.findById(subscription._id).populate("plan", "name duration price platform");
+      }
+
+      orderRecord.status = "completed";
+      await orderRecord.save();
+
+      console.log("✅ Zaakpay Subscription Verified & Activated:", subscription._id, "for Order:", orderId);
+
+      return res.status(200).json({
+        success: true,
+        status: "active",
+        message: "Payment verified and subscription activated successfully",
+        subscription,
+      });
+    }
+
+    // 5. If payment failed or cancelled
+    if (isFailed) {
+      orderRecord.status = "failed";
+      await orderRecord.save();
+      return res.status(400).json({
+        success: false,
+        status: "failed",
+        message: responseDesc || "Payment was cancelled or failed",
+      });
+    }
+
+    // 6. If payment is still initiated / pending
     return res.status(200).json({
-      success: true,
-      status: subscription.status,
-      subscription,
+      success: false,
+      status: "pending",
+      message: responseDesc || "Payment is still processing or initiated",
     });
   } catch (err) {
     console.error("Check Zaakpay Status Error:", err);

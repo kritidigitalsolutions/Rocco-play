@@ -177,6 +177,10 @@ app.use(
   contentAdminRoutes
 );
 
+const adminSearchRoutes = require("./routes/admin/search.routes");
+app.use("/api/admin/search", adminSearchRoutes);
+
+
 
 // ========================================
 // USER ROUTES

@@ -18,6 +18,9 @@ export default function Topbar({ theme, toggleTheme, toggleSidebar }) {
   const [adminData, setAdminData] = useState(null);
   const [search, setSearch]       = useState("");
   const [results, setResults]     = useState([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchRef = useRef(null);
 
   // ── Notification state ──────────────────────────────────────────────
   const [notifCount,   setNotifCount]   = useState(0);
@@ -78,46 +81,75 @@ export default function Topbar({ theme, toggleTheme, toggleSidebar }) {
     }
   };
 
-  // Close dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e) => {
       if (notifRef.current && !notifRef.current.contains(e.target)) {
         setNotifOpen(false);
+      }
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setSearchOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const handleSearch = async (value) => {
-  setSearch(value);
+  // Debounced search effect
+  useEffect(() => {
+    const trimmed = search.trim();
+    if (!trimmed) {
+      setResults([]);
+      setSearchLoading(false);
+      return;
+    }
 
-  if (!value) {
+    setSearchLoading(true);
+    const delayTimer = setTimeout(async () => {
+      try {
+        const res = await API.get(`/admin/search?q=${encodeURIComponent(trimmed)}`);
+        setResults(res.data?.data || []);
+        setSearchOpen(true);
+      } catch (err) {
+        console.error("Search error:", err);
+        setResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 280);
+
+    return () => clearTimeout(delayTimer);
+  }, [search]);
+
+  const handleSelect = (item) => {
+    if (item.route) {
+      navigate(item.route);
+    } else if (item.type === "User") {
+      navigate("/dashboard/users");
+    } else if (item.type === "Movie" || item.type === "Series" || item.type === "Content") {
+      navigate("/dashboard/content");
+    } else if (item.type === "Help") {
+      navigate("/dashboard/help");
+    } else if (item.type === "Plan") {
+      navigate("/dashboard/plans");
+    } else if (item.type === "Category") {
+      navigate("/dashboard/categories");
+    } else if (item.type === "Promo" || item.type === "Voucher") {
+      navigate("/dashboard/promo");
+    } else if (item.type === "Notification") {
+      navigate("/dashboard/notifications");
+    } else if (item.type === "Legal") {
+      navigate("/dashboard/legal");
+    } else if (item.type === "Company") {
+      navigate("/dashboard/company-info");
+    } else {
+      navigate("/dashboard/content");
+    }
+
+    setSearch("");
     setResults([]);
-    return;
-  }
-
-  try {
-    const res = await API.get(`/admin/search?q=${value}`);
-    setResults(res.data.data);
-  } catch (err) {
-    console.error("Search error:", err);
-  }
-};
-const handleSelect = (item) => {
-  if (item.type === "User") {
-    navigate("/dashboard/users");
-  } 
-  else if (item.type === "Movie") {
-    navigate("/dashboard/content");
-  } 
-  else if (item.type === "Help") {
-    navigate("/dashboard/help");
-  }
-
-  setSearch("");
-  setResults([]);
-};
+    setSearchOpen(false);
+  };
 
   // ================= LOGOUT =================
   const handleLogout = () => {
@@ -170,30 +202,91 @@ const handleSelect = (item) => {
               onChange={(e) => handleSearch(e.target.value)}
             />
           </div> */}
-          <div className="topbar-search" style={{ position: "relative" }}>
-  <Search size={18} className="search-ico" />
+          <div className="topbar-search" ref={searchRef}>
+            <Search size={18} className="search-ico" />
 
-  <input
-    type="text"
-    placeholder="Search anything..."
-    value={search}
-    onChange={(e) => handleSearch(e.target.value)}
-  />
+            <input
+              type="text"
+              placeholder="Search anything..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setSearchOpen(true);
+              }}
+              onFocus={() => {
+                if (search.trim() || results.length > 0) {
+                  setSearchOpen(true);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setSearchOpen(false);
+                }
+              }}
+            />
 
-  {/* 🔥 SEARCH RESULTS */}
-  {results.length > 0 && (
-    <div className="search-dropdown">
-      {results.map((item, i) => (
-        <div key={i} className="search-item" onClick={() => handleSelect(item)}>
-          <strong>{item.title || item.name}</strong>
-          <p style={{ fontSize: "12px", opacity: 0.7 }}>
-            {item.type}
-          </p>
-        </div>
-      ))}
-    </div>
-  )}
-</div>
+            {searchLoading && <div className="search-spinner" />}
+
+            {search && !searchLoading && (
+              <button
+                type="button"
+                className="search-clear-btn"
+                onClick={() => {
+                  setSearch("");
+                  setResults([]);
+                  setSearchOpen(false);
+                }}
+                title="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
+
+            {/* 🔥 SEARCH RESULTS */}
+            {searchOpen && search.trim() && (
+              <div className="search-dropdown">
+                {searchLoading && results.length === 0 ? (
+                  <div className="search-empty-state">Searching for "{search}"...</div>
+                ) : results.length > 0 ? (
+                  <div className="search-results-list">
+                    {results.map((item, i) => (
+                      <div
+                        key={item.id || i}
+                        className="search-item"
+                        onClick={() => handleSelect(item)}
+                      >
+                        {item.image && (
+                          <img
+                            src={item.image}
+                            alt=""
+                            className="search-thumb"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                        )}
+                        <div className="search-meta">
+                          <div className="search-row">
+                            <strong className="search-title">{item.title || item.name}</strong>
+                            <span className={`search-tag tag-${(item.type || "").toLowerCase()}`}>
+                              {item.type}
+                            </span>
+                          </div>
+                          {item.subtitle && (
+                            <p className="search-subtitle">{item.subtitle}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="search-empty-state">
+                    No results found for "<strong>{search}</strong>"
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* ── Notification Bell ── */}
           <div className="notif-bell-wrap" ref={notifRef}>

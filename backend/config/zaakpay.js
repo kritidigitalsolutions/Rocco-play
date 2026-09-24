@@ -28,6 +28,12 @@ const ZAAKPAY_CONFIG = {
   get returnUrl() {
     return process.env.ZAAKPAY_RETURN_URL || "https://api.roccoplay.in/api/payment/zaakpay/callback";
   },  
+  get statusTestUrl() {
+    return process.env.ZAAKPAY_STATUS_TEST_URL || "https://zaakstaging.zaakpay.com/api/payments/v1/status";
+  },
+  get statusLiveUrl() {
+    return process.env.ZAAKPAY_STATUS_LIVE_URL || "https://api.zaakpay.com/api/payments/v1/status";
+  },
 };
 
 // ---- OUTGOING request checksum: alphabetical order, trailing & after EVERY pair ----
@@ -77,10 +83,51 @@ function getTransactUrl() {
   return ZAAKPAY_CONFIG.mode === "live" ? ZAAKPAY_CONFIG.liveUrl : ZAAKPAY_CONFIG.testUrl;
 }
 
+/**
+ * Server-to-server transaction status inquiry from official Zaakpay API
+ */
+async function queryZaakpayOrderStatus(orderId, isLive = true) {
+  const secretKey = ZAAKPAY_CONFIG.secretKey;
+  const merchantIdentifier = ZAAKPAY_CONFIG.merchantIdentifier;
+
+  if (!merchantIdentifier || !secretKey) {
+    throw new Error("Zaakpay merchant credentials are not configured");
+  }
+
+  const url = isLive ? ZAAKPAY_CONFIG.statusLiveUrl : ZAAKPAY_CONFIG.statusTestUrl;
+  const payload = {
+    merchantIdentifier,
+    orderId,
+    version: 13,
+  };
+
+  const payloadStr = JSON.stringify(payload);
+  const checksum = crypto.createHmac("sha256", secretKey).update(payloadStr).digest("hex");
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      checksum: checksum,
+    },
+    body: payloadStr,
+  });
+
+  const data = await response.json();
+  return data;
+}
+
 if (ZAAKPAY_CONFIG.merchantIdentifier && ZAAKPAY_CONFIG.secretKey) {
   console.log(`✅ Zaakpay configured successfully [Mode: ${ZAAKPAY_CONFIG.mode}]`);
 } else {
   console.warn("⚠️ Zaakpay credentials missing in .env.");
 }
 
-module.exports = { ZAAKPAY_CONFIG, calculateChecksum, calculateResponseChecksum, verifyChecksum, getTransactUrl };
+module.exports = {
+  ZAAKPAY_CONFIG,
+  calculateChecksum,
+  calculateResponseChecksum,
+  verifyChecksum,
+  getTransactUrl,
+  queryZaakpayOrderStatus,
+};

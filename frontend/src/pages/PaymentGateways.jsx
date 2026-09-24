@@ -15,9 +15,35 @@ import {
   XCircle,
   Building2,
   QrCode,
-  Layers
+  Layers,
+  ArrowUp,
+  ArrowDown,
+  ListOrdered
 } from "lucide-react";
 import "./PaymentGateways.css";
+
+const GATEWAY_META = {
+  razorpay: {
+    name: "Razorpay",
+    color: "#3b82f6",
+    icon: CreditCard,
+  },
+  zaakpay: {
+    name: "Zaakpay",
+    color: "#a855f7",
+    icon: Zap,
+  },
+  hdfc: {
+    name: "HDFC Bank (SmartGateway)",
+    color: "#ef4444",
+    icon: Building2,
+  },
+  sabpaisa: {
+    name: "SabPaisa PG 3.0",
+    color: "#f59e0b",
+    icon: Layers,
+  },
+};
 
 const PaymentGateways = () => {
   // Current working state in UI
@@ -27,6 +53,7 @@ const PaymentGateways = () => {
     hdfcEnabled: false,
     sabpaisaEnabled: false,
     defaultGateway: "razorpay",
+    gatewayOrder: ["razorpay", "zaakpay", "hdfc", "sabpaisa"],
     zaakpayMode: "test",
     hdfcMode: "test",
     razorpayKeyConfigured: false,
@@ -45,6 +72,7 @@ const PaymentGateways = () => {
     hdfcEnabled: false,
     sabpaisaEnabled: false,
     defaultGateway: "razorpay",
+    gatewayOrder: ["razorpay", "zaakpay", "hdfc", "sabpaisa"],
     zaakpayMode: "test",
     hdfcMode: "test",
     razorpayKeyConfigured: false,
@@ -62,6 +90,7 @@ const PaymentGateways = () => {
   const [savingZaak, setSavingZaak] = useState(false);
   const [savingHdfc, setSavingHdfc] = useState(false);
   const [savingSabpaisa, setSavingSabpaisa] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -145,12 +174,13 @@ const PaymentGateways = () => {
         hdfcEnabled: pgConfig.hdfcEnabled,
         sabpaisaEnabled: pgConfig.sabpaisaEnabled,
         defaultGateway: pgConfig.defaultGateway,
+        gatewayOrder: pgConfig.gatewayOrder,
         zaakpayMode: pgConfig.zaakpayMode,
         hdfcMode: pgConfig.hdfcMode,
         sabpaisaMode: pgConfig.sabpaisaMode,
       });
       if (res.data?.success) {
-        setMessage("All payment gateway settings saved successfully! ✅");
+        setMessage("All payment gateway settings and priority order saved successfully! ✅");
         setSavedConfig({ ...pgConfig, ...res.data.data });
         setTimeout(() => setMessage(""), 4000);
         testPublicGatewayApi();
@@ -161,6 +191,62 @@ const PaymentGateways = () => {
       setTimeout(() => setError(""), 5000);
     } finally {
       setSavingAll(false);
+    }
+  };
+
+  // Reordering handlers for Gateway Priority
+  const handleMoveGateway = (index, direction) => {
+    const currentOrder = [...(pgConfig.gatewayOrder || ["razorpay", "zaakpay", "hdfc", "sabpaisa"])];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= currentOrder.length) return;
+    const temp = currentOrder[index];
+    currentOrder[index] = currentOrder[targetIndex];
+    currentOrder[targetIndex] = temp;
+    setPgConfig((prev) => ({
+      ...prev,
+      gatewayOrder: currentOrder,
+    }));
+  };
+
+  const handleSetGatewayPosition = (gatewayId, newPosition1Based) => {
+    const currentOrder = [...(pgConfig.gatewayOrder || ["razorpay", "zaakpay", "hdfc", "sabpaisa"])];
+    const oldIndex = currentOrder.indexOf(gatewayId);
+    if (oldIndex === -1) return;
+    const newIndex = parseInt(newPosition1Based, 10) - 1;
+    if (newIndex < 0 || newIndex >= currentOrder.length || newIndex === oldIndex) return;
+
+    currentOrder.splice(oldIndex, 1);
+    currentOrder.splice(newIndex, 0, gatewayId);
+    setPgConfig((prev) => ({
+      ...prev,
+      gatewayOrder: currentOrder,
+    }));
+  };
+
+  // Save Priority Order Specifically
+  const handleSaveOrder = async () => {
+    setMessage("");
+    setError("");
+    try {
+      setSavingOrder(true);
+      const res = await API.put("/admin/payment-settings", {
+        gatewayOrder: pgConfig.gatewayOrder,
+      });
+      if (res.data?.success) {
+        setMessage("Payment gateways display priority order saved successfully! ✅");
+        setSavedConfig((prev) => ({
+          ...prev,
+          gatewayOrder: pgConfig.gatewayOrder,
+        }));
+        setTimeout(() => setMessage(""), 4000);
+        testPublicGatewayApi();
+      }
+    } catch (err) {
+      console.error("Save order error:", err);
+      setError(err.response?.data?.message || "Failed to save gateway priority order");
+      setTimeout(() => setError(""), 5000);
+    } finally {
+      setSavingOrder(false);
     }
   };
 
@@ -294,8 +380,17 @@ const PaymentGateways = () => {
     pgConfig.sabpaisaEnabled !== savedConfig.sabpaisaEnabled ||
     pgConfig.sabpaisaMode !== savedConfig.sabpaisaMode;
   const isDefaultGatewayChanged = pgConfig.defaultGateway !== savedConfig.defaultGateway;
+  const isGatewayOrderChanged =
+    JSON.stringify(pgConfig.gatewayOrder || ["razorpay", "zaakpay", "hdfc", "sabpaisa"]) !==
+    JSON.stringify(savedConfig.gatewayOrder || ["razorpay", "zaakpay", "hdfc", "sabpaisa"]);
 
-  const isAnyChanged = isRzpChanged || isZaakChanged || isHdfcChanged || isSabpaisaChanged || isDefaultGatewayChanged;
+  const isAnyChanged =
+    isRzpChanged ||
+    isZaakChanged ||
+    isHdfcChanged ||
+    isSabpaisaChanged ||
+    isDefaultGatewayChanged ||
+    isGatewayOrderChanged;
 
   // Active gateways list calculation
   const activeGatewaysList = [];
@@ -749,6 +844,190 @@ const PaymentGateways = () => {
               ) : (
                 <>
                   <XCircle size={16} /> Save as Disabled
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── GATEWAY DISPLAY PRIORITY & INDEXING (1st, 2nd, 3rd, 4th) ── */}
+      <div className="pg-settings-card pg-priority-section" style={{ marginBottom: "24px" }}>
+        <div className="pg-settings-card-head">
+          <ListOrdered size={24} className="pg-accent-icon" style={{ color: "#38bdf8" }} />
+          <div>
+            <h3>Payment Gateway Priority & Display Order</h3>
+            <p>
+              Set which payment gateway appears at 1st, 2nd, 3rd, and 4th position when users checkout in the mobile app and website.
+            </p>
+          </div>
+        </div>
+
+        <div className="pg-priority-content">
+          <div className="pg-priority-intro">
+            <span>
+              💡 <strong>Indexing Rule:</strong> The order configured below will be returned by{" "}
+              <code>https://api.roccoplay.in/api/payment/gateways</code> in <code>orderedGateways</code> and{" "}
+              <code>activeOrderedGateways</code>. Position #1 gateway will be shown first to the user.
+            </span>
+
+            {/* Quick 1-Click Priority Presets */}
+            <div className="pg-priority-presets">
+              <span className="pg-preset-label">Quick 1-Click Top Priority:</span>
+              <button
+                type="button"
+                className="pg-preset-btn"
+                onClick={() => handleSetGatewayPosition("zaakpay", 1)}
+                title="Make Zaakpay 1st Priority"
+              >
+                ⚡ Make Zaakpay #1
+              </button>
+              <button
+                type="button"
+                className="pg-preset-btn"
+                onClick={() => handleSetGatewayPosition("razorpay", 1)}
+                title="Make Razorpay 1st Priority"
+              >
+                💳 Make Razorpay #1
+              </button>
+              <button
+                type="button"
+                className="pg-preset-btn"
+                onClick={() => handleSetGatewayPosition("hdfc", 1)}
+                title="Make HDFC Bank #1"
+              >
+                🏦 Make HDFC #1
+              </button>
+              <button
+                type="button"
+                className="pg-preset-btn"
+                onClick={() => handleSetGatewayPosition("sabpaisa", 1)}
+                title="Make SabPaisa #1"
+              >
+                🌐 Make SabPaisa #1
+              </button>
+            </div>
+          </div>
+
+          <div className="pg-priority-list">
+            {(pgConfig.gatewayOrder || ["razorpay", "zaakpay", "hdfc", "sabpaisa"]).map((gwKey, index) => {
+              const meta = GATEWAY_META[gwKey] || {
+                name: gwKey,
+                color: "#94a3b8",
+                icon: CreditCard,
+              };
+              const isEnabled = Boolean(
+                gwKey === "razorpay"
+                  ? pgConfig.razorpayEnabled
+                  : gwKey === "zaakpay"
+                  ? pgConfig.zaakpayEnabled
+                  : gwKey === "hdfc"
+                  ? pgConfig.hdfcEnabled
+                  : pgConfig.sabpaisaEnabled
+              );
+              const IconComp = meta.icon;
+
+              return (
+                <div
+                  key={gwKey}
+                  className={`pg-priority-row ${isEnabled ? "is-row-active" : "is-row-disabled"}`}
+                >
+                  <div className="pg-priority-rank-badge" data-rank={index + 1}>
+                    <span className="pg-rank-num">#{index + 1}</span>
+                    <span className="pg-rank-txt">
+                      {index === 0
+                        ? "1st Priority (Top)"
+                        : index === 1
+                        ? "2nd Priority"
+                        : index === 2
+                        ? "3rd Priority"
+                        : "4th Priority"}
+                    </span>
+                  </div>
+
+                  <div className="pg-priority-info">
+                    <div className="pg-priority-name-wrap">
+                      <div className="pg-priority-icon" style={{ color: meta.color, background: `${meta.color}18` }}>
+                        <IconComp size={18} />
+                      </div>
+                      <div>
+                        <span className="pg-priority-name">{meta.name}</span>
+                        <span className="pg-priority-sub">
+                          {gwKey === "zaakpay"
+                            ? `Hosted Checkout (${(pgConfig.zaakpayMode || "test").toUpperCase()})`
+                            : gwKey === "hdfc"
+                            ? `SmartGateway (${(pgConfig.hdfcMode || "test").toUpperCase()})`
+                            : gwKey === "sabpaisa"
+                            ? `PG 3.0 (${(pgConfig.sabpaisaMode || "test").toUpperCase()})`
+                            : "Native Standard Checkout"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pg-priority-status">
+                    <span className={`pg-status-pill ${isEnabled ? "active" : "disabled"}`}>
+                      {isEnabled ? "● Active" : "○ Disabled"}
+                    </span>
+                  </div>
+
+                  <div className="pg-priority-controls">
+                    <label className="pg-pos-label">Position:</label>
+                    <select
+                      className="pg-pos-select"
+                      value={index + 1}
+                      onChange={(e) => handleSetGatewayPosition(gwKey, e.target.value)}
+                    >
+                      <option value="1">1st (Top)</option>
+                      <option value="2">2nd</option>
+                      <option value="3">3rd</option>
+                      <option value="4">4th</option>
+                    </select>
+
+                    <div className="pg-arrow-btns">
+                      <button
+                        type="button"
+                        className="pg-arrow-btn"
+                        onClick={() => handleMoveGateway(index, -1)}
+                        disabled={index === 0}
+                        title="Move Up"
+                      >
+                        <ArrowUp size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className="pg-arrow-btn"
+                        onClick={() => handleMoveGateway(index, 1)}
+                        disabled={index === (pgConfig.gatewayOrder?.length || 4) - 1}
+                        title="Move Down"
+                      >
+                        <ArrowDown size={15} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="pg-priority-actions">
+            <button
+              type="button"
+              className={`pg-primary-btn ${!isGatewayOrderChanged ? "is-saved" : ""}`}
+              onClick={handleSaveOrder}
+              disabled={savingOrder || !isGatewayOrderChanged}
+            >
+              {savingOrder ? (
+                <>
+                  <RefreshCw size={15} className="spin" /> Saving Priority...
+                </>
+              ) : !isGatewayOrderChanged ? (
+                <>
+                  <Check size={16} /> Priority Saved!
+                </>
+              ) : (
+                <>
+                  <Save size={16} /> Save Priority Order
                 </>
               )}
             </button>

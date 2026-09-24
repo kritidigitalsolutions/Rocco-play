@@ -38,44 +38,89 @@ exports.getActiveGateways = async (req, res) => {
         process.env.SABPAISA_RETURN_URL
     );
 
-    // Default gateway selection (or fallback to first enabled gateway)
-    let defaultGateway = config.defaultGateway;
-    if (defaultGateway === "razorpay" && !rzpEnabled) defaultGateway = null;
-    if (defaultGateway === "zaakpay" && !zaakEnabled) defaultGateway = null;
-    if (defaultGateway === "hdfc" && !hdfcEnabled) defaultGateway = null;
-    if (defaultGateway === "sabpaisa" && !sabpaisaEnabled) defaultGateway = null;
+    // Standard list of supported gateway IDs
+    const allGatewayIds = ["razorpay", "zaakpay", "hdfc", "sabpaisa"];
 
+    // Retrieve configured gateway order from admin settings
+    let configuredOrder = Array.isArray(config.gatewayOrder) ? [...config.gatewayOrder] : [];
+    // Ensure all standard gateways are included
+    allGatewayIds.forEach((id) => {
+      if (!configuredOrder.includes(id)) {
+        configuredOrder.push(id);
+      }
+    });
+    // Filter out any invalid IDs
+    configuredOrder = configuredOrder.filter((id) => allGatewayIds.includes(id));
+
+    // Gateway dictionary definitions
+    const gatewayDetails = {
+      razorpay: {
+        id: "razorpay",
+        name: "Razorpay",
+        enabled: rzpEnabled,
+        key: rzpEnabled ? process.env.RAZORPAY_KEY_ID : null,
+      },
+      zaakpay: {
+        id: "zaakpay",
+        name: "Zaakpay",
+        enabled: zaakEnabled,
+        mode: config.zaakpayMode || "test",
+      },
+      hdfc: {
+        id: "hdfc",
+        name: "HDFC Bank (SmartGateway)",
+        enabled: hdfcEnabled,
+        mode: config.hdfcMode || "test",
+        vpa: process.env.HDFC_VPA || "roccoplaywork@hdfcbank",
+        storeName: process.env.HDFC_STORE_NAME || "ROCCOPLAY MEDIA",
+      },
+      sabpaisa: {
+        id: "sabpaisa",
+        name: "SabPaisa",
+        enabled: sabpaisaEnabled,
+        mode: config.sabpaisaMode || process.env.SABPAISA_MODE || "test",
+      },
+    };
+
+    // Build ordered list of all gateways with 1-based priority and 0-based index
+    const orderedGateways = configuredOrder.map((id, idx) => {
+      const g = gatewayDetails[id];
+      return {
+        ...g,
+        priority: idx + 1, // 1st, 2nd, 3rd, 4th
+        index: idx,        // 0, 1, 2, 3
+      };
+    });
+
+    // Active (enabled) gateways in priority sequence
+    const activeOrderedGateways = orderedGateways.filter((g) => g.enabled);
+
+    // Build dictionary maintaining priority insertion order
+    const gatewaysDict = {};
+    orderedGateways.forEach((g) => {
+      gatewaysDict[g.id] = g;
+    });
+
+    // Default gateway selection:
+    // If admin set defaultGateway and it is enabled, use it; otherwise fallback to highest priority active gateway
+    let defaultGateway = config.defaultGateway;
+    if (defaultGateway && !gatewayDetails[defaultGateway]?.enabled) {
+      defaultGateway = null;
+    }
+    if (!defaultGateway && activeOrderedGateways.length > 0) {
+      defaultGateway = activeOrderedGateways[0].id;
+    }
     if (!defaultGateway) {
-      defaultGateway = rzpEnabled ? "razorpay" : zaakEnabled ? "zaakpay" : hdfcEnabled ? "hdfc" : sabpaisaEnabled ? "sabpaisa" : "razorpay";
+      defaultGateway = configuredOrder[0] || "razorpay";
     }
 
     return res.status(200).json({
       success: true,
-      gateways: {
-        razorpay: {
-          enabled: rzpEnabled,
-          name: "Razorpay",
-          key: rzpEnabled ? process.env.RAZORPAY_KEY_ID : null,
-        },
-        zaakpay: {
-          enabled: zaakEnabled,
-          name: "Zaakpay",
-          mode: config.zaakpayMode || "test",
-        },
-        hdfc: {
-          enabled: hdfcEnabled,
-          name: "HDFC Bank (SmartGateway)",
-          mode: config.hdfcMode || "test",
-          vpa: process.env.HDFC_VPA || "roccoplaywork@hdfcbank",
-          storeName: process.env.HDFC_STORE_NAME || "ROCCOPLAY MEDIA",
-        },
-        sabpaisa: {
-          enabled: sabpaisaEnabled,
-          name: "SabPaisa",
-          mode: config.sabpaisaMode || process.env.SABPAISA_MODE || "test",
-        },
-      },
       defaultGateway,
+      gatewayOrder: configuredOrder,
+      orderedGateways,
+      activeOrderedGateways,
+      gateways: gatewaysDict,
     });
   } catch (err) {
     console.error("Get Active Gateways Error:", err);

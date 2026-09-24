@@ -23,6 +23,10 @@ const paymentConfigSchema = new mongoose.Schema(
       enum: ["razorpay", "zaakpay", "hdfc", "sabpaisa"],
       default: "razorpay",
     },
+    gatewayOrder: {
+      type: [String],
+      default: ["razorpay", "zaakpay", "hdfc", "sabpaisa"],
+    },
     zaakpayMode: {
       type: String,
       enum: ["test", "live"],
@@ -52,10 +56,14 @@ paymentConfigSchema.statics.getConfig = async function () {
       hdfcEnabled: false,
       sabpaisaEnabled: false,
       defaultGateway: "razorpay",
+      gatewayOrder: ["razorpay", "zaakpay", "hdfc", "sabpaisa"],
       zaakpayMode: process.env.ZAAKPAY_MODE || "test",
       hdfcMode: process.env.HDFC_MODE || "test",
       sabpaisaMode: process.env.SABPAISA_MODE || "test",
     });
+  } else if (!Array.isArray(config.gatewayOrder) || config.gatewayOrder.length === 0) {
+    config.gatewayOrder = ["razorpay", "zaakpay", "hdfc", "sabpaisa"];
+    await config.save();
   }
   return config;
 };

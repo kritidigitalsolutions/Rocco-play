@@ -94,29 +94,56 @@ Base URL: http://localhost:8000 (or your live API server URL)
 Endpoint: GET /api/payment/gateways
 Auth: Optional / Public
 
-Sample Response When HDFC Bank is Active:
+Sample Response with Dynamic Gateway Priority & Indexing:
 {
   "success": true,
-  "gateways": {
-    "razorpay": {
-      "enabled": false,
-      "name": "Razorpay",
-      "key": null
-    },
-    "zaakpay": {
-      "enabled": false,
+  "defaultGateway": "zaakpay",
+  "gatewayOrder": ["zaakpay", "razorpay", "hdfc", "sabpaisa"],
+  "orderedGateways": [
+    {
+      "id": "zaakpay",
       "name": "Zaakpay",
-      "mode": "test"
-    },
-    "hdfc": {
       "enabled": true,
+      "priority": 1,
+      "index": 0,
+      "mode": "live"
+    },
+    {
+      "id": "razorpay",
+      "name": "Razorpay",
+      "enabled": true,
+      "priority": 2,
+      "index": 1,
+      "key": "rzp_live_..."
+    },
+    {
+      "id": "hdfc",
       "name": "HDFC Bank (SmartGateway)",
+      "enabled": true,
+      "priority": 3,
+      "index": 2,
       "mode": "test",
       "vpa": "roccoplaywork@hdfcbank",
       "storeName": "ROCCOPLAY MEDIA"
+    },
+    {
+      "id": "sabpaisa",
+      "name": "SabPaisa",
+      "enabled": true,
+      "priority": 4,
+      "index": 3,
+      "mode": "live"
     }
-  },
-  "defaultGateway": "hdfc"
+  ],
+  "activeOrderedGateways": [
+    // Array of only currently enabled gateways sorted in 1st, 2nd, 3rd priority sequence
+  ],
+  "gateways": {
+    "zaakpay": { "enabled": true, "name": "Zaakpay", "priority": 1, "index": 0, ... },
+    "razorpay": { "enabled": true, "name": "Razorpay", "priority": 2, "index": 1, ... },
+    "hdfc": { "enabled": true, "name": "HDFC Bank (SmartGateway)", "priority": 3, "index": 2, ... },
+    "sabpaisa": { "enabled": true, "name": "SabPaisa", "priority": 4, "index": 3, ... }
+  }
 }
 
 --------------------------------------------------------------------------------

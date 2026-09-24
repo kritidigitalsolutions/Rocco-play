@@ -16,6 +16,9 @@ exports.getPaymentSettings = async (req, res) => {
         hdfcEnabled: config.hdfcEnabled,
         sabpaisaEnabled: config.sabpaisaEnabled,
         defaultGateway: config.defaultGateway,
+        gatewayOrder: Array.isArray(config.gatewayOrder) && config.gatewayOrder.length > 0
+          ? config.gatewayOrder
+          : ["razorpay", "zaakpay", "hdfc", "sabpaisa"],
         zaakpayMode: config.zaakpayMode,
         hdfcMode: config.hdfcMode,
         sabpaisaMode: sabpaisaMode,
@@ -49,6 +52,7 @@ exports.updatePaymentSettings = async (req, res) => {
       hdfcEnabled,
       sabpaisaEnabled,
       defaultGateway,
+      gatewayOrder,
       zaakpayMode,
       hdfcMode,
       sabpaisaMode,
@@ -95,6 +99,16 @@ exports.updatePaymentSettings = async (req, res) => {
       updateData.defaultGateway = defaultGateway;
     }
 
+    // 2. Gateway display priority ordering
+    if (Array.isArray(gatewayOrder) && gatewayOrder.length > 0) {
+      const allowed = ["razorpay", "zaakpay", "hdfc", "sabpaisa"];
+      const filtered = gatewayOrder.filter((id) => allowed.includes(id));
+      allowed.forEach((id) => {
+        if (!filtered.includes(id)) filtered.push(id);
+      });
+      updateData.gatewayOrder = filtered;
+    }
+
     if (zaakpayMode && ["test", "live"].includes(zaakpayMode)) {
       updateData.zaakpayMode = zaakpayMode;
     }
@@ -126,6 +140,7 @@ exports.updatePaymentSettings = async (req, res) => {
         hdfcEnabled: config.hdfcEnabled,
         sabpaisaEnabled: config.sabpaisaEnabled,
         defaultGateway: config.defaultGateway,
+        gatewayOrder: config.gatewayOrder || ["razorpay", "zaakpay", "hdfc", "sabpaisa"],
         zaakpayMode: config.zaakpayMode,
         hdfcMode: config.hdfcMode,
         sabpaisaMode: activeSabMode,

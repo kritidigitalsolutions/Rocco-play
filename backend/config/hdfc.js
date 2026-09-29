@@ -3,15 +3,23 @@ const path = require("path");
 const crypto = require("crypto");
 const { Juspay } = require("expresscheckout-nodejs");
 
+let fileConfig = {};
+try {
+  const configJsonPath = path.resolve(__dirname, "..", "keys", "config.json");
+  if (fs.existsSync(configJsonPath)) {
+    fileConfig = JSON.parse(fs.readFileSync(configJsonPath, "utf8"));
+  }
+} catch (e) {}
+
 const HDFC_CONFIG = {
   get merchantId() {
-    return process.env.HDFC_MERCHANT_ID || "HDFC000136707309";
+    return process.env.HDFC_MERCHANT_ID || fileConfig.MERCHANT_ID || "SG5861";
   },
   get keyId() {
-    return process.env.HDFC_KEY_ID || "key_056f0ec231c745f899ca852b5c406777";
+    return process.env.HDFC_KEY_ID || fileConfig.KEY_UUID || "key_056f0ec231c745f899ca852b5c406777";
   },
   get paymentPageClientId() {
-    return process.env.HDFC_PAYMENT_PAGE_CLIENT_ID || "hdfcmaster";
+    return process.env.HDFC_PAYMENT_PAGE_CLIENT_ID || fileConfig.PAYMENT_PAGE_CLIENT_ID || "hdfcmaster";
   },
   get vpa() {
     return process.env.HDFC_VPA || "roccoplaywork@hdfcbank";
@@ -31,10 +39,15 @@ const HDFC_CONFIG = {
     return process.env.HDFC_RETURN_URL || "https://api.roccoplay.in/api/payment/hdfc/callback";
   },
   get privateKeyPath() {
-    return process.env.PRIVATE_KEY_PATH || "./keys/privateKey.pem";
+    const raw = process.env.PRIVATE_KEY_PATH || fileConfig.PRIVATE_KEY_PATH || "./keys/privateKey.pem";
+    return String(raw).replace(/[<>]/g, "").trim();
+  },
+  get apiKey() {
+    return process.env.HDFC_API_KEY || process.env.HDFC_MERCHANT_KEY || fileConfig.API_KEY || "2929A5C1B8945E7A3D5E2CA9FF4C57";
   },
   get publicKeyPath() {
-    return process.env.PUBLIC_KEY_PATH || "./keys/key_056f0ec231c745f899ca852b5c406777.pem";
+    const raw = process.env.PUBLIC_KEY_PATH || fileConfig.PUBLIC_KEY_PATH || "./keys/key_056f0ec231c745f899ca852b5c406777.pem";
+    return String(raw).replace(/[<>]/g, "").trim();
   },
   get jwtSecret() {
     return process.env.HDFC_JWT_SECRET || "default_jwt_secret_change_in_production";
@@ -51,17 +64,22 @@ function initHdfcSdk() {
       fs.mkdirSync(keysDir, { recursive: true });
     }
 
+    const cleanPubName = path.basename(HDFC_CONFIG.publicKeyPath).replace(/[<>]/g, "");
+    const cleanPrivName = path.basename(HDFC_CONFIG.privateKeyPath).replace(/[<>]/g, "");
+
     const possiblePubPaths = [
       path.resolve(process.cwd(), HDFC_CONFIG.publicKeyPath),
       path.resolve(__dirname, "..", HDFC_CONFIG.publicKeyPath),
-      path.resolve(keysDir, path.basename(HDFC_CONFIG.publicKeyPath)),
+      path.resolve(keysDir, cleanPubName),
+      path.resolve(keysDir, "publicKey.pem"),
       path.resolve(keysDir, "key_056f0ec231c745f899ca852b5c406777.pem"),
+      path.resolve(keysDir, `${HDFC_CONFIG.keyId}.pem`),
     ];
 
     const possiblePrivPaths = [
       path.resolve(process.cwd(), HDFC_CONFIG.privateKeyPath),
       path.resolve(__dirname, "..", HDFC_CONFIG.privateKeyPath),
-      path.resolve(keysDir, path.basename(HDFC_CONFIG.privateKeyPath)),
+      path.resolve(keysDir, cleanPrivName),
       path.resolve(keysDir, "privateKey.pem"),
     ];
 
@@ -74,35 +92,27 @@ function initHdfcSdk() {
     if (foundPubKeyPath && foundPrivKeyPath) {
       publicKey = fs.readFileSync(foundPubKeyPath, "utf8");
       privateKey = fs.readFileSync(foundPrivKeyPath, "utf8");
-    } else {
-      console.warn("⚠️ HDFC RSA PEM keys not found on disk. Auto-generating 2048-bit RSA keys for HDFC Gateway...");
-      const keyPair = crypto.generateKeyPairSync("rsa", {
-        modulusLength: 2048,
-        publicKeyEncoding: { type: "spki", format: "pem" },
-        privateKeyEncoding: { type: "pkcs8", format: "pem" },
-      });
-      publicKey = keyPair.publicKey;
-      privateKey = keyPair.privateKey;
-
-      const targetPrivPath = path.resolve(keysDir, "privateKey.pem");
-      const targetPubPath = path.resolve(keysDir, `${HDFC_CONFIG.keyId}.pem`);
-
-      fs.writeFileSync(targetPrivPath, privateKey, "utf8");
-      fs.writeFileSync(targetPubPath, publicKey, "utf8");
-      console.log(`✅ Generated and saved HDFC keys to ${keysDir}`);
     }
 
-    juspay = new Juspay({
-      merchantId: HDFC_CONFIG.merchantId,
-      baseUrl: HDFC_CONFIG.baseUrl,
-      jweAuth: {
-        keyId: HDFC_CONFIG.keyId,
-        publicKey,
-        privateKey,
-      },
-    });
-
-    console.log(`✅ HDFC Bank Gateway (JWE) initialized successfully [Mode: ${HDFC_CONFIG.mode}]`);
+    if (HDFC_CONFIG.apiKey) {
+      juspay = new Juspay({
+        merchantId: HDFC_CONFIG.merchantId,
+        baseUrl: HDFC_CONFIG.baseUrl,
+        apiKey: HDFC_CONFIG.apiKey,
+      });
+      console.log(`✅ HDFC Bank Gateway (APIKey) initialized successfully [Merchant: ${HDFC_CONFIG.merchantId}, Mode: ${HDFC_CONFIG.mode}]`);
+    } else {
+      juspay = new Juspay({
+        merchantId: HDFC_CONFIG.merchantId,
+        baseUrl: HDFC_CONFIG.baseUrl,
+        jweAuth: {
+          keyId: HDFC_CONFIG.keyId,
+          publicKey,
+          privateKey,
+        },
+      });
+      console.log(`✅ HDFC Bank Gateway (JWE) initialized successfully [Merchant: ${HDFC_CONFIG.merchantId}, Mode: ${HDFC_CONFIG.mode}]`);
+    }
   } catch (err) {
     console.error("⚠️ Failed to initialize HDFC SDK:", err.message);
   }

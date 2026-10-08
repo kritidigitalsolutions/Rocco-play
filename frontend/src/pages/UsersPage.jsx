@@ -146,10 +146,14 @@ export default function UsersPage() {
     }
   };
 
-  const filtered = users.filter(u =>
-    (u.name?.toLowerCase() || "").includes(search.toLowerCase()) ||
-    u.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = users.filter((u) => {
+    const q = (search || "").toLowerCase().trim();
+    if (!q) return true;
+    const nameMatch = (u.name || "").toLowerCase().includes(q);
+    const emailMatch = (u.email || "").toLowerCase().includes(q);
+    const phoneMatch = (u.phone ? String(u.phone) : "").toLowerCase().includes(q);
+    return nameMatch || emailMatch || phoneMatch;
+  });
 
   return (
     <div className="page-section">
@@ -193,7 +197,7 @@ export default function UsersPage() {
         <div className="search-row" style={{ marginBottom: 20 }}>
           <div className="search-field">
             <Search size={18} />
-            <input placeholder="Search by name or email..." value={search}
+            <input placeholder="Search by name, email, or phone..." value={search}
               onChange={e => setSearch(e.target.value)} />
           </div>
         </div>
@@ -233,7 +237,7 @@ export default function UsersPage() {
                         <span className="u-name">{u.name || "Unknown"}</span>
                       </div>
                     </td>
-                    <td style={{ color: "var(--text-soft)" }}>{u.email}</td>
+                    <td style={{ color: "var(--text-soft)" }}>{u.email || "—"}</td>
                     <td style={{ color: "var(--text-muted)" }}>{new Date(u.createdAt).toLocaleDateString("en-IN")}</td>
                     <td>
                       <span className={`badge ${u.isBlocked ? "badge-blocked" : u.isSubscriber ? "badge-subscriber" : "badge-individual"}`}>
@@ -286,7 +290,7 @@ export default function UsersPage() {
                         <span className="badge badge-active" style={{ fontSize: "0.65rem", padding: "2px 8px" }}>✓ VERIFIED</span>
                       )}
                     </div>
-                    <p>{selected.email}</p>
+                    <p>{selected.email || selected.phone || "No email"}</p>
                     <span className={`badge ${selected.isBlocked ? "badge-blocked" : selected.isSubscriber ? "badge-subscriber" : "badge-individual"}`}>
                       {selected.isBlocked ? "BLOCKED" : selected.isSubscriber ? "SUBSCRIBER" : "INDIVIDUAL"}
                     </span>

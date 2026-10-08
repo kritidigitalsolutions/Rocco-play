@@ -52,24 +52,50 @@ exports.getActiveGateways = async (req, res) => {
     // Filter out any invalid IDs
     configuredOrder = configuredOrder.filter((id) => allGatewayIds.includes(id));
 
+    // Visibility configuration (defaults to true for both app and web)
+    const rawVis = (config.visibility && (config.visibility.toObject ? config.visibility.toObject() : config.visibility)) || {};
+    const getGatewayVis = (id) => {
+      const gv = rawVis[id] || {};
+      return {
+        app: gv.app !== false,
+        web: gv.web !== false,
+      };
+    };
+
+    const visibilitySummary = {
+      razorpay: getGatewayVis("razorpay"),
+      zaakpay: getGatewayVis("zaakpay"),
+      hdfc: getGatewayVis("hdfc"),
+      sabpaisa: getGatewayVis("sabpaisa"),
+    };
+
     // Gateway dictionary definitions
     const gatewayDetails = {
       razorpay: {
         id: "razorpay",
         name: "Razorpay",
         enabled: rzpEnabled,
+        visibility: visibilitySummary.razorpay,
+        showInApp: visibilitySummary.razorpay.app,
+        showInWeb: visibilitySummary.razorpay.web,
         key: rzpEnabled ? process.env.RAZORPAY_KEY_ID : null,
       },
       zaakpay: {
         id: "zaakpay",
         name: "Zaakpay",
         enabled: zaakEnabled,
+        visibility: visibilitySummary.zaakpay,
+        showInApp: visibilitySummary.zaakpay.app,
+        showInWeb: visibilitySummary.zaakpay.web,
         mode: config.zaakpayMode || "test",
       },
       hdfc: {
         id: "hdfc",
         name: "HDFC Bank (SmartGateway)",
         enabled: hdfcEnabled,
+        visibility: visibilitySummary.hdfc,
+        showInApp: visibilitySummary.hdfc.app,
+        showInWeb: visibilitySummary.hdfc.web,
         mode: config.hdfcMode || "test",
         vpa: process.env.HDFC_VPA || "roccoplaywork@hdfcbank",
         storeName: process.env.HDFC_STORE_NAME || "ROCCOPLAY MEDIA",
@@ -78,6 +104,9 @@ exports.getActiveGateways = async (req, res) => {
         id: "sabpaisa",
         name: "SabPaisa",
         enabled: sabpaisaEnabled,
+        visibility: visibilitySummary.sabpaisa,
+        showInApp: visibilitySummary.sabpaisa.app,
+        showInWeb: visibilitySummary.sabpaisa.web,
         mode: config.sabpaisaMode || process.env.SABPAISA_MODE || "test",
       },
     };
@@ -94,6 +123,10 @@ exports.getActiveGateways = async (req, res) => {
 
     // Active (enabled) gateways in priority sequence
     const activeOrderedGateways = orderedGateways.filter((g) => g.enabled);
+
+    // Platform-specific active lists (Enabled AND Visible)
+    const appGateways = activeOrderedGateways.filter((g) => g.showInApp);
+    const webGateways = activeOrderedGateways.filter((g) => g.showInWeb);
 
     // Build dictionary maintaining priority insertion order
     const gatewaysDict = {};
@@ -114,13 +147,41 @@ exports.getActiveGateways = async (req, res) => {
       defaultGateway = configuredOrder[0] || "razorpay";
     }
 
+    // Default gateway specifically for Mobile App (Flutter)
+    let defaultGatewayApp = null;
+    if (defaultGateway && gatewayDetails[defaultGateway]?.enabled && gatewayDetails[defaultGateway]?.showInApp) {
+      defaultGatewayApp = defaultGateway;
+    } else if (appGateways.length > 0) {
+      defaultGatewayApp = appGateways[0].id;
+    } else {
+      defaultGatewayApp = defaultGateway;
+    }
+
+    // Default gateway specifically for Website
+    let defaultGatewayWeb = null;
+    if (defaultGateway && gatewayDetails[defaultGateway]?.enabled && gatewayDetails[defaultGateway]?.showInWeb) {
+      defaultGatewayWeb = defaultGateway;
+    } else if (webGateways.length > 0) {
+      defaultGatewayWeb = webGateways[0].id;
+    } else {
+      defaultGatewayWeb = defaultGateway;
+    }
+
+    const platform = (req.query.platform || req.query.target || "").toLowerCase();
+
     return res.status(200).json({
       success: true,
+      platform: platform || "all",
       defaultGateway,
+      defaultGatewayApp,
+      defaultGatewayWeb,
       gatewayOrder: configuredOrder,
       orderedGateways,
       activeOrderedGateways,
+      appGateways,
+      webGateways,
       gateways: gatewaysDict,
+      visibility: visibilitySummary,
     });
   } catch (err) {
     console.error("Get Active Gateways Error:", err);

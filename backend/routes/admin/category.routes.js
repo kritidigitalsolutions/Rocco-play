@@ -1,22 +1,29 @@
-  const express = require("express");
-  const router  = express.Router();
+const express = require("express");
+const router  = express.Router();
 
-  const {
-    createCategory,
-    getAllCategories,
-    getCategoryById,
-    updateCategory,
-    deleteCategory,
-    toggleCategoryStatus,
-  } = require("../../controllers/admin/category.controller");
+const {
+  createCategory,
+  getAllCategories,
+  getCategoryById,
+  updateCategory,
+  deleteCategory,
+  toggleCategoryStatus,
+  getCategoryCuratedContent,
+  updateCategoryCuratedContent,
+} = require("../../controllers/admin/category.controller");
 
-  const { isAdmin } = require("../../middlewares/admin.middleware");
+const { isAdmin } = require("../../middlewares/admin.middleware");
 
-  // ── Admin Category Routes ──────────────────────────
-  router.get("/", isAdmin, getAllCategories);
-  router.post("/", isAdmin, createCategory);
-  router.get("/:id", isAdmin, getCategoryById);
-  router.patch("/:id", isAdmin, updateCategory);
-  router.delete("/:id", isAdmin, deleteCategory);
+// ── Admin Category Routes ──────────────────────────
+router.get("/", isAdmin, getAllCategories);
+router.post("/", isAdmin, createCategory);
+router.get("/:id", isAdmin, getCategoryById);
+router.patch("/:id", isAdmin, updateCategory);
+router.patch("/:id/toggle-status", isAdmin, toggleCategoryStatus);
+router.delete("/:id", isAdmin, deleteCategory);
 
-  module.exports = router;
+// Curated content ordering for category
+router.get("/:id/curated-content", isAdmin, getCategoryCuratedContent);
+router.put("/:id/curated-content", isAdmin, updateCategoryCuratedContent);
+
+module.exports = router;

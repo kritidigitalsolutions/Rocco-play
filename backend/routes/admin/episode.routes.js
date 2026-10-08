@@ -18,6 +18,7 @@ const {
   deleteEpisode,
   deleteSeason,
   searchEpisodes,
+  reorderEpisodes,
 } = require(
   "../../controllers/admin/episode.controller"
 );
@@ -43,6 +44,7 @@ const episodeUpload =
 // ROUTES (Protected)
 // ========================================
 router.post("/add", isAdmin, episodeUpload, validateFileSizes, addEpisode);
+router.put("/reorder", isAdmin, reorderEpisodes);
 router.patch("/:id", isAdmin, episodeUpload, validateFileSizes, updateEpisode);
 // router.post(
 //   "/add",

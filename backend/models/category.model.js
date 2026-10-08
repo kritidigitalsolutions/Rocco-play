@@ -26,6 +26,28 @@ const categorySchema = new mongoose.Schema(
       type: Number,
       default: 1,
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    curatedItems: [
+      {
+        _id: false,
+        contentId: {
+          type: mongoose.Schema.Types.ObjectId,
+          required: true,
+        },
+        contentType: {
+          type: String,
+          enum: ["movie", "series", "Movie", "Series"],
+          default: "series",
+        },
+        position: {
+          type: Number,
+          default: 0,
+        },
+      },
+    ],
   },
   { timestamps: true }
 );

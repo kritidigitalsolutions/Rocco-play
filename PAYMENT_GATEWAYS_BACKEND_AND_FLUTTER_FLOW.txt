@@ -89,60 +89,104 @@ Client App Behavior (Flutter & Web):
 Base URL: http://localhost:8000 (or your live API server URL)
 
 --------------------------------------------------------------------------------
-3.1 GET ACTIVE GATEWAY
+3.1 GET ACTIVE GATEWAY & PLATFORM VISIBILITY
 --------------------------------------------------------------------------------
 Endpoint: GET /api/payment/gateways
+Optional Query Params:
+- GET /api/payment/gateways?platform=app   (returns app filtered data)
+- GET /api/payment/gateways?platform=web   (returns web filtered data)
+
 Auth: Optional / Public
 
-Sample Response with Dynamic Gateway Priority & Indexing:
+Sample Response with Dynamic Gateway Priority, Visibility & Platform Filtering:
 {
   "success": true,
+  "platform": "all",
   "defaultGateway": "zaakpay",
-  "gatewayOrder": ["zaakpay", "razorpay", "hdfc", "sabpaisa"],
+  "defaultGatewayApp": "zaakpay",
+  "defaultGatewayWeb": "zaakpay",
+  "gatewayOrder": ["zaakpay", "sabpaisa", "razorpay", "hdfc"],
   "orderedGateways": [
     {
       "id": "zaakpay",
       "name": "Zaakpay",
       "enabled": true,
+      "visibility": {
+        "app": true,
+        "web": true
+      },
+      "showInApp": true,
+      "showInWeb": true,
+      "mode": "live",
       "priority": 1,
-      "index": 0,
-      "mode": "live"
-    },
-    {
-      "id": "razorpay",
-      "name": "Razorpay",
-      "enabled": true,
-      "priority": 2,
-      "index": 1,
-      "key": "rzp_live_..."
-    },
-    {
-      "id": "hdfc",
-      "name": "HDFC Bank (SmartGateway)",
-      "enabled": true,
-      "priority": 3,
-      "index": 2,
-      "mode": "test",
-      "vpa": "roccoplaywork@hdfcbank",
-      "storeName": "ROCCOPLAY MEDIA"
+      "index": 0
     },
     {
       "id": "sabpaisa",
       "name": "SabPaisa",
       "enabled": true,
+      "visibility": {
+        "app": true,
+        "web": true
+      },
+      "showInApp": true,
+      "showInWeb": true,
+      "mode": "live",
+      "priority": 2,
+      "index": 1
+    },
+    {
+      "id": "razorpay",
+      "name": "Razorpay",
+      "enabled": true,
+      "visibility": {
+        "app": true,
+        "web": true
+      },
+      "showInApp": true,
+      "showInWeb": true,
+      "key": "rzp_live_...",
+      "priority": 3,
+      "index": 2
+    },
+    {
+      "id": "hdfc",
+      "name": "HDFC Bank (SmartGateway)",
+      "enabled": true,
+      "visibility": {
+        "app": true,
+        "web": true
+      },
+      "showInApp": true,
+      "showInWeb": true,
+      "mode": "test",
+      "vpa": "roccoplaywork@hdfcbank",
+      "storeName": "ROCCOPLAY MEDIA",
       "priority": 4,
-      "index": 3,
-      "mode": "live"
+      "index": 3
     }
   ],
   "activeOrderedGateways": [
-    // Array of only currently enabled gateways sorted in 1st, 2nd, 3rd priority sequence
+    // Array of only currently enabled gateways sorted in priority sequence
+  ],
+  "appGateways": [
+    // Array of active gateways specifically VISIBLE in Mobile App (enabled == true && showInApp == true)
+    // Sorted strictly by admin configured priority!
+  ],
+  "webGateways": [
+    // Array of active gateways specifically VISIBLE in Website (enabled == true && showInWeb == true)
   ],
   "gateways": {
-    "zaakpay": { "enabled": true, "name": "Zaakpay", "priority": 1, "index": 0, ... },
-    "razorpay": { "enabled": true, "name": "Razorpay", "priority": 2, "index": 1, ... },
-    "hdfc": { "enabled": true, "name": "HDFC Bank (SmartGateway)", "priority": 3, "index": 2, ... },
-    "sabpaisa": { "enabled": true, "name": "SabPaisa", "priority": 4, "index": 3, ... }
+    "zaakpay": { "enabled": true, "showInApp": true, "showInWeb": true, "visibility": { "app": true, "web": true }, ... },
+    "sabpaisa": { "enabled": true, "showInApp": true, "showInWeb": true, "visibility": { "app": true, "web": true }, ... },
+    "razorpay": { "enabled": true, "showInApp": true, "showInWeb": true, "visibility": { "app": true, "web": true }, ... },
+    "hdfc": { "enabled": true, "showInApp": true, "showInWeb": true, "visibility": { "app": true, "web": true }, ... }
+  },
+  "visibility": {
+    "razorpay": { "app": true, "web": true },
+    "zaakpay": { "app": true, "web": true },
+    "hdfc": { "app": true, "web": true },
+    "sabpaisa": { "app": true, "web": true }
   }
 }
 
@@ -272,27 +316,43 @@ Response (200 OK):
 // lib/models/payment_gateways_model.dart
 class PaymentGatewaysModel {
   final bool razorpayEnabled;
+  final bool razorpayShowInApp;
   final String? razorpayKey;
+
   final bool zaakpayEnabled;
+  final bool zaakpayShowInApp;
   final String zaakpayMode;
+
   final bool hdfcEnabled;
+  final bool hdfcShowInApp;
   final String hdfcMode;
   final String? hdfcVpa;
+
   final bool sabpaisaEnabled;
+  final bool sabpaisaShowInApp;
   final String sabpaisaMode;
+
   final String defaultGateway;
+  final String defaultGatewayApp;
+  final List<dynamic> appGateways;
 
   PaymentGatewaysModel({
     required this.razorpayEnabled,
+    required this.razorpayShowInApp,
     this.razorpayKey,
     required this.zaakpayEnabled,
+    required this.zaakpayShowInApp,
     required this.zaakpayMode,
     required this.hdfcEnabled,
+    required this.hdfcShowInApp,
     required this.hdfcMode,
     this.hdfcVpa,
     required this.sabpaisaEnabled,
+    required this.sabpaisaShowInApp,
     required this.sabpaisaMode,
     required this.defaultGateway,
+    required this.defaultGatewayApp,
+    required this.appGateways,
   });
 
   factory PaymentGatewaysModel.fromJson(Map<String, dynamic> json) {
@@ -304,24 +364,40 @@ class PaymentGatewaysModel {
 
     return PaymentGatewaysModel(
       razorpayEnabled: rzp['enabled'] == true,
+      razorpayShowInApp: rzp['showInApp'] == true || (rzp['visibility']?['app'] == true),
       razorpayKey: rzp['key'],
+
       zaakpayEnabled: zaak['enabled'] == true,
+      zaakpayShowInApp: zaak['showInApp'] == true || (zaak['visibility']?['app'] == true),
       zaakpayMode: zaak['mode'] ?? 'test',
+
       hdfcEnabled: hdfc['enabled'] == true,
+      hdfcShowInApp: hdfc['showInApp'] == true || (hdfc['visibility']?['app'] == true),
       hdfcMode: hdfc['mode'] ?? 'test',
       hdfcVpa: hdfc['vpa'],
+
       sabpaisaEnabled: sab['enabled'] == true,
+      sabpaisaShowInApp: sab['showInApp'] == true || (sab['visibility']?['app'] == true),
       sabpaisaMode: sab['mode'] ?? 'test',
-      defaultGateway: json['defaultGateway'] ?? 'razorpay',
+
+      defaultGateway: json['defaultGateway'] ?? 'zaakpay',
+      defaultGatewayApp: json['defaultGatewayApp'] ?? json['defaultGateway'] ?? 'zaakpay',
+      appGateways: json['appGateways'] ?? [],
     );
   }
 
+  // Active gateways visible in Mobile App (ordered by priority)
+  bool get isRazorpayVisibleInApp => razorpayEnabled && razorpayShowInApp;
+  bool get isZaakpayVisibleInApp => zaakpayEnabled && zaakpayShowInApp;
+  bool get isHdfcVisibleInApp => hdfcEnabled && hdfcShowInApp;
+  bool get isSabpaisaVisibleInApp => sabpaisaEnabled && sabpaisaShowInApp;
+
   String get activeGatewayName {
-    if (razorpayEnabled) return "razorpay";
-    if (zaakpayEnabled) return "zaakpay";
-    if (hdfcEnabled) return "hdfc";
-    if (sabpaisaEnabled) return "sabpaisa";
-    return "none";
+    if (isZaakpayVisibleInApp) return "zaakpay";
+    if (isSabpaisaVisibleInApp) return "sabpaisa";
+    if (isRazorpayVisibleInApp) return "razorpay";
+    if (isHdfcVisibleInApp) return "hdfc";
+    return defaultGatewayApp;
   }
 }
 

@@ -1,12 +1,39 @@
 const PaymentConfig = require("../../models/paymentConfig.model");
 const { isSabpaisaConfigured, getSabpaisaConfig } = require("../../config/sabpaisa");
 
+const defaultVisibility = {
+  razorpay: { app: true, web: true },
+  zaakpay: { app: true, web: true },
+  hdfc: { app: true, web: true },
+  sabpaisa: { app: true, web: true },
+};
+
 // GET /api/admin/payment-settings
 exports.getPaymentSettings = async (req, res) => {
   try {
     const config = await PaymentConfig.getConfig();
     const sabpaisaMode = config.sabpaisaMode || process.env.SABPAISA_MODE || "test";
     const sabpaisaCfg = getSabpaisaConfig(sabpaisaMode);
+
+    const rawVis = (config.visibility && (config.visibility.toObject ? config.visibility.toObject() : config.visibility)) || {};
+    const visibility = {
+      razorpay: {
+        app: rawVis.razorpay?.app !== false,
+        web: rawVis.razorpay?.web !== false,
+      },
+      zaakpay: {
+        app: rawVis.zaakpay?.app !== false,
+        web: rawVis.zaakpay?.web !== false,
+      },
+      hdfc: {
+        app: rawVis.hdfc?.app !== false,
+        web: rawVis.hdfc?.web !== false,
+      },
+      sabpaisa: {
+        app: rawVis.sabpaisa?.app !== false,
+        web: rawVis.sabpaisa?.web !== false,
+      },
+    };
 
     return res.status(200).json({
       success: true,
@@ -15,6 +42,7 @@ exports.getPaymentSettings = async (req, res) => {
         zaakpayEnabled: config.zaakpayEnabled,
         hdfcEnabled: config.hdfcEnabled,
         sabpaisaEnabled: config.sabpaisaEnabled,
+        visibility,
         defaultGateway: config.defaultGateway,
         gatewayOrder: Array.isArray(config.gatewayOrder) && config.gatewayOrder.length > 0
           ? config.gatewayOrder
@@ -51,6 +79,11 @@ exports.updatePaymentSettings = async (req, res) => {
       zaakpayEnabled,
       hdfcEnabled,
       sabpaisaEnabled,
+      visibility,
+      razorpayVisibility,
+      zaakpayVisibility,
+      hdfcVisibility,
+      sabpaisaVisibility,
       defaultGateway,
       gatewayOrder,
       zaakpayMode,
@@ -86,6 +119,74 @@ exports.updatePaymentSettings = async (req, res) => {
       updateData.sabpaisaEnabled = Boolean(sabpaisaEnabled);
     }
 
+    // 2. Visibility Handling (merge gracefully)
+    const curRawVis = (currentConfig.visibility && (currentConfig.visibility.toObject ? currentConfig.visibility.toObject() : currentConfig.visibility)) || {};
+    const baseVis = {
+      razorpay: {
+        app: curRawVis.razorpay?.app !== false,
+        web: curRawVis.razorpay?.web !== false,
+      },
+      zaakpay: {
+        app: curRawVis.zaakpay?.app !== false,
+        web: curRawVis.zaakpay?.web !== false,
+      },
+      hdfc: {
+        app: curRawVis.hdfc?.app !== false,
+        web: curRawVis.hdfc?.web !== false,
+      },
+      sabpaisa: {
+        app: curRawVis.sabpaisa?.app !== false,
+        web: curRawVis.sabpaisa?.web !== false,
+      },
+    };
+
+    let updatedVis = {
+      razorpay: { ...baseVis.razorpay },
+      zaakpay: { ...baseVis.zaakpay },
+      hdfc: { ...baseVis.hdfc },
+      sabpaisa: { ...baseVis.sabpaisa },
+    };
+    let hasVisChange = false;
+
+    if (visibility && typeof visibility === "object") {
+      ["razorpay", "zaakpay", "hdfc", "sabpaisa"].forEach((gw) => {
+        if (visibility[gw] && typeof visibility[gw] === "object") {
+          if (visibility[gw].app !== undefined) {
+            updatedVis[gw].app = Boolean(visibility[gw].app);
+            hasVisChange = true;
+          }
+          if (visibility[gw].web !== undefined) {
+            updatedVis[gw].web = Boolean(visibility[gw].web);
+            hasVisChange = true;
+          }
+        }
+      });
+    }
+
+    // Support individual fields: razorpayVisibility, zaakpayVisibility, etc.
+    const individualVisMap = {
+      razorpay: razorpayVisibility,
+      zaakpay: zaakpayVisibility,
+      hdfc: hdfcVisibility,
+      sabpaisa: sabpaisaVisibility,
+    };
+    Object.entries(individualVisMap).forEach(([gw, val]) => {
+      if (val && typeof val === "object") {
+        if (val.app !== undefined) {
+          updatedVis[gw].app = Boolean(val.app);
+          hasVisChange = true;
+        }
+        if (val.web !== undefined) {
+          updatedVis[gw].web = Boolean(val.web);
+          hasVisChange = true;
+        }
+      }
+    });
+
+    if (hasVisChange) {
+      updateData.visibility = updatedVis;
+    }
+
     // Backwards compatibility for single activeGateway parameter if sent
     if (activeGateway && ["razorpay", "zaakpay", "hdfc", "sabpaisa"].includes(activeGateway)) {
       if (activeGateway === "sabpaisa" && !isSabpaisaConfigured(targetSabpaisaMode)) {
@@ -99,7 +200,7 @@ exports.updatePaymentSettings = async (req, res) => {
       updateData.defaultGateway = defaultGateway;
     }
 
-    // 2. Gateway display priority ordering
+    // 3. Gateway display priority ordering
     if (Array.isArray(gatewayOrder) && gatewayOrder.length > 0) {
       const allowed = ["razorpay", "zaakpay", "hdfc", "sabpaisa"];
       const filtered = gatewayOrder.filter((id) => allowed.includes(id));
@@ -131,6 +232,26 @@ exports.updatePaymentSettings = async (req, res) => {
     const activeSabMode = config.sabpaisaMode || "test";
     const activeSabCfg = getSabpaisaConfig(activeSabMode);
 
+    const finalRawVis = (config.visibility && (config.visibility.toObject ? config.visibility.toObject() : config.visibility)) || {};
+    const finalVisibility = {
+      razorpay: {
+        app: finalRawVis.razorpay?.app !== false,
+        web: finalRawVis.razorpay?.web !== false,
+      },
+      zaakpay: {
+        app: finalRawVis.zaakpay?.app !== false,
+        web: finalRawVis.zaakpay?.web !== false,
+      },
+      hdfc: {
+        app: finalRawVis.hdfc?.app !== false,
+        web: finalRawVis.hdfc?.web !== false,
+      },
+      sabpaisa: {
+        app: finalRawVis.sabpaisa?.app !== false,
+        web: finalRawVis.sabpaisa?.web !== false,
+      },
+    };
+
     return res.status(200).json({
       success: true,
       message: "Payment gateway settings updated successfully",
@@ -139,6 +260,7 @@ exports.updatePaymentSettings = async (req, res) => {
         zaakpayEnabled: config.zaakpayEnabled,
         hdfcEnabled: config.hdfcEnabled,
         sabpaisaEnabled: config.sabpaisaEnabled,
+        visibility: finalVisibility,
         defaultGateway: config.defaultGateway,
         gatewayOrder: config.gatewayOrder || ["razorpay", "zaakpay", "hdfc", "sabpaisa"],
         zaakpayMode: config.zaakpayMode,

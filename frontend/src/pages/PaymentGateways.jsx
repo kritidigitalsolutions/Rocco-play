@@ -18,7 +18,11 @@ import {
   Layers,
   ArrowUp,
   ArrowDown,
-  ListOrdered
+  ListOrdered,
+  Smartphone,
+  Eye,
+  EyeOff,
+  Monitor
 } from "lucide-react";
 import "./PaymentGateways.css";
 
@@ -45,6 +49,73 @@ const GATEWAY_META = {
   },
 };
 
+const DEFAULT_VISIBILITY = {
+  razorpay: { app: true, web: true },
+  zaakpay: { app: true, web: true },
+  hdfc: { app: true, web: true },
+  sabpaisa: { app: true, web: true },
+};
+
+// Reusable Platform Visibility Controller component
+const GatewayVisibilityControl = ({ gwKey, gatewayName, visibility, onToggle }) => {
+  const isApp = Boolean(visibility?.[gwKey]?.app ?? true);
+  const isWeb = Boolean(visibility?.[gwKey]?.web ?? true);
+
+  return (
+    <div className="pg-platform-vis-box">
+      <div className="pg-vis-header">
+        <span className="pg-vis-title">
+          <Monitor size={15} style={{ color: "#38bdf8" }} /> Platform Visibility Control
+        </span>
+        <span className="pg-vis-hint">Select where {gatewayName} appears</span>
+      </div>
+      <div className="pg-vis-grid">
+        {/* Mobile App Toggle */}
+        <div className={`pg-vis-item ${isApp ? "is-vis" : "is-hidden"}`}>
+          <div className="pg-vis-info">
+            <Smartphone size={16} className="pg-vis-ico" />
+            <div>
+              <div className="pg-vis-name">Mobile App (Flutter)</div>
+              <div className="pg-vis-sub">
+                {isApp ? "● Visible in App" : "○ Hidden in App"}
+              </div>
+            </div>
+          </div>
+          <label className="pg-switch-toggle pg-switch-mini" title={`Toggle Mobile App visibility for ${gatewayName}`}>
+            <input
+              type="checkbox"
+              checked={isApp}
+              onChange={(e) => onToggle(gwKey, "app", e.target.checked)}
+            />
+            <span className="pg-slider"></span>
+          </label>
+        </div>
+
+        {/* Website Toggle */}
+        <div className={`pg-vis-item ${isWeb ? "is-vis" : "is-hidden"}`}>
+          <div className="pg-vis-info">
+            <Globe size={16} className="pg-vis-ico" />
+            <div>
+              <div className="pg-vis-name">Website Checkout</div>
+              <div className="pg-vis-sub">
+                {isWeb ? "● Visible on Web" : "○ Hidden on Web"}
+              </div>
+            </div>
+          </div>
+          <label className="pg-switch-toggle pg-switch-mini" title={`Toggle Website visibility for ${gatewayName}`}>
+            <input
+              type="checkbox"
+              checked={isWeb}
+              onChange={(e) => onToggle(gwKey, "web", e.target.checked)}
+            />
+            <span className="pg-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const PaymentGateways = () => {
   // Current working state in UI
   const [pgConfig, setPgConfig] = useState({
@@ -52,6 +123,7 @@ const PaymentGateways = () => {
     zaakpayEnabled: false,
     hdfcEnabled: false,
     sabpaisaEnabled: false,
+    visibility: DEFAULT_VISIBILITY,
     defaultGateway: "razorpay",
     gatewayOrder: ["razorpay", "zaakpay", "hdfc", "sabpaisa"],
     zaakpayMode: "test",
@@ -71,6 +143,7 @@ const PaymentGateways = () => {
     zaakpayEnabled: false,
     hdfcEnabled: false,
     sabpaisaEnabled: false,
+    visibility: DEFAULT_VISIBILITY,
     defaultGateway: "razorpay",
     gatewayOrder: ["razorpay", "zaakpay", "hdfc", "sabpaisa"],
     zaakpayMode: "test",
@@ -97,6 +170,7 @@ const PaymentGateways = () => {
 
   const [apiStatus, setApiStatus] = useState(null);
   const [testingApi, setTestingApi] = useState(false);
+  const [activeTestEndpoint, setActiveTestEndpoint] = useState("/payment/gateways");
 
   // Fetch PG settings
   const fetchSettings = async () => {
@@ -104,8 +178,17 @@ const PaymentGateways = () => {
       setLoading(true);
       const res = await API.get("/admin/payment-settings");
       if (res.data?.success && res.data?.data) {
-        setPgConfig(res.data.data);
-        setSavedConfig(res.data.data);
+        const data = res.data.data;
+        const mergedVis = {
+          ...DEFAULT_VISIBILITY,
+          ...(data.visibility || {}),
+        };
+        const configWithVis = {
+          ...data,
+          visibility: mergedVis,
+        };
+        setPgConfig(configWithVis);
+        setSavedConfig(configWithVis);
       }
     } catch (err) {
       console.error("Fetch PG Settings error:", err);
@@ -116,14 +199,16 @@ const PaymentGateways = () => {
   };
 
   // Test Public Gateway API
-  const testPublicGatewayApi = async () => {
+  const testPublicGatewayApi = async (query = "") => {
     try {
       setTestingApi(true);
-      const res = await API.get("/payment/gateways");
+      const ep = query ? `/payment/gateways?${query}` : "/payment/gateways";
+      setActiveTestEndpoint(ep);
+      const res = await API.get(ep);
       setApiStatus(res.data);
     } catch (err) {
       console.error("Test API error:", err);
-      setApiStatus({ error: "Failed to connect to gateway endpoint" });
+      setApiStatus({ error: "Failed to connect to gateway endpoint", details: err.message });
     } finally {
       setTestingApi(false);
     }
@@ -133,7 +218,7 @@ const PaymentGateways = () => {
     fetchSettings();
   }, []);
 
-  // Independent Toggle Handlers (Multiple gateways can be enabled together)
+  // Independent Toggle Handlers (Master Enable/Disable)
   const handleToggleRazorpay = (checked) => {
     setPgConfig((prev) => ({
       ...prev,
@@ -162,6 +247,23 @@ const PaymentGateways = () => {
     }));
   };
 
+  // Platform Visibility Toggle Handler
+  const handleToggleVisibility = (gatewayId, platform, checked) => {
+    setPgConfig((prev) => {
+      const curVis = prev.visibility || DEFAULT_VISIBILITY;
+      return {
+        ...prev,
+        visibility: {
+          ...curVis,
+          [gatewayId]: {
+            ...(curVis[gatewayId] || { app: true, web: true }),
+            [platform]: checked,
+          },
+        },
+      };
+    });
+  };
+
   // Save All Settings in One Click
   const handleSaveAll = async () => {
     setMessage("");
@@ -173,6 +275,7 @@ const PaymentGateways = () => {
         zaakpayEnabled: pgConfig.zaakpayEnabled,
         hdfcEnabled: pgConfig.hdfcEnabled,
         sabpaisaEnabled: pgConfig.sabpaisaEnabled,
+        visibility: pgConfig.visibility,
         defaultGateway: pgConfig.defaultGateway,
         gatewayOrder: pgConfig.gatewayOrder,
         zaakpayMode: pgConfig.zaakpayMode,
@@ -180,8 +283,14 @@ const PaymentGateways = () => {
         sabpaisaMode: pgConfig.sabpaisaMode,
       });
       if (res.data?.success) {
-        setMessage("All payment gateway settings and priority order saved successfully! ✅");
-        setSavedConfig({ ...pgConfig, ...res.data.data });
+        setMessage("All payment gateway settings, visibility controls, and priority order saved successfully! ✅");
+        const updated = {
+          ...pgConfig,
+          ...res.data.data,
+          visibility: res.data.data.visibility || pgConfig.visibility,
+        };
+        setPgConfig(updated);
+        setSavedConfig(updated);
         setTimeout(() => setMessage(""), 4000);
         testPublicGatewayApi();
       }
@@ -258,13 +367,18 @@ const PaymentGateways = () => {
       setSavingRzp(true);
       const res = await API.put("/admin/payment-settings", {
         razorpayEnabled: pgConfig.razorpayEnabled,
+        razorpayVisibility: pgConfig.visibility?.razorpay,
       });
       if (res.data?.success) {
         const stateLabel = pgConfig.razorpayEnabled ? "Enabled" : "Disabled";
-        setMessage(`Razorpay successfully saved as ${stateLabel}! ✅`);
+        setMessage(`Razorpay saved as ${stateLabel} with updated visibility settings! ✅`);
         setSavedConfig((prev) => ({
           ...prev,
           razorpayEnabled: pgConfig.razorpayEnabled,
+          visibility: {
+            ...prev.visibility,
+            razorpay: pgConfig.visibility?.razorpay,
+          },
         }));
         setTimeout(() => setMessage(""), 4000);
         testPublicGatewayApi();
@@ -287,14 +401,19 @@ const PaymentGateways = () => {
       const res = await API.put("/admin/payment-settings", {
         zaakpayEnabled: pgConfig.zaakpayEnabled,
         zaakpayMode: pgConfig.zaakpayMode,
+        zaakpayVisibility: pgConfig.visibility?.zaakpay,
       });
       if (res.data?.success) {
         const stateLabel = pgConfig.zaakpayEnabled ? "Enabled" : "Disabled";
-        setMessage(`Zaakpay successfully saved as ${stateLabel} (Mode: ${pgConfig.zaakpayMode.toUpperCase()})! ✅`);
+        setMessage(`Zaakpay saved as ${stateLabel} (Mode: ${pgConfig.zaakpayMode.toUpperCase()}) with visibility settings! ✅`);
         setSavedConfig((prev) => ({
           ...prev,
           zaakpayEnabled: pgConfig.zaakpayEnabled,
           zaakpayMode: pgConfig.zaakpayMode,
+          visibility: {
+            ...prev.visibility,
+            zaakpay: pgConfig.visibility?.zaakpay,
+          },
         }));
         setTimeout(() => setMessage(""), 4000);
         testPublicGatewayApi();
@@ -317,14 +436,19 @@ const PaymentGateways = () => {
       const res = await API.put("/admin/payment-settings", {
         hdfcEnabled: pgConfig.hdfcEnabled,
         hdfcMode: pgConfig.hdfcMode,
+        hdfcVisibility: pgConfig.visibility?.hdfc,
       });
       if (res.data?.success) {
         const stateLabel = pgConfig.hdfcEnabled ? "Enabled" : "Disabled";
-        setMessage(`HDFC Bank Gateway successfully saved as ${stateLabel} (Mode: ${pgConfig.hdfcMode.toUpperCase()})! ✅`);
+        setMessage(`HDFC Bank saved as ${stateLabel} (Mode: ${pgConfig.hdfcMode.toUpperCase()}) with visibility settings! ✅`);
         setSavedConfig((prev) => ({
           ...prev,
           hdfcEnabled: pgConfig.hdfcEnabled,
           hdfcMode: pgConfig.hdfcMode,
+          visibility: {
+            ...prev.visibility,
+            hdfc: pgConfig.visibility?.hdfc,
+          },
         }));
         setTimeout(() => setMessage(""), 4000);
         testPublicGatewayApi();
@@ -347,15 +471,20 @@ const PaymentGateways = () => {
       const res = await API.put("/admin/payment-settings", {
         sabpaisaEnabled: pgConfig.sabpaisaEnabled,
         sabpaisaMode: pgConfig.sabpaisaMode,
+        sabpaisaVisibility: pgConfig.visibility?.sabpaisa,
       });
       if (res.data?.success) {
         const stateLabel = pgConfig.sabpaisaEnabled ? "Enabled" : "Disabled";
         const modeLabel = (pgConfig.sabpaisaMode || "test").toUpperCase();
-        setMessage(`SabPaisa successfully saved as ${stateLabel} (Mode: ${modeLabel})! ✅`);
+        setMessage(`SabPaisa saved as ${stateLabel} (Mode: ${modeLabel}) with visibility settings! ✅`);
         setSavedConfig((prev) => ({
           ...prev,
           sabpaisaEnabled: pgConfig.sabpaisaEnabled,
           sabpaisaMode: pgConfig.sabpaisaMode,
+          visibility: {
+            ...prev.visibility,
+            sabpaisa: pgConfig.visibility?.sabpaisa,
+          },
         }));
         setTimeout(() => setMessage(""), 4000);
         testPublicGatewayApi();
@@ -369,20 +498,41 @@ const PaymentGateways = () => {
   };
 
   // Determine if individual cards or global config differ from database saved state
-  const isRzpChanged = pgConfig.razorpayEnabled !== savedConfig.razorpayEnabled;
+  const isVisChanged = (gwKey) => {
+    const current = pgConfig.visibility?.[gwKey] || { app: true, web: true };
+    const saved = savedConfig.visibility?.[gwKey] || { app: true, web: true };
+    return current.app !== saved.app || current.web !== saved.web;
+  };
+
+  const isRzpChanged =
+    pgConfig.razorpayEnabled !== savedConfig.razorpayEnabled ||
+    isVisChanged("razorpay");
+
   const isZaakChanged =
     pgConfig.zaakpayEnabled !== savedConfig.zaakpayEnabled ||
-    pgConfig.zaakpayMode !== savedConfig.zaakpayMode;
+    pgConfig.zaakpayMode !== savedConfig.zaakpayMode ||
+    isVisChanged("zaakpay");
+
   const isHdfcChanged =
     pgConfig.hdfcEnabled !== savedConfig.hdfcEnabled ||
-    pgConfig.hdfcMode !== savedConfig.hdfcMode;
+    pgConfig.hdfcMode !== savedConfig.hdfcMode ||
+    isVisChanged("hdfc");
+
   const isSabpaisaChanged =
     pgConfig.sabpaisaEnabled !== savedConfig.sabpaisaEnabled ||
-    pgConfig.sabpaisaMode !== savedConfig.sabpaisaMode;
+    pgConfig.sabpaisaMode !== savedConfig.sabpaisaMode ||
+    isVisChanged("sabpaisa");
+
   const isDefaultGatewayChanged = pgConfig.defaultGateway !== savedConfig.defaultGateway;
   const isGatewayOrderChanged =
     JSON.stringify(pgConfig.gatewayOrder || ["razorpay", "zaakpay", "hdfc", "sabpaisa"]) !==
     JSON.stringify(savedConfig.gatewayOrder || ["razorpay", "zaakpay", "hdfc", "sabpaisa"]);
+
+  const isAnyVisChanged =
+    isVisChanged("razorpay") ||
+    isVisChanged("zaakpay") ||
+    isVisChanged("hdfc") ||
+    isVisChanged("sabpaisa");
 
   const isAnyChanged =
     isRzpChanged ||
@@ -390,7 +540,8 @@ const PaymentGateways = () => {
     isHdfcChanged ||
     isSabpaisaChanged ||
     isDefaultGatewayChanged ||
-    isGatewayOrderChanged;
+    isGatewayOrderChanged ||
+    isAnyVisChanged;
 
   // Active gateways list calculation
   const activeGatewaysList = [];
@@ -399,10 +550,19 @@ const PaymentGateways = () => {
   if (pgConfig.hdfcEnabled) activeGatewaysList.push("HDFC Bank");
   if (pgConfig.sabpaisaEnabled) activeGatewaysList.push("SabPaisa");
 
-  const activeGatewaysCountText =
-    activeGatewaysList.length > 0
-      ? `${activeGatewaysList.length} Active (${activeGatewaysList.join(", ")})`
-      : "None Active";
+  // App-visible gateways (both master enabled and app visible)
+  const appVisibleList = [];
+  if (pgConfig.razorpayEnabled && (pgConfig.visibility?.razorpay?.app ?? true)) appVisibleList.push("Razorpay");
+  if (pgConfig.zaakpayEnabled && (pgConfig.visibility?.zaakpay?.app ?? true)) appVisibleList.push("Zaakpay");
+  if (pgConfig.hdfcEnabled && (pgConfig.visibility?.hdfc?.app ?? true)) appVisibleList.push("HDFC Bank");
+  if (pgConfig.sabpaisaEnabled && (pgConfig.visibility?.sabpaisa?.app ?? true)) appVisibleList.push("SabPaisa");
+
+  // Web-visible gateways (both master enabled and web visible)
+  const webVisibleList = [];
+  if (pgConfig.razorpayEnabled && (pgConfig.visibility?.razorpay?.web ?? true)) webVisibleList.push("Razorpay");
+  if (pgConfig.zaakpayEnabled && (pgConfig.visibility?.zaakpay?.web ?? true)) webVisibleList.push("Zaakpay");
+  if (pgConfig.hdfcEnabled && (pgConfig.visibility?.hdfc?.web ?? true)) webVisibleList.push("HDFC Bank");
+  if (pgConfig.sabpaisaEnabled && (pgConfig.visibility?.sabpaisa?.web ?? true)) webVisibleList.push("SabPaisa");
 
   return (
     <div className="page-section payment-gateways-page">
@@ -410,10 +570,10 @@ const PaymentGateways = () => {
       <div className="pg-header-wrap">
         <div>
           <h1 className="pg-title">
-            <CreditCard size={28} /> Payment Gateways
+            <CreditCard size={28} /> Payment Gateways & Visibility
           </h1>
           <p className="pg-subtitle">
-            Configure Razorpay, Zaakpay, HDFC Bank, and SabPaisa. You can enable multiple gateways simultaneously.
+            Configure gateway activation, display priority, and control exact visibility for Flutter Mobile App vs Website checkout.
           </p>
         </div>
 
@@ -474,28 +634,50 @@ const PaymentGateways = () => {
             <Zap size={22} />
           </div>
           <div>
-            <div className="pg-stat-val" style={{ fontSize: "1rem" }}>{activeGatewaysCountText}</div>
-            <div className="pg-stat-lbl">Active Payment Gateways</div>
+            <div className="pg-stat-val">
+              {activeGatewaysList.length > 0 ? `${activeGatewaysList.length} Active` : "None"}
+            </div>
+            <div className="pg-stat-lbl">Master Active Gateways</div>
           </div>
         </div>
 
         <div className="pg-stat-card">
-          <div className="pg-stat-icon-wrap" style={{ background: "rgba(59, 130, 246, 0.15)", color: "#3b82f6" }}>
-            <Layers size={22} />
+          <div className="pg-stat-icon-wrap" style={{ background: "rgba(168, 85, 247, 0.15)", color: "#c084fc" }}>
+            <Smartphone size={22} />
           </div>
           <div>
-            <div className="pg-stat-val" style={{ textTransform: "capitalize" }}>{pgConfig.defaultGateway || "Razorpay"}</div>
-            <div className="pg-stat-lbl">Default / Preferred Gateway</div>
+            <div className="pg-stat-val">
+              {appVisibleList.length > 0 ? `${appVisibleList.length} in App` : "0 in App"}
+            </div>
+            <div className="pg-stat-lbl">
+              {appVisibleList.length > 0 ? `App: ${appVisibleList.join(", ")}` : "No gateway visible in App"}
+            </div>
+          </div>
+        </div>
+
+        <div className="pg-stat-card">
+          <div className="pg-stat-icon-wrap" style={{ background: "rgba(56, 189, 248, 0.15)", color: "#38bdf8" }}>
+            <Globe size={22} />
+          </div>
+          <div>
+            <div className="pg-stat-val">
+              {webVisibleList.length > 0 ? `${webVisibleList.length} on Web` : "0 on Web"}
+            </div>
+            <div className="pg-stat-lbl">
+              {webVisibleList.length > 0 ? `Web: ${webVisibleList.join(", ")}` : "No gateway visible on Web"}
+            </div>
           </div>
         </div>
 
         <div className="pg-stat-card">
           <div className="pg-stat-icon-wrap" style={{ background: "rgba(245, 158, 11, 0.15)", color: "#f59e0b" }}>
-            <Server size={22} />
+            <Layers size={22} />
           </div>
           <div>
-            <div className="pg-stat-val">Multi-Gateway Enabled</div>
-            <div className="pg-stat-lbl">Flexible Active Mode</div>
+            <div className="pg-stat-val" style={{ textTransform: "capitalize" }}>
+              {pgConfig.defaultGateway || "Razorpay"}
+            </div>
+            <div className="pg-stat-lbl">Default Preferred Gateway</div>
           </div>
         </div>
       </div>
@@ -513,7 +695,7 @@ const PaymentGateways = () => {
               </div>
             </div>
 
-            <label className="pg-switch-toggle" title="Toggle Razorpay">
+            <label className="pg-switch-toggle" title="Toggle Razorpay Master Status">
               <input
                 type="checkbox"
                 checked={pgConfig.razorpayEnabled}
@@ -531,7 +713,7 @@ const PaymentGateways = () => {
           </div>
 
           <p className="pg-card-text">
-            Standard Razorpay JavaScript checkout supporting UPI, Credit & Debit Cards, Net Banking, and digital wallets.
+            Standard Razorpay JavaScript & mobile checkout supporting UPI, Credit & Debit Cards, Net Banking, and digital wallets.
           </p>
 
           <div className="pg-features-list">
@@ -539,6 +721,14 @@ const PaymentGateways = () => {
             <div className="pg-feature-item">✓ Instant webhook & signature verification</div>
             <div className="pg-feature-item">✓ Auto-activation of Subscription upon success</div>
           </div>
+
+          {/* Platform Visibility Controller */}
+          <GatewayVisibilityControl
+            gwKey="razorpay"
+            gatewayName="Razorpay"
+            visibility={pgConfig.visibility}
+            onToggle={handleToggleVisibility}
+          />
 
           <div className="pg-card-footer">
             <div className="pg-footer-left">
@@ -585,7 +775,7 @@ const PaymentGateways = () => {
               </div>
             </div>
 
-            <label className="pg-switch-toggle" title="Toggle Zaakpay">
+            <label className="pg-switch-toggle" title="Toggle Zaakpay Master Status">
               <input
                 type="checkbox"
                 checked={pgConfig.zaakpayEnabled}
@@ -632,6 +822,14 @@ const PaymentGateways = () => {
             </div>
           </div>
 
+          {/* Platform Visibility Controller */}
+          <GatewayVisibilityControl
+            gwKey="zaakpay"
+            gatewayName="Zaakpay"
+            visibility={pgConfig.visibility}
+            onToggle={handleToggleVisibility}
+          />
+
           <div className="pg-card-footer">
             <div className="pg-footer-left">
               <span className="pg-key-tag">
@@ -677,7 +875,7 @@ const PaymentGateways = () => {
               </div>
             </div>
 
-            <label className="pg-switch-toggle" title="Toggle HDFC Bank">
+            <label className="pg-switch-toggle" title="Toggle HDFC Bank Master Status">
               <input
                 type="checkbox"
                 checked={pgConfig.hdfcEnabled}
@@ -724,6 +922,14 @@ const PaymentGateways = () => {
             </div>
           </div>
 
+          {/* Platform Visibility Controller */}
+          <GatewayVisibilityControl
+            gwKey="hdfc"
+            gatewayName="HDFC Bank"
+            visibility={pgConfig.visibility}
+            onToggle={handleToggleVisibility}
+          />
+
           <div className="pg-card-footer">
             <div className="pg-footer-left">
               <span className="pg-key-tag">
@@ -768,7 +974,7 @@ const PaymentGateways = () => {
                 <span className="pg-brand-type">PG 3.0 Hosted Checkout (Cards, UPI & NetBanking)</span>
               </div>
             </div>
-            <label className="pg-switch-toggle" title="Toggle SabPaisa">
+            <label className="pg-switch-toggle" title="Toggle SabPaisa Master Status">
               <input type="checkbox" checked={pgConfig.sabpaisaEnabled} onChange={(e) => handleToggleSabpaisa(e.target.checked)} />
               <span className="pg-slider"></span>
             </label>
@@ -821,6 +1027,14 @@ const PaymentGateways = () => {
             </div>
           )}
 
+          {/* Platform Visibility Controller */}
+          <GatewayVisibilityControl
+            gwKey="sabpaisa"
+            gatewayName="SabPaisa"
+            visibility={pgConfig.visibility}
+            onToggle={handleToggleVisibility}
+          />
+
           <div className="pg-card-footer">
             <span className="pg-key-tag"><Key size={14} /> Keys stay in backend .env</span>
             <button
@@ -851,14 +1065,14 @@ const PaymentGateways = () => {
         </div>
       </div>
 
-      {/* ── GATEWAY DISPLAY PRIORITY & INDEXING (1st, 2nd, 3rd, 4th) ── */}
+      {/* ── GATEWAY DISPLAY PRIORITY & PLATFORM VISIBILITY ── */}
       <div className="pg-settings-card pg-priority-section" style={{ marginBottom: "24px" }}>
         <div className="pg-settings-card-head">
           <ListOrdered size={24} className="pg-accent-icon" style={{ color: "#38bdf8" }} />
           <div>
-            <h3>Payment Gateway Priority & Display Order</h3>
+            <h3>Payment Gateway Priority & Platform Visibility</h3>
             <p>
-              Set which payment gateway appears at 1st, 2nd, 3rd, and 4th position when users checkout in the mobile app and website.
+              Set which payment gateway appears at 1st, 2nd, 3rd, and 4th position, and view/toggle App and Web status for each.
             </p>
           </div>
         </div>
@@ -866,9 +1080,7 @@ const PaymentGateways = () => {
         <div className="pg-priority-content">
           <div className="pg-priority-intro">
             <span>
-              💡 <strong>Indexing Rule:</strong> The order configured below will be returned by{" "}
-              <code>https://api.roccoplay.in/api/payment/gateways</code> in <code>orderedGateways</code> and{" "}
-              <code>activeOrderedGateways</code>. Position #1 gateway will be shown first to the user.
+              💡 <strong>API Indexing & Visibility Rule:</strong> The order below is returned in <code>orderedGateways</code>. Mobile apps only show gateways enabled with <code>showInApp: true</code> (also returned pre-filtered in <code>appGateways</code>). Websites show gateways with <code>showInWeb: true</code> (pre-filtered in <code>webGateways</code>).
             </span>
 
             {/* Quick 1-Click Priority Presets */}
@@ -925,6 +1137,8 @@ const PaymentGateways = () => {
                   ? pgConfig.hdfcEnabled
                   : pgConfig.sabpaisaEnabled
               );
+              const isAppVis = Boolean(pgConfig.visibility?.[gwKey]?.app ?? true);
+              const isWebVis = Boolean(pgConfig.visibility?.[gwKey]?.web ?? true);
               const IconComp = meta.icon;
 
               return (
@@ -965,10 +1179,33 @@ const PaymentGateways = () => {
                     </div>
                   </div>
 
+                  {/* Active status pill */}
                   <div className="pg-priority-status">
                     <span className={`pg-status-pill ${isEnabled ? "active" : "disabled"}`}>
                       {isEnabled ? "● Active" : "○ Disabled"}
                     </span>
+                  </div>
+
+                  {/* Quick Platform Visibility toggles right in priority row */}
+                  <div className="pg-priority-vis-badges">
+                    <button
+                      type="button"
+                      className={`pg-plat-btn ${isAppVis ? "active" : "disabled"}`}
+                      onClick={() => handleToggleVisibility(gwKey, "app", !isAppVis)}
+                      title={`Click to toggle Mobile App visibility for ${meta.name}`}
+                    >
+                      <Smartphone size={13} />
+                      <span>App: {isAppVis ? "Visible" : "Hidden"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`pg-plat-btn ${isWebVis ? "active" : "disabled"}`}
+                      onClick={() => handleToggleVisibility(gwKey, "web", !isWebVis)}
+                      title={`Click to toggle Website visibility for ${meta.name}`}
+                    >
+                      <Globe size={13} />
+                      <span>Web: {isWebVis ? "Visible" : "Hidden"}</span>
+                    </button>
                   </div>
 
                   <div className="pg-priority-controls">
@@ -1013,21 +1250,21 @@ const PaymentGateways = () => {
           <div className="pg-priority-actions">
             <button
               type="button"
-              className={`pg-primary-btn ${!isGatewayOrderChanged ? "is-saved" : ""}`}
-              onClick={handleSaveOrder}
-              disabled={savingOrder || !isGatewayOrderChanged}
+              className={`pg-primary-btn ${!isGatewayOrderChanged && !isAnyVisChanged ? "is-saved" : ""}`}
+              onClick={handleSaveAll}
+              disabled={savingAll || (!isGatewayOrderChanged && !isAnyVisChanged)}
             >
-              {savingOrder ? (
+              {savingAll ? (
                 <>
-                  <RefreshCw size={15} className="spin" /> Saving Priority...
+                  <RefreshCw size={15} className="spin" /> Saving Priority & Visibility...
                 </>
-              ) : !isGatewayOrderChanged ? (
+              ) : !isGatewayOrderChanged && !isAnyVisChanged ? (
                 <>
-                  <Check size={16} /> Priority Saved!
+                  <Check size={16} /> Priority & Visibility Saved!
                 </>
               ) : (
                 <>
-                  <Save size={16} /> Save Priority Order
+                  <Save size={16} /> Save Priority & Visibility
                 </>
               )}
             </button>
@@ -1059,7 +1296,7 @@ const PaymentGateways = () => {
               <option value="sabpaisa">SabPaisa {pgConfig.sabpaisaEnabled ? "(Enabled)" : "(Disabled)"}</option>
             </select>
             <span className="pg-field-hint">
-              Apps will prioritize this gateway if multiple gateways are active.
+              Apps will prioritize this gateway if multiple gateways are active on that platform.
             </span>
           </div>
 
@@ -1093,28 +1330,46 @@ const PaymentGateways = () => {
         <div className="pg-settings-card-head">
           <Globe size={22} className="pg-accent-icon" />
           <div>
-            <h3>Active Gateway Inspector (Live App Status)</h3>
-            <p>Test the live JSON response that mobile and web apps receive from the server.</p>
+            <h3>Active Gateway Inspector (Live App Status & Flutter Body Test)</h3>
+            <p>Test the exact live JSON response that mobile and web apps receive from the server.</p>
           </div>
         </div>
 
         <div className="pg-routing-form">
-          <div className="pg-actions-bar" style={{ marginTop: 0 }}>
+          <div className="pg-inspect-btns">
             <button
               type="button"
-              className="pg-secondary-btn"
-              onClick={testPublicGatewayApi}
+              className={`pg-secondary-btn ${activeTestEndpoint === "/payment/gateways" ? "is-active-inspect" : ""}`}
+              onClick={() => testPublicGatewayApi("")}
               disabled={testingApi}
             >
-              <Globe size={16} /> {testingApi ? "Fetching..." : "Test Client Gateway API (/api/payment/gateways)"}
+              <Globe size={16} /> {testingApi && activeTestEndpoint === "/payment/gateways" ? "Testing..." : "Test Full Response (/api/payment/gateways)"}
+            </button>
+
+            <button
+              type="button"
+              className={`pg-secondary-btn ${activeTestEndpoint.includes("platform=app") ? "is-active-inspect" : ""}`}
+              onClick={() => testPublicGatewayApi("platform=app")}
+              disabled={testingApi}
+            >
+              <Smartphone size={16} /> {testingApi && activeTestEndpoint.includes("platform=app") ? "Testing..." : "📱 Test Mobile App API (?platform=app)"}
+            </button>
+
+            <button
+              type="button"
+              className={`pg-secondary-btn ${activeTestEndpoint.includes("platform=web") ? "is-active-inspect" : ""}`}
+              onClick={() => testPublicGatewayApi("platform=web")}
+              disabled={testingApi}
+            >
+              <Monitor size={16} /> {testingApi && activeTestEndpoint.includes("platform=web") ? "Testing..." : "🌐 Test Website API (?platform=web)"}
             </button>
           </div>
 
           {apiStatus && (
             <div className="pg-api-preview">
               <div className="pg-api-preview-title">
-                <span>Server API Output:</span>
-                <span className="pg-preview-badge">Live Status</span>
+                <span>Server API Output ({activeTestEndpoint}):</span>
+                <span className="pg-preview-badge">Live Status 200 OK</span>
               </div>
               <pre className="pg-code-block">{JSON.stringify(apiStatus, null, 2)}</pre>
             </div>

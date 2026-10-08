@@ -220,6 +220,27 @@ const searchEpisodes = async (req, res) => {
   }
 };
 
+const reorderEpisodes = async (req, res) => {
+  try {
+    const { episodes } = req.body;
+    if (!Array.isArray(episodes)) {
+      return res.status(400).json({ success: false, message: "episodes array is required" });
+    }
+
+    for (let i = 0; i < episodes.length; i++) {
+      const ep = episodes[i];
+      const epId = ep.id || ep._id;
+      const newEpNumber = ep.episodeNumber !== undefined ? Number(ep.episodeNumber) : i + 1;
+      if (epId) {
+        await Episode.findByIdAndUpdate(epId, { episodeNumber: newEpNumber });
+      }
+    }
+
+    return res.json({ success: true, message: "Episodes reordered successfully" });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 module.exports = {
   addEpisode,
@@ -228,6 +249,8 @@ module.exports = {
   deleteEpisode,
   deleteSeason,
   searchEpisodes,
+  reorderEpisodes,
 };
+
 
 

@@ -516,14 +516,55 @@ exports.getCategoryContentBySlug = async (req, res) => {
       }).lean(),
     ]);
 
+    const seriesIds = series.map(s => s._id);
+    const allEpisodes = seriesIds.length > 0
+      ? await Episode.find({
+          seriesId: { $in: seriesIds }
+        })
+        .sort({ seasonNumber: 1, episodeNumber: 1 })
+        .lean()
+      : [];
+
+    const episodesMap = {};
+    allEpisodes.forEach(ep => {
+      const id = ep.seriesId.toString();
+      if (!episodesMap[id]) episodesMap[id] = [];
+      episodesMap[id].push(ep);
+    });
+
+    const formattedMovies = movies.map(m => ({
+      ...m,
+      type: "movie",
+      isTrending: m.category?.includes("trending") || false
+    }));
+
+    const formattedSeries = series.map(s => {
+      const episodes = episodesMap[s._id.toString()] || [];
+      const seasons = [];
+      episodes.forEach(ep => {
+        let season = seasons.find(se => se.seasonNumber === ep.seasonNumber);
+        if (!season) {
+          season = { seasonNumber: ep.seasonNumber, episodes: [] };
+          seasons.push(season);
+        }
+        season.episodes.push(ep);
+      });
+      return {
+        ...s,
+        seasons,
+        type: "series",
+        isTrending: s.category?.includes("trending") || false
+      };
+    });
+
     const curatedMap = {};
     (category.curatedItems || []).forEach(it => {
       if (it.contentId) curatedMap[it.contentId.toString()] = it.position || 0;
     });
 
     const allContent = [
-      ...movies.map(m => ({ ...m, type: "movie" })),
-      ...series.map(s => ({ ...s, type: "series" })),
+      ...formattedMovies,
+      ...formattedSeries,
     ].map(item => {
       const idStr = item._id.toString();
       const pos = curatedMap[idStr] !== undefined ? curatedMap[idStr] : 999;
